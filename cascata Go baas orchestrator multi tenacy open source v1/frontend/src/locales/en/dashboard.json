@@ -1,0 +1,34 @@
+{
+  "header": {
+    "title": "Project Overview",
+    "subtitle_prefix": "Monitoring infrastructure and deployments for",
+    "keys_button": "View API Keys",
+    "generate_template": "Generate Template"
+  },
+  "metrics": {
+    "edge_gateway": "Edge Gateway",
+    "increase_from_yesterday": "{{amount}}% increase from yesterday",
+    "db_compute": "Database Compute",
+    "active_connections": "{{count}} Active Connections (Pool)",
+    "system_health": "System Health",
+    "postgres_core": "PostgreSQL Core",
+    "nginx_ingress": "Nginx Ingress",
+    "background_cron": "Background Cron",
+    "healthy": "Healthy",
+    "syncing": "Syncing"
+  },
+  "configs": {
+    "title": "Project Configurations",
+    "subtitle": "Essential settings applied during project creation.",
+    "auth_providers": "Auth Providers",
+    "storage_regions": "Storage Regions",
+    "vault_protection": "Vault Protection",
+    "automations": "Automations",
+    "last_configured": "Last configured {{time}}",
+    "edit_settings": "Edit Project Settings"
+  },
+  "logs": {
+    "title": "Deployment Logs",
+    "view_all": "View All Logs"
+  }
+}

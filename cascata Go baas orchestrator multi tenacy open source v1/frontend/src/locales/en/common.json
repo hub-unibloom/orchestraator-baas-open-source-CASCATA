@@ -1,0 +1,23 @@
+{
+  "search": "Search...",
+  "logout": "Logout",
+  "loading": "Loading...",
+  "environment": {
+    "live": "Production",
+    "draft": "Draft"
+  },
+  "modules": {
+    "dashboard": "Dashboard",
+    "database": "Data Studio",
+    "logic": "Logic & RPC",
+    "auth": "Access Control",
+    "storage": "Storage Files",
+    "events": "Event Hooks",
+    "push": "Push Engine",
+    "settings": "Project Settings"
+  },
+  "headings": {
+    "architecture": "Architecture",
+    "engines": "Engines"
+  }
+}

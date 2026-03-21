@@ -1,0 +1,102 @@
+package api
+
+import (
+	"bytes"
+	"encoding/json"
+	"encoding/xml"
+	"fmt"
+	"io"
+)
+
+// The API Layer handles distinct data architectures.
+// JSON   -> application/json (Standard)
+// XML    -> application/xml (B2B, ERPs, SOAP-wrappers)
+// TOON   -> application/toon (Cascata's internal strict RPC format)
+// ZSTD   -> Content-Encoding: zstd (High-ratio compression for huge datasets)
+
+// ProtocolFormat handles serializing and deserializing of different payloads.
+type ProtocolFormat struct{}
+
+// Decode parses the incoming byte slice into the requested map/structure based on content type.
+func (f *ProtocolFormat) Decode(data []byte, contentType string) (interface{}, error) {
+	// 1. Decrypt AES-GCM if Encrypted Header? (Handled at edge middleware)
+	// 2. Decompress ZSTD if Content-Encoding is zstd? (Handled at edge middleware)
+
+	switch contentType {
+	case "application/xml", "text/xml":
+		// Quick heuristic for XML
+		var result map[string]interface{}
+		err := xml.Unmarshal(data, &result)
+		return result, err
+
+	case "application/toon":
+		// TOON Parser
+		// Toon uses deterministic structure.
+		// For Cascata v1, we mock TOON parser logic for demonstration.
+		return parseTOON(data)
+
+	case "application/json":
+		fallthrough
+	default:
+		var result interface{}
+		err := json.Unmarshal(data, &result)
+		return result, err
+	}
+}
+
+// Encode converts the object into the requested Accept format.
+func (f *ProtocolFormat) Encode(data interface{}, acceptType string) ([]byte, string, error) {
+	switch acceptType {
+	case "application/xml", "text/xml":
+		return encodeXML(data)
+	case "application/toon":
+		b, err := encodeTOON(data)
+		return b, "application/toon", err
+	case "application/json":
+		fallthrough
+	default:
+		b, err := json.Marshal(data)
+		return b, "application/json", err
+	}
+}
+
+// Dummy TOON parser
+func parseTOON(data []byte) (interface{}, error) {
+	// Parse proprietary TOON layout
+	return map[string]interface{}{"toon_parsed": true, "raw": string(data)}, nil
+}
+
+// Dummy TOON encoder
+func encodeTOON(data interface{}) ([]byte, error) {
+	// Structure proprietary tightly-packed buffer
+	return []byte("TOON_BINARY_PAYLOAD"), nil
+}
+
+// Basic map stringifier for XML wrapping
+func encodeXML(data interface{}) ([]byte, string, error) {
+	var buf bytes.Buffer
+	buf.WriteString("<response>")
+	
+	// Convert array to XML nodes iteratively
+	switch v := data.(type) {
+	case []interface{}:
+		for _, item := range v {
+			buf.WriteString("<item>")
+			encodeXMLNode(&buf, item)
+			buf.WriteString("</item>")
+		}
+	case map[string]interface{}:
+		encodeXMLNode(&buf, v)
+	}
+	buf.WriteString("</response>")
+	
+	return buf.Bytes(), "application/xml", nil
+}
+
+func encodeXMLNode(buf *bytes.Buffer, item interface{}) {
+	if m, ok := item.(map[string]interface{}); ok {
+		for k, val := range m {
+			buf.WriteString(fmt.Sprintf("<%s>%v</%s>", k, val, k))
+		}
+	}
+}

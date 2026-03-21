@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cascata Studio v1.0</title>
+  </head>
+  <!-- Initialize theme to avoid FOUC -->
+  <body class="antialiased bg-surface-base text-content-primary selection:bg-accent-primary/30">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      (function() {
+        try {
+          var layout = localStorage.getItem('cascata-layout');
+          var theme = 'cascata-dark'; // default
+          if (layout) {
+            var parsed = JSON.parse(layout);
+            if (parsed && parsed.state && parsed.state.preferences && parsed.state.preferences.activeTheme) {
+              theme = parsed.state.preferences.activeTheme;
+            }
+          }
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {}
+      })();
+    </script>
+  </body>
+</html>

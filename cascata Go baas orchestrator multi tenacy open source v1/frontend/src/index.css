@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+  :root {
+    /* Interface */
+    --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
+    /* Código, SQL, logs, IDs */
+    --font-mono: 'JetBrains Mono Variable', 'Fira Code', 'Cascadia Code', monospace;
+
+    /* Escala tipográfica */
+    --text-xs:   0.70rem;
+    --text-sm:   0.8125rem;
+    --text-base: 0.875rem;
+    --text-md:   1rem;
+    --text-lg:   1.125rem;
+    --text-xl:   1.25rem;
+    --text-2xl:  1.5rem;
+  }
+
+  /* Tema Escuro Padrão (Deep Space) */
+  :root, :root[data-theme="cascata-dark"] {
+    --surface-pit:      8, 10, 16;
+    --surface-base:     11, 14, 21;
+    --surface-raised:   16, 20, 30;
+    --surface-elevated: 22, 27, 40;
+    --surface-overlay:  30, 36, 54;
+    --surface-glass-bg:     15, 20, 35;
+    --surface-glass-border: 255, 255, 255;
+
+    --content-primary:   248, 250, 252;
+    --content-secondary: 180, 188, 208;
+    --content-muted:     100, 112, 140;
+    --content-disabled:  55, 62, 80;
+    --content-inverse:   10, 13, 20;
+
+    --accent-primary:     99, 102, 241;
+    --accent-primary-dim: 79, 82, 200;
+    --accent-secondary:   56, 189, 248;
+    --accent-danger:      239, 68, 68;
+    --accent-warning:     234, 179, 8;
+    --accent-success:     34, 197, 94;
+    --accent-info:        56, 189, 248;
+
+    --border-subtle:   255, 255, 255;
+    --border-default:  255, 255, 255;
+    --border-strong:   255, 255, 255;
+    --border-accent:   255, 255, 255;
+  }
+
+  /* Tema Claro (Snow) */
+  :root[data-theme="cascata-light"] {
+    --surface-pit:      230, 233, 240;
+    --surface-base:     242, 244, 248;
+    --surface-raised:   252, 253, 255;
+    --surface-elevated: 255, 255, 255;
+    --surface-overlay:  255, 255, 255;
+    --surface-glass-bg:     255, 255, 255;
+    --surface-glass-border: 0, 0, 0;
+
+    --content-primary:   15, 23, 42;
+    --content-secondary: 71, 85, 105;
+    --content-muted:     100, 116, 139;
+    --content-disabled:  203, 213, 225;
+    --content-inverse:   255, 255, 255;
+
+    --accent-primary:     79, 70, 229;
+    --accent-primary-dim: 67, 56, 202;
+    --accent-secondary:   2, 132, 199;
+    --accent-danger:      225, 29, 72;
+    --accent-warning:     217, 119, 6;
+    --accent-success:     5, 150, 105;
+    --accent-info:        2, 132, 199;
+
+    --border-subtle:   0, 0, 0;
+    --border-default:  0, 0, 0;
+    --border-strong:   0, 0, 0;
+    --border-accent:   0, 0, 0;
+  }
+
+  body {
+    @apply antialiased bg-surface-base text-content-primary selection:bg-accent-primary/30 font-sans;
+    margin: 0;
+    overflow: hidden;
+  }
+}
+
+@layer utilities {
+  .mac-tooltip {
+    @apply absolute left-full ml-4 px-3 py-1.5 bg-surface-overlay text-content-primary text-xs font-semibold rounded-lg shadow-xl opacity-0 translate-x-[-10px] pointer-events-none transition-all duration-300 z-50 whitespace-nowrap border border-border-default/10;
+  }
+
+  .sidebar-item:hover .mac-tooltip {
+    @apply opacity-100 translate-x-0;
+  }
+
+  /* Glassmorphism Rule from Doc */
+  .glass-panel {
+    background: rgb(var(--surface-glass-bg) / 0.72);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid rgb(var(--surface-glass-border) / 0.07);
+    box-shadow:
+      0 1px 0 0 rgb(255 255 255 / 0.04) inset,
+      0 0 0 1px rgb(0 0 0 / 0.12),
+      0 8px 32px -8px rgb(0 0 0 / 0.4);
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-content-muted/30 rounded-full;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-content-secondary/50;
+  }
+}
+
+@keyframes soft-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+.animate-soft-pulse {
+  animation: soft-pulse 3s ease-in-out infinite;
+}
