@@ -1,0 +1,1200 @@
+# 🌊 Cascata v1.0.0.0: The Master Plan (Final)
+**Version:** 1.0.0.0
+**Status:** DEFINITIVE / IMMUTABLE / ALL-ENCOMPASSING
+**Date:** March 2026
+
+---
+
+## 🎯 Executive Summary
+
+Cascata é um BaaS multi-tenant open source de auto-hospedagem. Sua arquitetura segue o modelo de condomínio: o orquestrador central (Cascata) gerencia múltiplos bancos de dados fisicamente isolados — cada tenant tem seu próprio apartamento, completamente independente dos demais, seguro desde a entrada até o armazenamento.
+
+Este plano documenta a construção do Cascata v1 em Go. É o guia definitivo — para humanos e para IA — de como o sistema é, o que ele faz, e como deve ser construído.
+
+> **Base provada em produção:** O Cascata v0 já opera com todas as features core documentadas aqui — incluindo isolamento físico, Privacy Engine, Automações com Interceptors, Webhook Receivers e Storage multi-provider — sustentando mais de 5.000 usuários simultâneos em VPS de 2GB de RAM com Node.js. Isso não foi acidente: foi resultado de arquitetura correta, algoritmos precisos e caching bem posicionado. O v1 em Go existe para remover os últimos limites que o runtime anterior impunha. Goroutines de 2KB vs threads de 1MB. Streaming pipelines sem disco temporário. Transaction pipelines com um único RTT. O mesmo hardware, multiplicado.
+
+**Filosofias:**
+- **Segurança reside no banco**
+- **O usuário é quem orquestra cada projeto como ele quer — o Cascata não impõe nem mesmo uma forma de login absoluta, apenas fornece as ferramentas**
+- **O Cascata é o terreno e as ferramentas — humanos e agentes de IA são cidadãos de primeira classe, gerenciados com a mesma granularidade, rastreabilidade e segurança**
+
+**Stack:**
+- **Backend:** Go (Hyper-Cluster via Unix Socket IPC)
+- **Frontend:** React 19.1 + Vite
+- **Banco de dados:** PostgreSQL — Isolamento físico por tenant
+- **Segurança:** Zero-Trust, Triple-Mode Auth, RLS Claims Injection, HashiCorp Vault 1.15
+- **Automação:** Engine de grafos com Interceptors síncronos e Cron nativo
+- **Edge Functions:** Engine Mode isolado com Go-V8 Bindings (modo padrão) e Wasmer/WASM (modo isolamento máximo)
+- **Cache & Filas:** DragonflyDB (Redis-compatible) — firewall de brute-force, rate limiting, pub/sub, token blacklist e quota de storage
+- **Banco Vetorial:** Qdrant — busca semântica para o AI Architect e para vetores das aplicações conectadas
+- **SDKs:** Cascata SDK próprio + compatibilidade total com SDK Supabase
+- **Formatos de Saída:** JSON (padrão), TOON (otimizado para LLMs — obrigatório em respostas MCP quando a chave for JWT ou anon_key)
+- **Internacionalização:** Interface nativa em inglês, traduções via arquivo externo no GitHub
+- **Temas:** Sistema de temas plugável (dark, light, custom) — mesma filosofia do VSCode
+
+---
+
+## 🌐 SDK, Formatos de Saída & Experiência do Desenvolvedor
+
+### SDK Duplo (Compatibilidade + Poder Nativo)
+
+**Supabase-compatible SDK:**
+- Compatibilidade total com o SDK oficial do Supabase — quem migra não reescreve o frontend
+- Cobre: auth, database queries, storage, realtime
+- É o caminho de menor atrito para adoção
+
+**Cascata Native SDK:**
+- Expõe todas as features exclusivas: Phantom Injection, Privacy Engine, API Interceptors, TOON output, Webhook Receivers, Vault operations, Neural Pulse
+- Tipagem forte end-to-end — erros de tipo em tempo de compilação, não em produção
+- **Client-side Compression + Encryption no Upload:** antes de enviar, o SDK comprime (zstd) e cifra (AES-GCM com chave derivada do projeto) o arquivo em memória do cliente — o servidor nunca vê o conteúdo em claro. Configurável por bucket no painel (obrigatório / opcional / desabilitado)
+
+### Formatos de Saída
+
+**JSON (padrão):** formato padrão para todas as respostas.
+
+**TOON — Token-Oriented Object Notation:**
+- Ativado por header: `Accept: application/toon`
+- **Obrigatório** em respostas MCP quando a chave for JWT ou anon_key
+- Remove pontuação redundante usando indentação estilo YAML — reduz uso de tokens em até 60%
+- Arrays uniformes viram tabelas: campos declarados uma vez, linhas sem repetição de chaves
+- Conversão reversível sem perda de dados (TOON → JSON garantido)
+- Não substitui JSON para aplicações web tradicionais
+
+```
+// JSON padrão
+[{"id":1,"nome":"Alice","cargo":"Dev"},{"id":2,"nome":"Bob","cargo":"Design"}]
+
+// TOON (mesmo dado, ~60% menos tokens)
+users[2]{id,nome,cargo}:
+  1,Alice,Dev
+  2,Bob,Design
+```
+
+### Internacionalização (i18n)
+- Código: comentários e nomenclatura sempre em inglês
+- Interface nativa em inglês; operador configura idioma no painel
+- Traduções via arquivo externo no GitHub — comunidade contribui
+- Idiomas planejados: Português, Espanhol, Francês, Chinês
+- Carregamento em runtime — bundle não cresce com novos idiomas; inglês como fallback garantido
+
+### Sistema de Temas
+- Temas plugáveis estilo VSCode — dark, light, custom pela comunidade
+- CSS variables como base — trocar tema é trocar variáveis, não reescrever componentes
+- Padrão: azul com branco gelo celeste
+- Temas da comunidade distribuídos via arquivo externo (mesmo modelo das traduções)
+
+---
+
+## 🛡️ Filosofia de Segurança: Contenção Total & Desconfiança Mútua
+
+> Esta seção é o princípio fundador de toda decisão de segurança no Cascata. Toda implementação, em toda fase, deve ser avaliada contra esses princípios antes de ser considerada concluída.
+
+### O Axioma Central
+
+**Um componente comprometido nunca deve ser a chave para comprometer o próximo.**
+
+O Cascata opera na premissa de que a camada em contato pode ter sido invadida/infectada — Nginx, um container, o processo Go, o banco de dados, até o painel. A pergunta que guia cada decisão não é apenas "como impedimos a invasão?" mas também **"se essa camada for invadida, o que o atacante consegue fazer?"**. A resposta correta para cada camada é: **quase nada além daquilo que ela já faz.**
+
+### Os Princípios
+
+**1. Nenhum componente confia no outro — nunca.**
+O processo Go não confia que o Nginx já validou o request. O Postgres não confia que o Go já aplicou RLS. O Vault não confia que quem está pedindo o segredo é legítimo apenas porque está na rede interna. Cada camada valida por conta própria, independentemente do que a camada anterior disse.
+
+**2. Brecha contida não é brecha espalhada.**
+Se o Nginx for comprometido, o atacante encontra Unix Sockets — não portas TCP abertas para o Go. Se o container do banco for comprometido, o atacante encontra dados criptografados sem a chave do Vault. Se o Vault for comprometido sem a unseal key, ele está selado e ilegível. Cada camada é um cofre independente, não uma porta para o próximo.
+
+**3A. O terminal é território sagrado.**
+Acesso ao sistema operacional host é o nível máximo de comprometimento possível. Qualquer comando privilegiado no host exige autenticação no nível do SO — não do software. PAM module com OTP gerado pelo instalador do Cascata: sem o código, o `sudo` ou qualquer outro comando é recusado pelo sistema operacional, independentemente de qualquer brecha na stack. Mesmo um atacante com shell no container não chega ao host sem esse fator.
+
+**3B. Comunicação Painel ↔ Servidor: Mutual TLS + Sessão Efêmera**
+Toda comunicação entre o dashboard e o orquestrador exige duas camadas independentes — quebrar uma não quebra a outra:
+- **Mutual TLS:** o servidor só aceita conexão HTTPS de um cliente que apresente certificado cliente válido. Sem esse certificado, a conexão não abre — o JWT nem é avaliado.
+- **Emissão do certificado:** emitido apenas após login real. Se OTP estiver configurado, é exigido sem exceção.
+- **Efemeridade:** certificado válido por 15 minutos, renovado silenciosamente com atividade. Sessão encerrada = certificado inválido imediatamente.
+- **Web Crypto API:** par de chaves gerado em memória do browser — nunca toca disco, nunca entra em `localStorage`. Fechar a aba destrói as chaves.
+- **O que resolve:** JWT roubado é inútil sem o certificado. Certificado interceptado é inútil sem o JWT. Atacante precisaria dos dois simultaneamente dentro de 15 minutos.
+
+**4. Criptografia efêmera, nunca estática.**
+Chaves de sessão geradas no handshake e descartadas ao fim — nunca persistidas, nunca reutilizadas. Algoritmo público e auditado (X25519 + AES-GCM) — segurança está na efemeridade das chaves, não no segredo do algoritmo.
+
+**5. O dano máximo possível deve ser pré-calculado.**
+Para cada componente, deve existir a resposta para: "se comprometido 100%, o que o atacante consegue?" Se a resposta for "acesso a tudo", a arquitetura está errada. A resposta correta é: acesso apenas ao que aquele componente precisa para funcionar — nada mais.
+
+**6. Recuperação é parte da segurança.**
+O Cascata deve ser capaz de: revogar todas as chaves em segundos (Panic Mode), restaurar estado anterior limpo (Backup + Instant Revert), e rejeitar qualquer sessão ativa comprometida (Token Blacklist com TTL). Segurança não é só prevenção — é a capacidade de conter e reverter.
+
+### Superfícies de Ataque e Contenções
+
+| Camada comprometida | O atacante encontra | Contenção | O que ainda não resolve |
+|---|---|---|---|
+| Nginx | Unix Sockets, sem TCP exposto | Não consegue falar com Go sem o socket físico | Se tiver acesso ao socket, consegue enviar requests — por isso o Go valida tudo independentemente |
+| Container Go | Processo em execução, RAM acessível | Chaves de sessão efêmeras em RAM (15min), Vault selado, sem acesso ao host | Dump de memória pode expor chave ativa na janela de 15min — mitigado pela efemeridade, não eliminado |
+| Container Postgres | Dados em disco | Criptografia em repouso via Vault Transit; RLS impede leitura cruzada entre tenants | Se o Vault estiver deselado no momento, Transit pode ser chamado — por isso o Vault tem rate limiting interno |
+| Container Vault | Interface HTTP interna na `cascata_secure` | Seal/Unseal — sem a unseal key, completamente ilegível mesmo com acesso ao container | Unseal key precisa estar fora do servidor — se estiver no mesmo host, a contenção cai |
+| Painel (frontend) | Sessão autenticada no browser | mTLS com certificado cliente efêmero (15min, Web Crypto API, nunca em disco); JWT separado como segunda camada; revogação instantânea via Blacklist no Dragonfly | XSS avançado pode acessar chaves em memória do browser — mitigado por CSP estrito e ausência de `eval` |
+| Comunicação painel ↔ servidor | Tráfego HTTPS | mTLS bidirecional — sem certificado cliente válido a conexão não abre, JWT nem é avaliado | Se OTP não estiver configurado pelo operador, esta camada fica mais fraca |
+| Shell no container (qualquer) | Filesystem do container | Dados criptografados, sockets restritos, sem credenciais em disco | Escape de container via misconfiguration Docker (`--privileged`, volume `/`) leva ao host — containers rodam sem privilégios extras |
+| Shell no host | SO do servidor | PAM + OTP obrigatório para `sudo` e qualquer comando privilegiado — recusado pelo SO, não pelo software | Se o atacante tiver UID 0 por escape de container, PAM pode ser contornado — defesa aqui é impedir o escape antes |
+| Banco de um tenant | Dados daquele tenant físico | Isolamento físico — banco de outro tenant é outro processo Postgres, inacessível por definição | Nenhum — isolamento físico real não tem workaround lógico |
+| Rede interna (`cascata_secure`) | Containers internos visíveis entre si | Cada container valida a origem independentemente; SSRF bloqueado no Storage e no Automation Engine | Um container comprometido pode tentar falar com o Vault — mitigado por AppRole com políticas mínimas por serviço |
+
+### O Que Nunca É Aceitável
+- Um componente com mais privilégios do que o necessário para sua função
+- Segredos em texto plano em qualquer lugar — disco, log, variável de ambiente, docker-compose
+- Confiança implícita baseada em rede interna
+- Uma brecha em um tenant que abre qualquer superfície para outro tenant
+- Logs que persistem credenciais, tokens ou dados sensíveis
+
+---
+
+## 📅 Roadmap: 23 Fases
+
+---
+
+### Fase 1 — Go Foundation & Hyper-Cluster Bootstrapping
+**Escopo:**
+- Estrutura do módulo Go e organização de diretórios
+- Hyper-Cluster: divisão Primary/Worker via Unix Sockets (zero-network overhead entre Nginx e Go)
+- Healthcheck L1 (ping) e L2 (verificação profunda de dependências)
+- Graceful Shutdown Orchestrator (SIGTERM/SIGINT com pool draining)
+
+**Critério de conclusão:** Binário Go em Docker, recebendo requests via IPC Sockets, passando em deep health checks.
+
+---
+
+### Fase 2 — Isolamento Físico de Tenants (Modelo Condomínio)
+**Escopo:**
+- `internal/orchestrator`: gerenciamento de ciclo de vida de bancos físicos por tenant
+- Provisionamento dinâmico via `CREATE DATABASE` com aplicação de template
+- Serviço de migração Go-nativo com versionamento e checksums
+
+**Postgres Federation (Scale-out Transparente):**
+O modelo condomínio não é limitado a um único servidor Postgres. Quando um projeto cresce, o operador conecta um segundo (ou terceiro) servidor Postgres externo — o orquestrador Go faz load balance transparente entre os servidores sem que o projeto precise mudar infraestrutura ou código.
+
+- Endereço do Postgres externo configurado no painel (host:porta, credenciais)
+- O servidor externo gerencia suas próprias réplicas — o Cascata não precisa saber disso
+- Load balance e roteamento de queries gerenciados pelo orquestrador Go de forma transparente
+- Caminho de escala: projeto nasce local, cresce, operador adiciona Postgres externo e pronto — sem migração de infra
+- Recomendação: porta Postgres do servidor externo acessível somente pelo IP do Cascata
+- **Read Replicas:** orquestrador roteia queries de leitura para réplicas quando disponíveis — transparente para o tenant, configurado no painel
+
+**Critério de conclusão:** Tenant A não enxerga o banco do Tenant B. Novo tenant provisionado em menos de 2 segundos. Segundo servidor Postgres externo adicionado com queries distribuídas de forma transparente.
+
+---
+
+### Fase 2B — Limites Globais & Cotas por Tenant
+
+**Modelo de hierarquia global → tenant:**
+O Worner define o teto global da instalação inteira. Cada tenant recebe uma fatia desse teto. O sistema valida em tempo real que a soma das cotas alocadas nunca ultrapassa o global — se ultrapassar, o painel força a decisão: reduzir outro tenant ou aumentar o global.
+
+**Recursos com cota hierárquica:**
+
+| Recurso | Configuração global | Configuração por tenant |
+|---|---|---|
+| Max Connections | Teto total da instalação | Fatia alocada para este tenant |
+| Storage | Total em disco/cloud | Limite deste tenant |
+| CPU | % máxima do servidor | % máxima deste tenant |
+| Memória | RAM total disponível | Limite deste tenant |
+| Automações ativas | Total da instalação | Limite deste tenant |
+| Edge Functions simultâneas | Total da instalação | Limite deste tenant |
+| Requisições por segundo | Total da instalação | Limite deste tenant |
+
+**Regras:**
+- A soma das cotas alocadas a todos os tenants nunca pode exceder o global
+- Ao tentar alocar mais do que o disponível, o painel exibe: quais tenants estão alocados e quanto, e oferece as opções — reduzir outro tenant ou aumentar o global
+- Tenant sem cota explícita definida usa o que sobrar após os demais — nunca bloqueia, mas é o último a ser servido em caso de pressão
+- O Adaptive Security (CPU Backpressure) opera dentro dessas cotas — se o global chega a 90%, o multiplicador 0.5x é aplicado proporcionalmente por tenant
+
+**Critério de conclusão:** Worner define global de max connections. Tenant configurado com 90% do global. Terceiro tenant tentando alocar os 10% restantes recebe aviso com mapa de alocação atual.
+
+---
+
+### Fase 3 — Pilar de Segurança I: Auth & MCP Governance
+**Escopo:**
+- Triple-Mode Auth: `service_key` (bypass total), `anon_key` (público/RLS), `JWT` (contexto de usuário)
+- MCP Governance Perimeter: IP Whitelisting, URL Allowlist, Max Rows por tool call
+- Middleware de autenticação com rejeição de requests não autorizados
+
+**As Três Classes de Identidade do Cascata**
+
+O Cascata distingue três tipos de identidade completamente separados — confundi-los é um erro de arquitetura:
+
+- **`tenant.user`** — usuário final da aplicação gerenciada pelo tenant. Autenticado via JWT, governado por RLS, isolado fisicamente. É o morador do apartamento.
+- **`cascata.member`** — qualquer identidade com acesso ao dashboard do Cascata: humano gestor, humano dev, ou agente de IA. Gerenciado pelo Worner, com permissões granulares por domínio e por tenant. É quem gerencia o condomínio.
+- **`cascata.agent`** — identidade programática rastreável (IA ou automação). Tem `agent_id` registrado, audit trail próprio com timestamp e identificador do agente, e escopos definidos pelo Worner — pode ter desde acesso mínimo até God Mode, conforme o operador configurar. Agentes são cidadãos de primeira classe no Cascata, não cidadãos de segunda.
+
+> **Por que isso importa para segurança:** de nada adianta toda a granularidade de RLS, column locks e Vault se qualquer um que obtiver uma senha via engenharia social puder usar MCP para manipular a plataforma sem deixar rastro. Todo acesso ao dashboard — humano ou agente — é rastreável, auditável e revogável individualmente.
+
+**Hierarquia de Acesso ao Dashboard (cascata.members e cascata.agents)**
+
+O Worner (dono da instalação) tem passe livre em todos os tenants e toda a instalação. Abaixo dele, o modelo é baseado em **dois eixos de permissão independentes**:
+
+**Eixo 1 — Permissões no nível da instalação Cascata:**
+| Domínio | Exemplos de ações granulares |
+|---|---|
+| **Tenants** | criar projeto, excluir projeto, ver todos os projetos |
+| **Membros** | convidar membro, atribuir papel, revogar acesso, ver audit log global |
+| **Infraestrutura** | alterar max connections global, configurar Vault global, gerenciar certificados |
+| **Agentes** | registrar agent_id, definir escopos de agente, revogar agente |
+| **Acesso cross-tenant** | entrar em qualquer tenant sem permissão explícita (exclusivo do Worner por padrão) |
+
+**Eixo 2 — Permissões por tenant (configuráveis independentemente por projeto):**
+| Domínio | Exemplos de ações granulares |
+|---|---|
+| **Schema** | criar tabela, alterar coluna, deletar coluna — separados |
+| **Segurança** | editar RLS, tocar em chaves, configurar auth, ativar Panic Mode |
+| **Automações** | criar, editar, deletar automações e webhooks |
+| **Storage** | gerenciar arquivos, configurar providers, alterar cotas |
+| **Dados** | executar SQL direto, exportar, importar |
+
+Cada domínio tem 4 níveis: `none` / `read` / `write` / `admin` — mas dentro de cada nível as ações são granulares. Ex: `write` em Schema pode significar "pode criar tabela e alterar coluna, mas não pode deletar coluna" — o Worner define.
+
+**Papéis prontos (atalhos, sempre editáveis):**
+- **Worner** — acesso total a tudo, incluindo todos os tenants
+- **Manager** — admin em todos os domínios de um ou mais tenants específicos
+- **Developer** — write em Schema e Automações, read em Segurança
+- **Analyst** — read em tudo, sem write em nada
+- **Agent** — configurável livremente pelo Worner por agent_id
+
+**Audit Trail (rastreabilidade total):**
+- Toda ação no dashboard registra: quem (member_id ou agent_id), o quê, quando, em qual tenant
+- Ações de agentes registram adicionalmente o tipo de identidade (`human` / `agent`) e modelo/versão se fornecido
+- Audit log é imutável — nenhum membro, nem o Worner, pode deletar entradas de auditoria
+
+**Hierarquia de Privilégios na API (acesso aos dados):**
+1. **Worner / cascata.member autorizado:** acesso via dashboard com permissões configuradas
+2. **Service Role:** identificado pela `service_key` — bypass de RLS dentro do projeto
+3. **Authenticated:** JWT assinado com `jwt_secret` exclusiva do projeto — acesso filtrado por RLS
+4. **Anon:** identificado pela `anon_key` — acesso limitado a tabelas públicas, exige Privacy Engine ativo
+
+**Project Resolution (middleware `resolveProject`):**
+- Detecção do projeto via **Custom Domain** (Host header) ou **Slug** (URL path)
+- Recuperação de credenciais do Vault e inicialização do pool de conexões do tenant (`cascata_db_slug`)
+- Injeção do objeto de contexto contendo segredos, metadados e configurações de segurança (bloqueio de IP, panic mode)
+
+**App Clients (Multiple Anon Keys — Roteamento Inteligente):**
+- Cada App Client (ex: App do Motorista, App do Passageiro, Web Dash, Site Público) possui sua própria `anon_key`
+- Middleware identifica qual `appClient` está chamando a partir da chave recebida
+- Cada chave tem um `site_url` cadastrado — destino de redirect padrão daquele client
+- **Redirect Inteligente por Chave:** quando o callback OAuth retorna sem `redirect_to` explícito, o Cascata identifica a `anon_key` que iniciou o fluxo e redireciona automaticamente para o `site_url` do App Client correspondente — sem página intermediária de roteamento
+- Resolve o caso FlutterFlow e similares: frameworks que obrigam URL cadastrada mas não passam `redirect_to` funcionam nativamente
+- Cada tenant tem uma `anon_key` padrão que nasce com ele, mas sofre rotação
+- Restrição de origem por chave é opcional — configurável pelo operador, não obrigatório
+
+**Identity-Aware OAuth Bridging (Multi-Redirect):**
+- `/auth/v1/authorize?provider=google&redirect_to=URL` gera um `state` contendo o `client_id` do App solicitante
+- No callback OAuth, o `state` identifica o App Client e usa o `site_url` configurado para redirecionamento final
+- Um único projeto atende múltiplos aplicativos com URLs distintas sem cruzamento de sessões
+
+**Email & Notification Templates (Multi-idioma):**
+- Templates customizáveis por idioma — o criador escreve HTML puro para cada idioma suportado
+- Tipos cobertos: Magic Link, Recovery Password, Login Alert, OTP, Criação de Conta
+- Provedor de envio configurado pelo tenant: Resend (chave API), SMTP local, ou compatível
+- O Cascata orquestra o disparo — não hospeda infraestrutura de envio
+- O Cascata fornece blocos arrastáveis como variáveis que podem ser escritas também: ex. `<otpCode>`, `<userName>`
+
+**Universal Auth (Strategy Pattern — Soberania do Tenant):**
+- Usuários identificados por UUID
+- Aceita qualquer par `provider` + `identifier` — agnóstico de estratégia, concatenados pelo UUID
+- Providers configuráveis: `email`, `cpf`, `whatsapp`, provedores externos customizados
+- **Identidade Concatenada (1:N):** um usuário (`auth.users`) pode ter múltiplas identidades (`auth.identities`) — vincula Google, GitHub e Email à mesma conta UUID
+- **Magic Link Hash:** tokens de login sem senha são hashados (SHA256) antes de persistir no banco — zero vazamento de token em texto plano
+- **Dynamic CORS:** middleware verifica origem permitida no banco a cada request, sem restart do servidor — CORS configurável por projeto em tempo real
+- Integração com DragonflyDB como firewall: bloqueio de brute-force por IP/identificador antes de atingir o PostgreSQL
+- Descriptografia de chaves on-the-fly via Vault (`vault:decrypt`)
+
+**Identity Strategies (Filosofia de Soberania):**
+O Cascata não impõe nenhuma regra de autenticação — quem define tudo é o criador do projeto. O sistema fornece os mecanismos; o operador decide o que ativar:
+
+- **Senha:** opcional por estratégia — o criador decide se é obrigatória, opcional ou inexistente. Um projeto cujo login seja apenas CPF é perfeitamente válido
+- **OTP/MFA:** o criador habilita ou não; se habilitado, define se é obrigatório ou opcional para cada fluxo
+- **Identidade contextual sem senha:** uma mensagem chegando pela WhatsApp Business API Cloud é, por definição, de um usuário verificado pelo próprio WhatsApp — o criador pode configurar essa strategy para autenticar diretamente sem exigir senha
+- **URL de origem como fator:** a strategy pode exigir ou dispensar verificação dependendo da URL solicitante — mesma identidade, regras diferentes por contexto de acesso
+- **Provedor de e-mail/SMS:** o criador configura seu próprio canal de entrega — URL, API, chave Resend, SMTP local, ou qualquer provedor compatível
+
+> A lógica de confirmação, os fatores exigidos e os canais de entrega são responsabilidade do criador do projeto. O Cascata garante que os mecanismos existam e sejam seguros — não que sejam usados de uma forma específica.
+
+**Critério de conclusão:** Zero-Trust verificado. App Clients com redirect inteligente por chave confirmado. OAuth Bridging funcionando para múltiplos redirects. Templates de e-mail disparando via provedor configurado pelo tenant.
+
+---
+
+### Fase 3B — Governança, Rate Limiting & Resiliência Adaptativa
+
+**DragonflyDB — Papel Arquitetural Central:**
+O DragonflyDB é o sistema nervoso transversal de controle do Cascata. Redis-compatible, opera em memória com latência sub-milissegundo. Responsável por: cache L1/L2 de permissões, firewall de brute-force, rate limiting, quota de storage, token blacklist, IP strikes, Pub/Sub de invalidação de cache e flags de Panic Mode. Nenhum desses sistemas passa pelo PostgreSQL — tudo que exige velocidade de reação vai no Dragonfly.
+
+**Service Keys: Escopos & Grupos:**
+- `service_key` possui `scopes` definidos e é vinculada a **Grupos de Chaves**
+- Operador cria Nerfs personalizados por grupo, com mensagem de resposta customizável por limite
+
+**Sistema de Nerf (Sanções Dinâmicas):**
+- **Grace Period:** chave expirada entra em Nerf Speed — opera com `speed_pct` configurável (padrão 10% da cota original) em vez de ser cortada imediatamente
+- **Penalização por Abuso:** `burst` zerado e `rate_limit` reduzido drasticamente para usuários que excedem limites repetidamente
+- **Operation Weights:** `DELETE`/`CREATE` têm peso maior no RateLimit que `READ`, refletindo custo real no banco
+
+**Adaptive Security:**
+- **CPU Backpressure:** carga > 90% aplica multiplicador global `0.5x` em todas as cotas (Meltdown Protection)
+- **IP Strikes:** cada violação ou erro 403 registra Strike no Dragonfly — configurável pelo operador no painel entre ban por IP ou UUID+IP; 10 strikes em 1 hora = ban automático
+
+**Tables & RPC Limits (Controle Granular):**
+- Tabelas podem ter limites dinâmicos de CRUD por tipo de chave: ex. anon_key na tabela X pode 1 Create, 0 Delete, 0 Update — com mensagem personalizada quando ultrapassa o limite
+- Aplicável a: anon_key, JWT, grupos/plans customizados
+- RPCs também possuem limite de chamada dentro dos escopos de usuário mencionados
+- Configurado no mesmo painel de segurança (Security Controller) onde ficam as demais cotas
+
+**Painel de Segurança — Controles do Operador:**
+- **Panic Mode:** flag `panic:PROJECT_SLUG` no Dragonfly bloqueia 100% das requisições do tenant com `503`/`403 System Locked`; desativa com um clique
+- **Schema Exposure:** `schema_exposure: false` — modo "Silent" contra ferramentas de descoberta
+- **Firewall de Identidade:** `blocklist_ips` por projeto; `handshake_required` obriga handshake X25519 em rotas Admin
+- **Force MFA Login:** `force_mfa_login` obriga 2FA antes de emitir JWT
+- **OTP Cooldown:** cooldown entre tentativas gerenciado pelo Dragonfly — evita gasto de créditos SMS/Email
+- **Token Revocation:** hash do JWT em Blacklist no Dragonfly com TTL igual ao tempo restante — desconexão imediata
+
+**Performance de Hot-Path (L1/L2):**
+- **L1:** permissões em heap local por 2 horas — zero latência de rede
+- **L2:** sincronização global entre workers via Dragonfly com latência < 0.2ms
+- **Pub/Sub Invalidation:** mudança no Dashboard limpa cache de todos os workers em milissegundos
+
+**Critério de conclusão:** Nerf aplicado a chave expirada com `speed_pct` correto. CPU Backpressure reduzindo cotas sob carga simulada. IP Strikes com ban automático configurado (IP ou UUID+IP). Panic Mode bloqueando tenant em < 1ms. Token Revocation via Blacklist verificada. Limites por tabela e RPC funcionando por tipo de chave.
+
+---
+
+### Fase 3C — Observabilidade Universal & Logs de Baixo Nível
+
+**Princípio:** tudo que qualquer identidade faz é registrado — sem exceção, sem opt-in. O sistema de log opera na camada mais baixa possível, antes de qualquer handler de negócio. Nenhum código de feature precisa "lembrar" de logar — o log acontece independentemente.
+
+**O que é capturado:**
+- Toda requisição HTTP: método, path, tenant, member_id/agent_id/user_id, IP, timestamp, status, latência
+- Toda query SQL executada: tenant, tabela, operação, duração, linhas afetadas
+- Toda ação no dashboard ou CLI: quem, o quê, quando, resultado
+- Toda execução de automação, edge function e webhook: input, output, duração, nó que falhou
+- Todo acesso ao Vault: qual segredo, quem pediu, quando
+- Todo evento de autenticação: login, logout, falha, OTP, rotação de chave
+- Todo evento de storage: upload, download, delete, quota atingida
+- Toda mudança de schema: create table, alter column, drop — com estado antes e depois
+
+**Tratamento de dados sensíveis nos logs:**
+- Senhas são **substituídas** nos logs — não criptografadas, não hashadas — aparecem como `[PASSWORD]`; o valor nunca entra no log de nenhuma forma
+- Tokens e chaves são substituídos por `[TOKEN]` e `[KEY]` respectivamente
+- Dados de colunas com masking tier `hyper_encrypt` nunca aparecem em nenhum log
+- Dados de colunas com masking tier `hide` aparecem como `[HIDDEN]`
+
+**Alertas no painel (notificações internas):**
+- Disco chegando no limite do tenant ou do global
+- CPU sustentada acima de 80% por mais de 5 minutos
+- Certificado SSL com menos de 30 dias para vencer
+- Tenant consumindo cota excessiva (acima de 90% do alocado)
+- Backup não executado no período agendado
+- Falha repetida em automação (configurável: N falhas em X minutos)
+- IP em velocidade de strike acelerada (próximo do ban)
+- Todos os alertas visíveis no dashboard como feed — base para futura integração com canais externos
+
+**Imutabilidade dos Logs:**
+- Nenhuma identidade — incluindo Worner, membros com admin total e agentes — pode editar ou deletar uma entrada de log
+- Logs são append-only por design de implementação, não apenas por política
+- Retenção mínima obrigatória: **3 dias** — hardcoded, não configurável abaixo desse valor
+- Retenção padrão configurável pelo Worner no painel via dropdown: número + unidade (dias / meses / anos)
+- Limpeza automática ao atingir o período configurado — o sistema purga, nunca o operador manualmente
+- Logs de auditoria de segurança (ações de membros/agentes): imutáveis sem retenção configurável — nunca expiram
+
+**Retenção de logs operacionais:**
+- Padrão de fábrica: 30 dias
+- Configurável por tenant com dropdown: 3 dias (mínimo) → dias → meses → anos
+- Limpeza automática agendada — sem intervenção manual
+
+**Templates de ambiente via comunidade:**
+- O formato `.caf` é o mecanismo nativo de template — um ambiente completo (schema, RLS, automações, configurações) exportado e importável
+- Templates especializados para domínios específicos podem ser distribuídos pela comunidade como arquivos `.caf`
+- O Cascata não fornece templates oficiais por domínio — a comunidade é o repositório
+
+**Exportação de Logs para Ambientes Externos:**
+- Configurável por tenant no painel — destinos suportados: S3, R2, Wasabi, Backblaze B2, ou endpoint HTTP customizado
+- Dois modos de exportação: streaming contínuo (log sai assim que é gerado) ou batch agendado (igual ao backup)
+- Filtros configuráveis: exportar audit trail de segurança, erros, automações, tudo — o operador define o escopo
+- Formato configurável: JSON, TOON, ou CSV para ferramentas de BI e sistemas de compliance
+- A imutabilidade se mantém — exportar não é deletar; o log original permanece no Cascata pelo período de retenção configurado
+- Útil para: auditorias externas independentes, compliance, ferramentas de SIEM, e manter o banco principal limpo em ambientes de alta carga
+
+**Critério de conclusão:** Toda ação de qualquer identidade gerando entrada de log. Senha substituída por `[PASSWORD]` verificada em log de autenticação. Tentativa de deletar log retornando erro independentemente da identidade. Retenção mínima de 3 dias respeitada mesmo com configuração de 1 dia tentada. Alertas de disco, CPU e SSL aparecendo no feed do dashboard.
+
+---
+
+### Fase 4 — Pilar de Segurança II: Vault & Gestão de Chaves
+**Escopo:**
+- Vault Integration: K/V, File Vaulting, Transit Encrypt/Decrypt
+- Rotação automática de chaves (Service Key, JWT Secret) — apenas se o administrador do tenant permitir no painel
+- UI de gestão do Vault: pastas, segredos, arquivos
+- **PGP Crypto (pgcrypto):** chaves de API criptografadas no banco via extensão `pgcrypto` (`pgp_sym_encrypt`) — camada adicional de proteção em repouso
+
+**Especificação de Implementação:**
+> O "Vault" aqui é o **HashiCorp Vault 1.15** em container dedicado na rede `cascata_secure` (`internal: true`) — invisível para a internet, sem acesso pela web, acessível apenas pelo backend. A integração Go usa o **SDK nativo do HashiCorp Vault**. A rotação de chaves a cada 3 meses é automatizada como job agendado (ver Fase 11) apenas se permitida pelo operador no painel. O modelo **seal/unseal** garante que, mesmo com acesso ao host, os segredos permanecem ilegíveis sem a unseal key — que jamais deve estar em texto plano no docker-compose.
+
+**Critério de conclusão:** Rotação de chave registrada em log de auditoria; segredos recuperados apenas via Vault API, nunca em texto plano. Unseal key gerenciada fora do repositório.
+
+---
+
+### Fase 5 — Camada de Banco: Pools & RLS Injection
+**Escopo:**
+- Connection Pooling dinâmico com Hard Caps por tenant (`internal/pool`)
+- RLS Claims Injection: `SET LOCAL "request.jwt.claim.xxx"` automático em toda sessão
+- `FORCE ROW LEVEL SECURITY` aplicado em todas as tabelas expostas
+- Isolamento por papel: roles de propósito específico por agente (leitura, escrita, admin)
+- Column-level grants e views para exposição controlada de colunas
+- Idle Transaction Reaper: eliminação de conexões ociosas para evitar exaustão do pool
+- **Fail-Closed RLS:** se a injeção de contexto falhar por qualquer motivo, ROLLBACK forçado — nunca roda queries sem contexto de segurança estabelecido
+- **Zero-Trust Schema Access:** novas tabelas nascem com `REVOKE ALL` — acesso concedido explicitamente via RLS Policies; nenhuma tabela é pública por padrão
+- **Statement Timeouts Dinâmicos:** queries de usuário via API têm timeouts agressivos; queries de manutenção têm timeouts relaxados — `statement_timeout` ajustado por transação
+- **Índices de Alta Cardinalidade:** índices compostos para logs (`project_slug + created_at DESC`) permitem paginação instantânea em tabelas com milhões de linhas
+- **PgBouncer Transactional Mode:** código desenhado para rodar atrás de PgBouncer — limpa sessões explicitamente (`RESET ALL` / `SET LOCAL`) para não vazar contexto entre requests
+
+**RLS Context Injection (queryWithRLS):**
+- Antes de cada query: `SET LOCAL` injeta `sub`, `role`, `email` e `project_slug` na sessão do PostgreSQL
+- Trigger `enforce_dynamic_locks` no banco lê essas variáveis e bloqueia operações que violam políticas configuradas no Dashboard — impede vazamento mesmo que o backend seja comprometido
+
+> **Nota de migração Go:** utilizar **Transaction Pipelines** para garantir que a injeção de contexto e a query principal ocorram em um único RTT, elevando a performance ao limite teórico do PostgreSQL.
+
+**Critério de conclusão:** `auth.uid()` e `auth.role()` funcionando nativamente em sessões de usuário. Trigger `enforce_dynamic_locks` bloqueando violações diretamente no banco. Fail-Closed verificado: injeção falha → ROLLBACK forçado.
+
+---
+
+### Fase 6 — Phantom Injection Architecture
+**Escopo:**
+- `internal/phantom`: Go watcher via `fsnotify` monitorando diretório `/extensions`
+- Registro dinâmico: SQL-based registry de extensões nativas vs. phantom
+- Hot-Reload: injeção de `.so` ou lógica SQL sem restart do banco
+- **Extensões pesadas compartilhadas:** uma extensão como PostGIS pode ser compartilhada entre bancos de dados — instalada fisicamente apenas uma vez no servidor, referenciada por múltiplos tenants que a ativarem
+
+**Critério de conclusão:** Adicionar arquivo ao diretório correto aciona automaticamente `CREATE EXTENSION` ou injeção SQL no banco do tenant.
+
+---
+
+### Fase 7 — Privacy Engine & Data Masking
+**Escopo:**
+- Portagem da lógica de privacidade: Blur, Mask, Semi-Mask, Hide, Encrypt
+- Transparent Data Encryption (TDE) para colunas específicas via Vault Transit
+- Masking levels orientados por metadados (configuração por coluna/papel)
+- `applyMaskingTier` invocado nativamente em **todas** as queries — incluindo as do MCP — sem exceção nem bypass
+
+**Masking Tiers (Universal Padlock):**
+- `Normal`: dado comum sem mascaramento — ideal para dados públicos
+- `hide`: coluna removida do JSON antes de sair do backend
+- `mask`: valor substituído por `********`
+- `semi-mask`: exibe apenas 25% do dado (ex: e-mail ou número de cartão)
+- `blur`: encurta o dado exibindo apenas as pontas
+- `hybrid_encrypt`: dado salvo criptografado, com descriptografia em tempo real se a chave do projeto estiver carregada — usado para integrações externas
+- `hyper_encrypt`: dado salvo criptografado como segredo de estado, armazenado no Vault, sem descriptografia externa — segredo eterno disponível apenas para validações (ex: número de cartão de crédito)
+
+**Column Locks — A "Lei das Colunas":**
+- `Normal`: dado comum sem locks — ideal para dados com muitas operações de Create e Update
+- `immutable`: proíbe qualquer alteração externa; somente `service_role` pode inserir e nunca pode ser editado (ideal para `created_at`)
+- `system_put`: proíbe qualquer alteração externa; somente `service_role` pode inserir ou editar
+- `insert_only`: valor só pode ser definido na criação
+- `otp_protected`: coluna visível, mas UPDATE ou DELETE exige código OTP válido fornecido junto com a requisição; se não tiver, retorna canais disponíveis daquele usuário para selecionar o meio de comunicação entre os strategies/identities concatenados que possuem permissão de envio OTP
+
+**Opções adicionais por coluna:**
+nome, tipo, formato obrigatório, link com outra coluna de outra tabela, unique, null, column locks, masking tiers, vetorização automática
+
+**Opções adicionais por tabela:**
+habilitar RLS
+
+**Critério de conclusão:** Usuário sem clearance enxerga dado mascarado conforme tier configurado. Motor de masking verificado em queries diretas, via MCP e via Edge Functions.
+
+---
+
+### Fase 8 — Storage Service (VFS & Orquestração Multi-Provider)
+**Escopo:**
+- Streaming nativo Go: pipe direto de request para provider (zero-copy onde possível)
+- Multi-provider: S3, Cloudinary, freeimage.host, imagekit.io, wistia.com, Google Drive, Dropbox, Local
+- Presigned URL Generator para todos os providers
+- Physical Disk Usage Calculator via syscall nativa (equivalente Go a `du -sb`)
+- Secure Delete Protocol (limpeza de arquivo no provider ao deletar do sistema)
+- **Upload Resumable com Chunking (GDrive):** uploads cortados em chunks de 5MB em memória e enviados via Resumable Upload API — sem salvar em disco
+- **Dragonfly Audit Pipeline:** logs empurrados via `LPUSH` para fila no DragonflyDB; worker retira em lotes de 500 via `RPOP` pipeline e insere no Postgres em transação única
+
+**Motor de Orquestração Híbrido (Direct vs Proxy):**
+- **Estratégia Direct (S3/Cloud):** backend gera Presigned URL (PUT) — cliente faz upload direto para a nuvem, sem consumir banda/CPU do orquestrador
+- **Estratégia Proxy (GDrive/Local/Dropbox):** backend age como Streaming Proxy — arquivo transita em tempo real via streams, nunca salvo integralmente em disco temporário
+
+**Governança por Setores (Categorização Inteligente):**
+- Classificação automática por setor: `visual` (jpg, png, webp...), `motion` (mp4, mov...), `docs` (pdf, docx...), `archives` (zip, 7z...), `exec` (exe, msi — bloqueados por padrão)
+- Roteamento configurável por setor: ex. `visual` → Cloudinary, `docs` → S3, `config` → Local
+- Cada tenant pode ter uma política de roteamento por setor independente
+
+**Segurança em Profundidade:**
+- **Magic Bytes Validation:** lê os 4 primeiros bytes e compara com tabela `MAGIC_NUMBERS` — extensão renomeada detectada e bloqueada com `"Security Alert: File signature mismatch"`
+- **Path Traversal Prevention:** `getSafePath` colapsa qualquer tentativa de usar `..` ou caminhos absolutos — nenhum arquivo escapa do diretório raiz do tenant
+- **SSRF Protection:** validador de IPs privados impede que o Storage seja usado para escanear a rede interna da VPS
+
+**Gestão de Cota (DragonflyDB):**
+- Reserva prévia do tamanho do arquivo no Dragonfly antes do upload começar
+- Uploads simultâneos que excedam a cota são bloqueados preventivamente
+- Cota por tipo configurável: cota por IP baseada na anon_key, cota diferente para usuários autenticados, cota diferente para grupos/plans — configurado no Security Controller junto às demais cotas
+
+**Fluxo de Vida de um Arquivo:**
+1. `signUpload`: valida cota (Dragonfly) e governança (Setor)
+2. Arquivo chega ao `TEMP_UPLOAD_ROOT`
+3. Magic Bytes verificados — bypass de extensão detectado aqui
+4. Streaming para diretório final (Local) ou transmissão para nuvem
+5. Metadados indexados no PostgreSQL: UUID do upload, MIME*, Size*, Provider* — campos com asterisco são obrigatórios a menos que o operador tenha excluído a coluna
+6. Cleanup automático de temporários órfãos a cada hora
+
+**StorageIndexer (Auto-Sync):**
+- `system.storage_objects` como fonte da verdade para buscas rápidas
+- Motor de reconstrução de índice via varredura física do disco — recupera estado completo caso o banco seja perdido ou arquivos movidos manualmente via terminal
+
+**Critério de conclusão:** Upload via Direct e Proxy funcionando por setor. Magic Bytes bloqueando extensões falsas. Path Traversal e SSRF verificados. Reserva de cota via Dragonfly impedindo estouro em uploads simultâneos. Índice reconstruível a partir do disco físico.
+
+---
+
+### Fase 9 — Webhook Orchestrator (A Trindade de Webhooks)
+**Escopo:**
+- Implementação dos três tipos de Webhook que formam o sistema nervoso do Cascata
+- Todos possuem a mesma tela de orquestração e iniciam com um trigger — o operador escolhe um dos 3 tipos como ponto de entrada
+- Registro de ciclo de vida completo de todos os eventos
+
+**Tipo A — Webhook Receivers (Inbound Gateway):**
+- Porta de entrada pública para eventos externos (Stripe, GitHub, Shopify, bancos como C6 e Inter)
+- `path_slug` amigável por receptor: ex. `/api/webhooks/meu-app/stripe-payout`
+- Verificação de assinatura HMAC SHA-256 nativa — se `X-Cascata-Signature` não bate com a `secret_key` do receptor, request descartado no gateway
+- Processamento via `dispatchAsyncTrigger` — cliente liberado em milissegundos enquanto lógica roda em background
+- Fallback URLs configuráveis por receptor; retry policies com backoff exponencial
+- Suporte a `Direct Table Insert/Update` sem passar pelo motor de automação
+
+**Tipo B — API Interceptors (Logic Hijacking — o mais poderoso):**
+- Age como hook síncrono no middleware: intercepta qualquer operação de banco antes que o JSON chegue ao cliente
+- Fluxo: cliente faz request → banco retorna resultado → Interceptor sequestra → roda lógica em tempo real (pode chamar APIs externas ou funções internas para somar, validar, transformar) → devolve JSON final modificado ao cliente
+- Caso de uso concreto: cliente faz pedido no app → Interceptor chama o Banco Inter, gera chave Pix e injeta no response — tudo transparente para o frontend
+- Permite adicionar lógica de negócio via Dashboard por meios no-code ou low-code; o sistema constrói o código de maneira performática e editável pelo usuário no painel se ele quiser high-code
+- Interceptor Cache com TTL de 5 minutos
+
+**Tipo C — Outbound Webhooks (HTTP Actions):**
+- Representado pelo nó `http` dentro do motor de automação
+- Suporte a GET, POST, PUT, PATCH, DELETE com retentativas automáticas (`maxRetries`)
+- Criptografia Just-in-Time: referência `vault://STRIPE_KEY` — Vault descriptografa apenas em memória no exato momento do disparo
+- Proteção SSRF: automação não consegue acessar serviços da rede interna da VPS
+- Serve para comunicação externa sem sequestrar o fluxo — útil para Slack, alertas, notificações
+
+**Critério de conclusão:** Webhook externo recebido, assinatura verificada, roteado e processado no contexto do tenant correto. API Interceptor interceptando e modificando response em voo. Outbound Webhook disparando com credencial Vault sem expor segredo. Nenhum cruzamento de dados entre tenants.
+
+---
+
+### Fase 10 — Automation Engine (Motor de Execução em Grafo)
+**Escopo:**
+- Orquestrador de grafos para fluxos no-code/low-code que compilam para lógica de máxima performance
+
+**Tipos de Nó (Graph-based Execution):**
+- **Trigger:** onde o evento começa — Webhook Receiver, Cron ou Evento de Banco
+- **Query (Hardened SQL):** executa SQL no banco do projeto com firewall de padrões proibidos (`FORBIDDEN_SQL_PATTERNS`: bloqueia `COPY`, `pg_read_file`, `DO $$` e similares); injeta claims do usuário via `SET LOCAL` — automação nunca acessa dados que o usuário original não veria
+- **Transform:** mapeamento de dados entre nós via sintaxe `{{node_id.campo}}` usando `resolveVariables` — suporta também variáveis do tenant: `{{tenant.support_email}}`, `{{tenant.logo}}`, `{{env.NOME_DA_VARIAVEL}}`
+- **HTTP Proxy:** chamadas externas com credenciais Vault Just-in-Time e proteção SSRF
+- **Conditional / Loop:** controle de fluxo
+- **RPC:** permite criar ou chamar uma RPC pré-criada no sistema
+- **Direct Logic evaluate:** execução de lógica inline sem precisar de edge function
+- **Safe Fail / Retry / Timeout personalizável:** todos os nós têm duas saídas (sucesso e falha), mecanismo digitável de retentativas em caso de falha antes de escoar pela saída de falha, e tempo máximo de execução configurável
+
+**API Interceptor (API_INTERCEPT):**
+- Intercepta qualquer query ao banco antes da resposta ao cliente
+- Interceptor Cache com TTL de 5 minutos para rotas de alta frequência
+
+**Resiliência & Auditoria:**
+- Logs completos em `system.automation_runs`: status, `execution_time_ms`, payload de entrada e output final
+- Fire-and-forget logging assíncrono — falha na escrita do log nunca trava a execução
+- **Timeout por nó e por fluxo:** cada nó tem seu próprio tempo máximo configurável individualmente; o fluxo inteiro também tem um timeout global configurável — se o fluxo total ultrapassar o global, todos os nós em execução são interrompidos
+- **Cancelamento em cadeia:** o Worner orquestra via nós de falha + nós CRUD disponíveis no motor — ao atingir a saída de falha de um nó crítico, o fluxo pode executar um nó de rollback/compensação configurado pelo próprio operador; o Cascata fornece as ferramentas, o operador define a lógica de compensação
+- Alertas de falha configuráveis: até 3 canais de contato (qualquer canal disponível nas strategies de notificação do tenant)
+
+> **Nota de migração Go:** Worker Pools e Goroutines para processar milhares de automações assíncronas em paralelo com latência próxima de zero, mantendo isolamento total de memória entre cada execução.
+
+**Critério de conclusão:** Automação interceptando response de banco e modificando payload antes de chegar ao cliente. SQL Hardening bloqueando padrões proibidos. RLS injetado em execuções de automação. Logs auditáveis. Timeout com cancelamento em cascata verificado.
+
+---
+
+### Fase 10B — Tenant Environment Variables
+**Escopo:**
+- Sistema de variáveis globais por tenant — valores definidos uma vez no painel e referenciados em qualquer lugar: automações, queries, templates de e-mail, webhooks, edge functions
+- Sintaxe uniforme: `{{env.NOME_DA_VARIAVEL}}` — seja pública ou secreta, o sistema resolve antes de executar
+
+**Dois tipos de variável:**
+
+**Tipo Público:**
+- Acessível em templates e automações normalmente
+- Valor visível no painel
+- Exemplos: `{{env.STORE_NAME}}`, `{{env.SUPPORT_EMAIL}}`, `{{env.PLAN}}`
+
+**Tipo Secreto:**
+- Funciona como mini-Vault por tenant
+- Nunca aparece em log, nunca retorna em texto plano, só é resolvida em memória no momento do uso — mesmo comportamento do `vault://` nos Outbound Webhooks
+- Exibido no painel como `••••••`
+- Exemplos: `{{env.PIX_KEY}}`, `{{env.PARTNER_API_TOKEN}}`
+
+**Impacto:** mudar um valor no painel reflete imediatamente em todos os fluxos sem reabrir cada automação individualmente.
+
+**Critério de conclusão:** Variável pública e secreta resolvidas corretamente em automação, template de e-mail e edge function. Variável secreta nunca aparece em log nem em resposta de API.
+
+---
+
+### Fase 11 — Cron & Task Scheduling
+**Escopo:**
+- Fila de jobs persistente via DragonflyDB (Redis-compatible)
+- Scheduled Automations: disparo de automações em horários configurados, timezone-aware por tenant
+- Repeatable Jobs com logs de execução por run em `system.automation_runs`
+- Precisão de disparo: desvio máximo de 1 segundo
+
+**Critério de conclusão:** Jobs agendados disparando com precisão no fuso correto do tenant, com histórico completo de execuções.
+
+---
+
+### Fase 12 — Engine Mode: Isolated Execution Runtime
+**Escopo:**
+- Dois modos de execução coexistentes — o operador escolhe por função:
+
+**Modo Padrão (Go-V8 Bindings):**
+- Binário Go dedicado para execução de Edge Functions em JS/TS
+- Go-V8 Bindings: isolamento seguro de código JavaScript/TypeScript fornecido pelo usuário
+- Secure Proxies dentro do sandbox: SQL Bridge, Network Bridge, Crypto Bridge
+- 128MB máximo por isolate — proteção contra memory bombs
+- Timeout forçado de 30s com interrupção no nível da C++ Bridge
+- Sem acesso a `process`, `fs` ou `require` — contexto estrito
+- **Isolate Dispose:** garantia de limpeza de memória C++ no V8 após cada execução
+
+**Modo Isolamento Máximo (Wasmer/WASM):**
+- Para funções marcadas pelo operador como críticas — sandbox WASM mais constrangido que V8, superfície de ataque menor
+- Requer que o código seja compilado para WebAssembly antes do deploy
+- Container dedicado dentro do Docker — segredos via Vault, não expostos ao processo
+
+- Log completo de execução com captura de stdout/stderr em ambos os modos
+
+**Critério de conclusão:** Edge Functions em V8 e em Wasmer executando dentro de limites de recurso com isolamento verificado — função de Tenant A não acessa contexto de Tenant B.
+
+---
+
+### Fase 13 — Real-time I: SSE & Hydration Batching
+**Escopo:**
+- SSE Manager de alta concorrência para milhares de listeners simultâneos
+- Hydration Batcher com backpressure
+- Circuit Breakers para proteção contra cascata de falhas
+- **Realtime Presence:** cada cliente conectado via SSE registra presença — o sistema mantém e transmite o estado de "quem está online" por canal/room, construído sobre a infraestrutura SSE existente
+
+**Critério de conclusão:** Dashboard atualizando em tempo real com mudanças no banco; latência abaixo de 50ms.
+
+---
+
+### Fase 14 — Real-time II: Neural Pulse & Live-to-Draft Mirroring
+**Escopo:**
+- Mobile Push Integration (FCM) para notificações em background
+- Live-to-Draft Mirroring: protocolo para separação entre dados "em produção" e "em edição"
+- SSE Pulse metrics por tenant
+
+**Critério de conclusão:** Notificação mobile disparada por evento de banco; sincronização Live/Draft verificada.
+
+---
+
+### Fase 15 — AI Architect (Voz & Inteligência)
+**Escopo:**
+- Voice Recognition com Wake-Word configurável — padrão "Cascata", substituível pelo operador no painel (suporte via Web Speech API do browser ou nativo do SO)
+- LLM context-aware que escreve e executa SQL, cria tabelas
+- Pipeline Voice-to-SQL com aprovação via UI antes de executar
+- Session Persistence e busca semântica sobre histórico de chat
+- Suporte a vários chats simultâneos
+- Suporte a menções ao digitar `/` (tabelas, campos, RPCs — com prioridade superior na listagem) ou `@` (features do Cascata)
+
+**Banco Vetorial (Qdrant):**
+- Qdrant como motor de busca semântica para o AI Architect
+- Embeddings de histórico de sessões, schemas e contexto do projeto indexados no Qdrant para facilitar o desenvolvimento e história de construção do tenant
+- Qdrant serve também como banco para vetores das aplicações conectadas ao tenant — armazenamento e busca de embeddings para uso nas aplicações do operador
+- Histórico de construção interno nunca exposto para grafos externos
+- Vetorização configurada no painel: URL, API key, versão, formato OpenAI-compatible
+
+**Critério de conclusão:** "Cascata, cria uma tabela de usuários" resulta em UI de aprovação com DDL gerado e executado após confirmação. Busca semântica retornando contexto de sessões anteriores via Qdrant.
+
+---
+
+### Fase 16 — Management UI "WOW" (React 19.1)
+**Escopo:**
+- Design system premium: Glassmorphism, Dark Mode, paleta HSL
+- Idioma selecionável na interface
+- Layouts customizáveis por tema como VSCode — padrão: azul com branco gelo celeste
+- Micro-animações com Framer Motion em todas as transições
+- Dashboard de saúde do cluster e métricas por tenant com heatmaps
+- Deploy Wizard com visualização do modelo Condomínio
+- 100% responsivo (computadores, tablets e celulares)
+- 100% blocos customizáveis em tamanho, posição e layout
+
+**Critério de conclusão:** Interface com fator visual "Enterprise Premium" — responsiva, animada, funcionalmente completa.
+
+---
+
+### Fase 17 — API Layer: PostgREST, OpenAPI & Universal SDK
+
+**PostgREST Compatibility:**
+- Parser nativo que traduz sintaxe `?select=id,name&filter=...` para SQL — compatível com FlutterFlow e clientes que usam a sintaxe Supabase/PostgREST
+- A API REST é gerada automaticamente do schema PostgreSQL do tenant, sem configuração manual
+
+**Formatos de Entrada e Saída Suportados:**
+- **JSON** — padrão universal, todas as respostas
+- **XML** — `Accept: application/xml` / `Content-Type: application/xml`; essencial para WhatsApp Business API, bancos (FEBRABAN, NFe, boletos), ERPs, sistemas de saúde (HL7) e governo (NFS-e, CTe); o Webhook Receiver parseia XML de entrada e converte para objeto interno antes de rotear para automação — o desenvolvedor nunca lida com XML manualmente
+- **TOON** — `Accept: application/toon`; obrigatório em respostas MCP com JWT/anon_key; otimizado para pipelines de IA
+
+**OpenAPI Dinâmico (API Docs):**
+- Endpoint `/rest/v1` gera JSON Swagger 1.0/2.0/3.0 em tempo real, introspectando o banco do tenant
+- Documentação sempre atualizada — nenhum arquivo estático, nenhuma sincronização manual
+- Qualquer tabela nova criada aparece imediatamente na spec OpenAPI
+- Cascata fornece versionamento de APIs — versões coexistindo na documentação
+
+**Portal Público de Desenvolvedor:**
+- Flag por tenant: `api_docs: public` — expõe Swagger UI em URL pública configurável (`docs.meuapp.com` ou `meuapp.cascata.app/docs`)
+- Controlado pelo Worner: cada tenant pode ou não ter portal público habilitado
+- Swagger UI gerado dinamicamente do schema ativo — sempre sincronizado, zero manutenção manual
+- Ideal para tenants que oferecem API para seus próprios clientes
+
+**Universal SDK:**
+- Cliente JavaScript isomorfo com sintaxe estilo Supabase: `cascata.from('table').select()`
+- Funciona em browser e Node.js
+- Abstrai autenticação, RLS e chamadas REST em uma interface fluente
+- Suporte a formato de saída: `cascata.from('table').select().format('xml')`
+
+**Nota sobre Multi-Instância:**
+Federação direta entre duas instalações Cascata não existe na v1 — e é intencional. Dois Cascatas se comunicam via API pública como qualquer cliente externo faria: passando pelos mesmos firewalls, validações HMAC e autenticação. Sem protocolo especial, sem canal direto, sem confiança implícita entre instalações. O isolamento é absoluto e inviolável — o custo de rede é o preço correto a pagar.
+
+**Critério de conclusão:** `cascata.from('users').select('id,name')` retornando dados corretos com RLS aplicado. `/rest/v1` retornando Swagger 3.0 válido. Webhook Receiver parseando payload XML e entregando objeto interno para automação. Portal público acessível via domínio customizado quando `api_docs: public`.
+
+---
+
+### Fase 18 — DB Explorer, Versionamento & API Avançada
+**Escopo:**
+- Table Panel virtualizado (suporte a 1M+ linhas)
+- Impact Scanner visual: renomear/deletar coluna ou tabela exibe todos os dependentes afetados (automações, RPCs, triggers, views, edge functions)
+- Smart Export/Import: CSV, XLSX, JSON, SQL com inferência de schema
+- Recycle Bin com proteção por senha (modal de validação com criptografia — padrão tela de login)
+- Smart SQL Console com assistência de IA
+
+**Schema Branching & Versionamento:**
+- Ambiente de design isolado: o operador desenvolve alterações de schema em um branch antes de promover para produção
+- Snapshot de versões: cada estado do schema é versionado — se algo quebrar, rollback para versão anterior com um clique
+- Histórico de versões auditável por tenant
+
+> **Nota:** Branching é uma feature a ser estudada e implementada de forma incremental. Qualquer versão parcial não entra em produção — o sistema deve ter branching completo ou não ter. Sem estados intermediários.
+
+**API Versioning Nativo:**
+- Versionamento de API por projeto: `/api/v1/`, `/api/v2/` coexistindo sem quebrar clientes existentes
+- Versões podem ser desligadas via agendamento ou manualmente
+- Operador controla quais versões estão ativas, deprecated ou desativadas por projeto
+
+**GraphQL Nativo (Opcional):**
+- Geração automática de API GraphQL a partir do schema PostgreSQL do tenant
+- Feature opcional — o tenant ativa ou não por projeto
+- Coexiste com a API REST — não substitui
+
+**Critério de conclusão:** Rollback de schema executado com sucesso. API v1 e v2 coexistindo no mesmo projeto. GraphQL respondendo queries geradas automaticamente do schema ativo.
+
+---
+
+### Fase 19 — Backup, Recovery & Formato .caf
+
+> **Contexto crítico:** O sistema de backup anterior teve um erro grave de concepção — em algum momento a lógica tentou trazer dados do ambiente de staging/draft de volta para produção, gerando conflitos de PK e de auditoria. Produção tem dados novos a cada hora; qualquer restore que não respeite essa fronteira é destrutivo. A arquitetura descrita aqui resolve isso com staging isolado, análise de conflitos antes de tocar produção, e rollback atômico garantido.
+
+**O Formato .caf (Cascata Archive Format):**
+Contêiner ZIP com compressão ZLib Nível 9 — portabilidade total, restauração em segundos:
+
+| Camada | Conteúdo |
+|---|---|
+| `manifest.json` | Versão do motor, timestamp, metadados do projeto, domínios |
+| `system/secrets.json` | JWT Secret, Anon Key, Service Key (criptografado via Vault) |
+| `schema/structure.sql` | DDL completa: tabelas, views, triggers, RLS (`pg_dump --schema-only`) |
+| `data/*.csv` | Dados exportados via stream (`COPY TO STDOUT`) — alta velocidade, sem carregar em memória |
+| `vector/snapshot.qdrant` | Snapshot binário das coleções Qdrant (contexto do AI Architect) |
+| `storage/` | Estrutura completa do VFS físico do tenant |
+
+**Agendamento & Retenção (estilo Timeshift):**
+- Agendamentos configuráveis por tenant: tipo de backup (schema only, data only, full, storage), horário e frequência
+- Timezone-aware: backup de "madrugada" ocorre no horário local do tenant, não do servidor
+- Auto-Purge por `retention_count`: após cada backup bem-sucedido, os arquivos mais antigos são deletados automaticamente no provedor
+- Multi-cloud: Google Drive, S3, Backblaze B2, Cloudflare R2, Wasabi — validação de configuração em tempo real via Handshake
+
+**Analysis Engine (Diff & Smart Merge — a proteção contra o erro do passado):**
+O sistema NUNCA toca produção diretamente. O fluxo obrigatório é:
+1. **Staging Isolado:** restaura o `.caf` em banco temporário `cascata_stage_...` — produção intocada
+2. **Schema Comparison:** compara estrutura produção vs backup — detecta `added_tables`, `removed_tables`, `missing_cols`
+3. **Data Conflict Check:** identifica colisões de Chave Primária antes de qualquer operação em produção
+4. **Estratégia escolhida pelo operador no painel** (nunca automática):
+   - `overwrite`: Atomic Swap — substitui tudo
+   - `merge`: UPSERT inteligente (`DO UPDATE SET`) — preserva o que existe, atualiza o resto
+   - `missing_only`: insere apenas registros que não existem — ignora conflitos
+
+**Restauração Atômica com Rollback Garantido:**
+- Termina conexões ativas (`pg_terminate_backend`), renomeia banco de produção para `..._rollback_...`, promove o banco restaurado para produção — operação em milissegundos
+- **Panic Button (Undo):** banco anterior preservado por 24h — Instant Revert no Dashboard desfaz a troca completamente
+- Após restore: `CertificateService.rebuildNginxConfigs` reconstrói SSL e rotas de domínio customizado apontando para nova infra
+
+> **Nota de migração Go:** geração do `.caf` via Streaming Pipelines diretos do PostgreSQL para o provedor cloud — sem arquivos temporários em disco, redução estimada de 60% no uso de IOPS.
+
+**Critério de conclusão:** Backup gerado, enviado para provedor cloud e com retenção aplicada. Restore executado via staging isolado com conflict check antes de tocar produção. Atomic Swap verificado. Instant Revert revertendo para banco anterior dentro de 24h. SSL e domínios reconstruídos automaticamente após restore.
+
+---
+
+### Fase 20 — Enterprise Controls & Custom Infrastructure
+**Escopo:**
+- BYOD, Custom Domains, SSL, Rate Limiting e controles de infraestrutura avançada
+
+**BYOD (Bring Your Own Database):**
+- Tenant conecta banco Postgres externo via painel (host:porta + credenciais)
+- Orquestrador Go passa a rotear queries para esse banco — sem reescrever nada no projeto
+- Porta do banco externo recomendada: acessível somente pelo IP do Cascata
+- Ejection: operador pode desconectar banco externo e retornar ao banco local sem perda de dados
+
+**Custom Domains & SSL:**
+- Custom domain por tenant configurado no painel
+- SSL via DNS-01 challenge — porta 80 nunca exposta
+- `rebuildNginxConfigs` automático após qualquer mudança de domínio ou restore de backup
+- Nginx Sidecar recarrega configuração dinamicamente sem derrubar conexões ativas
+
+**Multi-dimensional Rate Limiting:**
+- Janelas configuráveis por tenant e por grupo de chave
+- Pesos por operação: `DELETE`/`CREATE` custam mais que `READ`
+- Quotas com rollover entre janelas de tempo
+- CPU Adaptive Limiting: throttling automático quando cluster sob carga — tenants prioritários mantêm performance
+
+**Critério de conclusão:** Tenant com domínio próprio e certificado SSL ativo via DNS-01. BYOD conectado e queries roteadas corretamente. Rate Limiting multi-dimensional verificado com operation weights. Sistema sobrevivendo carga simulada 10x com throttling adaptativo ativo.
+
+---
+
+### Fase 21 — CLI: Interface Unificada & Canal de IA
+
+> **Princípio:** toda feature acessível no dashboard existe no CLI com os mesmos parâmetros e mesma granularidade. Um caminho, uma implementação, zero divergência entre interfaces. A IA que usa o CLI tem exatamente o mesmo poder que o humano no dashboard — nem mais, nem menos.
+
+**Autenticação do CLI:**
+- Login com credencial de `cascata.member` ou `agent_id` registrado
+- Se OTP estiver configurado para aquele member/agente, é exigido na abertura de sessão — sem OTP, CLI rejeita antes de qualquer comando
+- Sessão gera certificado efêmero (mesmo modelo mTLS do dashboard) — válido por 15 minutos, renovado com atividade
+- Toda ação CLI registrada no audit trail com member_id/agent_id — indistinguível de ação no dashboard na trilha de auditoria
+- Não existe sessão CLI sem identidade rastreável — elimina o vetor de "hackear sem deixar rastro"
+
+**Rotação de Chaves via CLI (e dashboard):**
+- Credenciais internas do banco (roles Postgres): rotação automática configurável
+- JWT Secret, anon_key, service_key: rotação **sempre manual**, sempre exige senha antes de confirmar — nunca automática
+
+**Comandos — Instalação:**
+```
+cascata init                          # configura a instalação inicial
+cascata status                        # saúde do cluster, containers, versões
+cascata upgrade                       # atualiza o Cascata
+cascata logs                          # logs globais do orquestrador
+```
+
+**Comandos — Tenants:**
+```
+cascata tenant list
+cascata tenant create <slug>
+cascata tenant delete <slug>
+cascata tenant info <slug>
+cascata tenant suspend <slug>         # equivalente ao Panic Mode
+cascata tenant restore <slug>         # desfaz suspend
+```
+
+**Comandos — Schema & Dados:**
+```
+cascata db migrate <tenant>           # aplica migrations pendentes
+cascata db shell <tenant>             # abre psql no banco do tenant
+cascata db export <tenant>            # gera .caf
+cascata db restore <tenant> <arquivo> # restaura .caf com staging isolado
+cascata db branch create <tenant> <nome>
+cascata db branch promote <tenant> <nome>
+```
+
+**Comandos — Edge Functions:**
+```
+cascata fn deploy <nome> <arquivo>    # deploy via arquivo local (.ts, .js, .wasm)
+cascata fn list [--tenant <slug>]
+cascata fn logs <nome>
+cascata fn invoke <nome> [--data '{}']
+cascata fn delete <nome>
+```
+
+**Comandos — Automações & Webhooks:**
+```
+cascata automation list [--tenant <slug>]
+cascata automation enable <id>
+cascata automation disable <id>
+cascata automation logs <id>
+cascata webhook list [--tenant <slug>]
+cascata webhook test <id>             # dispara webhook de teste
+```
+
+**Comandos — Storage:**
+```
+cascata storage list <tenant>
+cascata storage quota <tenant>
+cascata storage sync <tenant>         # dispara StorageIndexer Auto-Sync
+cascata storage provider set <tenant> <setor> <provider>
+```
+
+**Comandos — Backup:**
+```
+cascata backup now <tenant>
+cascata backup list <tenant>
+cascata backup restore <tenant> <id> --strategy merge
+cascata backup schedule set <tenant>
+```
+
+**Comandos — Membros & Agentes:**
+```
+cascata member list
+cascata member invite <email> --role developer
+cascata member revoke <member_id>
+cascata member permissions set <member_id> --tenant <slug> --domain schema:write
+
+cascata agent register <nome> --scopes schema:write,automation:read
+cascata agent list
+cascata agent revoke <agent_id>
+cascata agent logs <agent_id>         # audit trail filtrado por agente
+```
+
+**Comandos — Segurança:**
+```
+cascata key rotate <tenant> --type jwt    # exige senha interativa
+cascata key rotate <tenant> --type anon   # exige senha interativa
+cascata key rotate <tenant> --type service # exige senha interativa
+cascata vault seal                         # sela o Vault imediatamente
+cascata vault status
+cascata audit log [--tenant <slug>] [--agent <id>] [--from <data>]
+```
+
+**Output estruturado para IA:**
+- Todo comando suporta `--format json` ou `--format toon` para consumo programático
+- Erros retornam código de saída não-zero com mensagem estruturada — a IA consegue reagir ao resultado sem parsear texto livre
+- `--dry-run` disponível em comandos destrutivos — a IA pode verificar o impacto antes de executar
+
+**Critério de conclusão:** Paridade 100% dashboard ↔ CLI verificada. Autenticação OTP + mTLS funcionando no CLI. Audit trail registrando ações CLI com mesmo formato que dashboard. Output `--format json` e `--format toon` funcionando em todos os comandos.
+
+---
+
+### Fase 22 — Hardening Final, Nginx & Handover
+**Escopo:**
+- Nginx Hardening: LUA-based pre-validation, Socket proxying para o Go
+- **Nginx Sidecar:** recarrega configs SSL dinamicamente sem derrubar conexões ativas
+- **Header Scrub:** logger remove `Authorization`, `Cookie` e sanitiza body sensível antes de persistir qualquer log — zero vazamento de credenciais em auditoria
+- Auditoria de segurança completa: SQL Injection, bypass de RLS, integridade do Vault
+- Ferramentas de migração de metadados do v0.1 para v1
+- Documentação técnica final
+- Deleção da pasta legacy `cascata` (v0.1)
+
+**Critério de conclusão:** Paridade 100% com o Inventário de Excelência verificada; pasta legacy deletada.
+
+---
+
+## 💎 Inventário de Excelência
+
+> Este inventário é o contrato de paridade da Fase 21. Todo item aqui deve estar implementado antes da deleção do v0.1.
+
+### 1. Infraestrutura
+- Hyper-Cluster Socket IPC (Primary/Worker)
+- Isolamento físico por tenant (DB por tenant)
+- Healthcheck L1 (ping) e L2 (deep check)
+- Graceful Shutdown com pool draining
+- Adaptive Resource Throttling
+- Multi-Region Gateway Readiness
+- Isolation Chamber (Engine Mode — V8 e Wasmer)
+- Postgres Federation (scale-out transparente com múltiplos servidores)
+- Read Replicas com roteamento automático pelo orquestrador
+- Docker Network Isolation (container DB sem porta exposta)
+- Lazy Connect (boot resiliente quando Dragonfly demora a subir)
+- Cotas hierárquicas global → tenant (connections, storage, CPU, memória, automações, edge functions, req/s)
+- Validação em tempo real de soma de cotas vs teto global
+- Multi-instância via API pública — sem federação direta (intencional, inviolável)
+
+### 2. Segurança & Privacidade
+- Triple-Mode Auth (service / anon / JWT)
+- System Admin com handshake ECDH X25519 + AES-GCM
+- MCP Governance Perimeter (IP, URL, Row Limits)
+- RLS Claims Injection Protocol (`SET LOCAL` por sessão)
+- Fail-Closed RLS (ROLLBACK forçado se injeção falhar)
+- FORCE ROW LEVEL SECURITY em todas as tabelas expostas
+- Zero-Trust Schema Access (novas tabelas nascem com `REVOKE ALL`)
+- Isolamento por papel de propósito (agentes com roles dedicados)
+- Column-level grants e views
+- Privacy Engine: Normal, Blur, Mask, Semi-Mask, Hide, Hybrid Encrypt, Hyper Encrypt
+- Transparent Data Encryption via Vault Transit
+- Column Locks: `Normal`, `immutable`, `system_put`, `insert_only`, `otp_protected`
+- Vault: K/V, File Vaulting, Transit API (HashiCorp Vault 1.15)
+- PGP Crypto: chaves criptografadas no banco via `pgp_sym_encrypt`
+- Rotação automática de chaves (condicional à permissão do operador)
+- Universal Padlock (Global Lock de emergência)
+- Panic Mode (Kill Switch via flag DragonflyDB)
+- Schema Exposure toggle (modo "Silent" anti-discovery)
+- Firewall de Identidade (blocklist_ips, handshake_required)
+- Token Revocation via Blacklist DragonflyDB com TTL
+- Force MFA Login
+- OTP Cooldown
+- IP Strikes com ban automático configurável (IP ou UUID+IP)
+- Operation Weights no RateLimit (DELETE > READ)
+- CPU Backpressure (multiplicador 0.5x acima de 90% CPU)
+- Tables & RPC Limits granulares por tipo de chave (anon, JWT, grupos)
+- Secure IPC Sockets
+- SSRF Protection (validação de IP privado em todas as chamadas externas)
+- Header Scrub (sanitização de Auth/Cookie antes de persistir logs)
+- Dynamic CORS (origem verificada no banco por request, sem restart)
+- Magic Link Hash (SHA256 antes de persistir token)
+- Mutual TLS com certificado cliente efêmero (15min, Web Crypto API)
+- Client-side Compression + Encryption no upload via SDK (configurável por bucket)
+
+### 3. Banco de Dados & Extensões
+- Phantom Injection Architecture
+- Hot-swappable Extension Registry
+- Extensões pesadas compartilhadas entre tenants (ex: PostGIS instalado uma vez)
+- Impact Scanner (aviso em cascata)
+- Smart SQL Console com assistência IA
+- Recycle Bin com senha
+- Physical Disk Usage via syscall nativa
+- PG-Procedural Injection
+- Connection Pooling com Hard Caps
+- Idle Transaction Reaper
+- PgBouncer Transactional Mode (RESET ALL / SET LOCAL por sessão)
+- Statement Timeouts Dinâmicos (por tipo de operação)
+- Índices de Alta Cardinalidade (compostos para paginação em milhões de linhas)
+- Dragonfly Audit Pipeline (LPUSH → lotes de 500 → transação única no Postgres)
+- Cloud Stream (exportação de logs DB → Stream → S3 sem disco)
+
+### 4. Automação & Real-time
+- Graph-based Automation Engine (no-code/low-code → lógica de produção)
+- Synchronous API Interceptors (API_INTERCEPT)
+- Interceptor Cache (TTL 5m)
+- Webhook Receivers Inbound com HMAC SHA-256 por tenant
+- Direct Table Insert/Update via Webhook sem passar pelo motor
+- Roteamento de webhook para engine de automações
+- Retry policies com backoff exponencial
+- Outbound Webhooks com credenciais Vault Just-in-Time
+- Cron / Repeatable Jobs com precisão <1s e timezone-aware
+- Async Dispatch via fila persistente no Dragonfly
+- SSE Batched Hydration com backpressure
+- Realtime Presence (quem está online por canal/room)
+- Circuit Breakers para real-time
+- Live-to-Draft Mirroring
+- Neural Pulse (FCM Mobile Push)
+- Safe Fail / Retry / Timeout por nó com alertas configuráveis (até 3 canais)
+- Tenant Environment Variables (públicas e secretas, sintaxe `{{env.VAR}}`)
+
+### 5. Storage
+- Native Stream Pipe (zero-copy onde possível)
+- Motor Híbrido Direct (Presigned URL) / Proxy (streaming)
+- Multi-provider: S3, Cloudinary, freeimage.host, imagekit.io, wistia.com, GDrive, Dropbox, Backblaze B2, R2, Wasabi, Local
+- Governança por Setores (visual/motion/docs/archives/exec)
+- Roteamento de provider por setor configurável por tenant
+- Magic Bytes Validation (4 primeiros bytes vs tabela MAGIC_NUMBERS)
+- Path Traversal Prevention (getSafePath)
+- SSRF Protection no Storage
+- Presigned URL Orchestration
+- Physical Disk Quota Enforcement via DragonflyDB (reserva prévia)
+- Cota configurável por tipo de chave (anon, JWT, grupos/plans)
+- Upload Resumable com Chunking (GDrive: chunks 5MB em memória)
+- StorageIndexer Auto-Sync (reconstrução de índice a partir do disco)
+- Secure Delete Protocol
+- GC Uploads (limpeza de temporários órfãos a cada hora)
+- Client-side Compression + Encryption (zstd + AES-GCM, configurável por bucket)
+
+### 6. Edge Functions
+- Engine Mode V8 (padrão — Go-V8 Bindings para JS/TS)
+- Engine Mode Wasmer (isolamento máximo — sandbox WASM)
+- SQL Bridge, Network Bridge, Crypto Bridge no sandbox
+- 128MB limite de memória por isolate (proteção memory bombs)
+- Timeout forçado 30s via C++ Bridge
+- Contexto estrito (sem `process`, `fs`, `require`)
+- Isolate Dispose (limpeza de memória C++ após execução)
+- Log completo por execução
+
+### 7. API Layer
+- PostgREST Compatibility (parser nativo `?select=id,name` → SQL)
+- OpenAPI Dinâmico (Swagger 1.0/2.0/3.0 gerado em tempo real do schema)
+- Portal Público de Desenvolvedor (`api_docs: public` — Swagger UI em domínio customizado)
+- Universal SDK (`cascata.from('table').select()` — browser e Node.js)
+- SDK Supabase-compatible
+- API Versioning nativo (`/api/v1/`, `/api/v2/` coexistindo)
+- GraphQL Nativo opcional (gerado do schema PostgreSQL)
+- Formato JSON (padrão)
+- Formato TOON (obrigatório em respostas MCP com JWT/anon_key)
+- Formato XML (WhatsApp Business, NFe, FEBRABAN, HL7, ERPs — entrada e saída)
+
+### 8. Auth & Identidade
+- Três classes de identidade separadas: `tenant.user`, `cascata.member`, `cascata.agent`
+- Worner com passe livre em todos os tenants da instalação
+- Permissões granulares por domínio no nível instalação (Tenants, Membros, Infraestrutura, Agentes, Cross-tenant)
+- Permissões granulares por domínio no nível tenant (Schema, Segurança, Automações, Storage, Dados)
+- 4 níveis por domínio: none / read / write / admin — com ações individuais configuráveis dentro de cada nível
+- Papéis prontos editáveis: Worner, Manager, Developer, Analyst, Agent
+- Agentes de IA como cidadãos de primeira classe — agent_id registrado, escopos definidos pelo Worner
+- Audit Trail imutável: member_id ou agent_id, ação, timestamp, tenant — incluindo tipo human/agent
+- App Clients com Multiple Anon Keys
+- Redirect Inteligente por Chave (sem página intermediária de roteamento)
+- Identity-Aware OAuth Bridging (Multi-Redirect por App Client)
+- Universal Auth Strategy Pattern (email, CPF, WhatsApp, custom)
+- Identidade Concatenada 1:N (múltiplos providers na mesma conta UUID)
+- Identidade contextual sem senha (WhatsApp Business, URL origin)
+- Dynamic CORS (sem restart do servidor)
+- Magic Link Hash (SHA256)
+- Email Templates multi-idioma (HTML customizável, blocos arrastáveis)
+- Templates: Magic Link, Recovery, Login Alert, OTP, Criação de Conta
+- Provedor de envio configurável (Resend, SMTP local, compatível)
+- L1/L2 Cache de permissões (heap local 2h / DragonflyDB <0.2ms)
+- Pub/Sub Invalidation de cache em milissegundos
+
+### 9. Backup & Recovery
+- Formato .caf (Cascata Archive Format) — ZIP ZLib Nível 9
+- Agendamento configurável por tipo (schema only, data only, full, storage)
+- Timezone-aware por tenant
+- Auto-Purge por retention_count
+- Multi-cloud: GDrive, S3, Backblaze B2, R2, Wasabi
+- Analysis Engine com staging isolado antes de tocar produção
+- Diff de schema (added_tables, removed_tables, missing_cols)
+- Data Conflict Check (colisões de PK antes do restore)
+- Estratégias: overwrite, merge (UPSERT), missing_only
+- Restauração Atômica com Database Swap
+- Instant Revert (banco anterior preservado 24h)
+- Nginx rebuild automático após restore (SSL + domínios)
+
+### 10. Experience & Gestão
+- AI Architect com Wake-Word configurável
+- Voice-to-SQL com UI de aprovação
+- Semantic search no histórico de chat (Qdrant)
+- Qdrant para vetores das aplicações conectadas ao tenant
+- Suporte a vários chats simultâneos
+- Menções com `/` (tabelas, campos, RPCs) e `@` (features Cascata)
+- Deploy Wizard (visualização Condomínio)
+- Virtualized 1M Row Table Panel
+- Smart Export/Import (CSV/XLSX/JSON/SQL com inferência de schema)
+- Schema Branching & Versionamento com rollback
+- Impact Scanner (automações, RPCs, triggers, views, edge functions)
+- BYOD Ejection
+- Custom Domains + SSL (DNS-01)
+- Multi-dimensional Rate Limiting com Nerf System
+- Sistema de Temas plugável (dark, light, custom — estilo VSCode)
+- Internacionalização com arquivo externo no GitHub
+- Layouts customizáveis em tamanho, posição e blocos
+
+### 12. Observabilidade & Logs
+- Log universal de baixo nível — toda ação de qualquer identidade capturada antes do handler de negócio
+- Cobertura: HTTP, SQL, dashboard, CLI, automações, edge functions, webhooks, Vault, auth, storage, schema
+- Substituição real de dados sensíveis nos logs: senhas → `[PASSWORD]`, tokens → `[TOKEN]`, chaves → `[KEY]`
+- Dados `hyper_encrypt` nunca entram em nenhum log
+- Logs imutáveis por design (append-only) — nenhuma identidade pode editar ou deletar entradas
+- Retenção mínima obrigatória: 3 dias (hardcoded, não configurável abaixo)
+- Retenção configurável por tenant via dropdown: dias / meses / anos, padrão 30 dias
+- Logs de auditoria de segurança: imutáveis sem retenção configurável, nunca expiram
+- Exportação para ambientes externos: S3, R2, Wasabi, Backblaze B2, endpoint HTTP customizado
+- Modos de exportação: streaming contínuo ou batch agendado
+- Filtros de exportação configuráveis por escopo (audit trail, erros, automações, tudo)
+- Formatos de exportação: JSON, TOON, CSV
+- Feed de alertas internos no dashboard: disco, CPU, SSL, cota, backup, automação, IP strikes
+
+---
+
+## 🔒 Plano de Verificação (Transversal — Aplicável a Toda Fase)
+
+Cada fase concluída deve passar por:
+
+1. **Auditoria de Segurança:** Sem SQL Injection, sem bypass de RLS, integridade do Vault preservada
+2. **Benchmark de Performance:** Overhead do orquestrador abaixo de 10ms
+3. **Revisão Visual (fases de UI):** UX premium e responsivo — com tratamento especial para computadores, tablets e celulares
+4. **Teste de Resiliência:** Recovery gracioso após crash de processo
+
+---
+
+**Diretiva permanente: construir com escala, construir com segurança, construir o Cascata v1.0.0.0.**

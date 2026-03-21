@@ -1,0 +1,111 @@
+import { Request, Response, NextFunction } from 'express';
+import process from 'process';
+import axios from 'axios';
+import { CascataRequest } from '../types.js';
+import { systemPool } from '../config/main.js';
+import { EdgeService } from '../../services/EdgeService.js';
+import { VaultService } from '../../services/VaultService.js';
+
+export class EdgeController {
+    static async execute(req: Request, res: Response, next: NextFunction) {
+        const r = (req as unknown) as CascataRequest;
+        try {
+            const assetRes = await systemPool.query("SELECT * FROM system.assets WHERE project_slug = $1 AND name = $2 AND type = 'edge_function'", [r.project.slug, r.params.name]);
+            if (assetRes.rows.length === 0) return res.status(404).json({ error: "Edge Function Not Found" });
+            const asset = assetRes.rows[0];
+            
+            // INTEGRAÇÃO SEGURA COM VAULT: Buscar os segredos reais descriptografando via Transit Engine
+            const secretsRes = await systemPool.query(`
+                SELECT name, secret_value
+                FROM system.project_secrets
+                WHERE project_slug = $1 AND type != 'folder'
+            `, [r.project.slug]);
+            
+            const vault = VaultService.getInstance();
+            const globalSecrets: Record<string, string> = {};
+            
+            for (const row of secretsRes.rows) {
+                try {
+                    // Tenta descriptografar usando o Vault. Se o valor não for um ciphertext válido, 
+                    // mantém o valor original (fallback para compatibilidade ou texto claro).
+                    if (row.secret_value && row.secret_value.startsWith('vault:')) {
+                        globalSecrets[row.name] = await vault.decrypt(`project-${r.project.slug}`, row.secret_value);
+                    } else {
+                        globalSecrets[row.name] = row.secret_value;
+                    }
+                } catch (e: unknown) {
+                    console.warn(`[EdgeController] Failed to decrypt secret ${row.name} for project ${r.project.slug}:`, (e as Error).message);
+                    globalSecrets[row.name] = row.secret_value; // Fallback
+                }
+            }
+
+            const localEnv = asset.metadata.env_vars || {};
+            const finalEnv = { ...globalSecrets, ...localEnv };
+
+            // DETERMINAÇÃO DE CONNECTION STRING PARA O ENGINE
+            // O Engine não tem acesso ao middleware `resolveProject`, então precisamos
+            // passar a string de conexão explicitamente no contexto.
+            let dbConnectionString = '';
+            if (r.project.metadata?.external_db_url) {
+                dbConnectionString = r.project.metadata.external_db_url as string;
+            } else {
+                const dbHost = process.env.DB_DIRECT_HOST || 'db';
+                const dbPort = process.env.DB_DIRECT_PORT || '5432';
+                const user = process.env.DB_USER || 'cascata_admin';
+                const pass = process.env.DB_PASS || 'secure_pass';
+                dbConnectionString = `postgresql://${user}:${pass}@${dbHost}:${dbPort}/${r.project.db_name}`;
+            }
+
+            const context = { 
+                method: r.method, 
+                body: r.body, 
+                query: r.query, 
+                headers: r.headers, 
+                user: r.user,
+                _db_connection_string: dbConnectionString // Contexto privilegiado para o Engine
+            };
+
+            const timeoutMs = (asset.metadata.timeout || 5) * 1000;
+
+            // --- ENGINE OFFLOAD LOGIC ---
+            // Se houver um ENGINE_URL configurado (Docker Service), delegamos a execução
+            // para garantir isolamento de CPU/Memória.
+            if (process.env.ENGINE_URL) {
+                try {
+                    // Comunicação síncrona interna (rápida na rede Docker)
+                    const engineRes = await axios.post(`${process.env.ENGINE_URL}/internal/run`, {
+                        code: asset.metadata.sql,
+                        context,
+                        envVars: finalEnv,
+                        timeout: timeoutMs,
+                        slug: r.project.slug
+                    }, {
+                        timeout: timeoutMs + 1000, // Margem de segurança para rede
+                        validateStatus: () => true // Captura status code do engine
+                    });
+
+                    return res.status(engineRes.status).json(engineRes.data);
+                } catch (engineErr: any) {
+                    console.error('[EdgeController] Engine Offload Failed:', engineErr.message);
+                    // Fallback se o Engine estiver offline? Não. Fail-Closed.
+                    // Se o Engine caiu, é provável que estivesse sob ataque. 
+                    // Tentar rodar na API principal agora seria suicídio.
+                    return res.status(503).json({ error: "Execution Engine Unavailable. Please try again later." });
+                }
+            }
+
+            // --- LOCAL FALLBACK (Legacy/Dev Mode) ---
+            // Se não houver Engine configurado, roda no processo atual.
+            const result = await EdgeService.execute(
+                asset.metadata.sql, 
+                context,
+                finalEnv, 
+                r.projectPool!, 
+                timeoutMs,
+                r.project.slug
+            );
+            res.status(result.status).json(result.body);
+            
+        } catch (e: unknown) { next(e); }
+    }
+}

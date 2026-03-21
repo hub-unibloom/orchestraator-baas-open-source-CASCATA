@@ -1,0 +1,804 @@
+
+import { Pool } from 'pg';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
+import { Buffer } from 'buffer';
+
+interface ProviderConfig {
+    clientId?: string;
+    clientSecret?: string;
+    redirectUri?: string;
+    webhookUrl?: string;
+    authorized_clients?: string;
+    skip_nonce?: boolean;
+}
+
+interface UserProfile {
+    provider: string;
+    id: string;
+    email?: string;
+    name?: string;
+    avatar_url?: string;
+}
+
+interface SessionTokens {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    user: {
+        id: string;
+        email?: string;
+        identifier?: string;
+        provider?: string;
+        app_metadata?: any;
+        user_metadata?: any;
+    };
+}
+
+interface OtpConfig {
+    length?: number;
+    charset?: 'numeric' | 'alphanumeric' | 'alpha' | 'hex';
+    expiration_minutes?: number;
+    regex_validation?: string;
+}
+
+interface EmailConfig {
+    delivery_methods?: string[];
+    delivery_method?: string; // Legacy
+    webhook_url?: string;
+    resend_api_key?: string;
+    from_email?: string;
+    smtp_host?: string;
+    smtp_port?: string | number;
+    smtp_user?: string;
+    smtp_pass?: string;
+    smtp_secure?: boolean;
+}
+
+interface EmailTemplates {
+    confirmation?: { subject: string; body: string };
+    recovery?: { subject: string; body: string };
+    magic_link?: { subject: string; body: string };
+    login_alert?: { subject: string; body: string };
+    welcome_email?: { subject: string; body: string };
+}
+
+export interface MessageVariant {
+    subject: string;
+    body: string;
+}
+
+export interface MessagingTemplate {
+    id: string;
+    name: string;
+    type: 'confirmation' | 'recovery' | 'magic_link' | 'login_alert' | 'welcome_email' | 'otp_challenge';
+    default_language: string;
+    variants: Record<string, MessageVariant>;
+}
+
+export class AuthService {
+
+    /**
+     * Valida um Google ID Token diretamente com o Google.
+     */
+    public static async verifyGoogleIdToken(idToken: string, config: ProviderConfig): Promise<UserProfile> {
+        try {
+            const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+
+            if (!res.ok) {
+                throw new Error('Invalid Google ID Token');
+            }
+
+            const payload = await res.json();
+
+            const mainClientId = config.clientId;
+            const extraClientIds = (config.authorized_clients || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+            const allowedAudiences = [mainClientId, ...extraClientIds].filter(Boolean);
+
+            if (allowedAudiences.length > 0 && !allowedAudiences.includes(payload.aud)) {
+                throw new Error(`Token audience mismatch. Expected one of [${allowedAudiences.join(', ')}], got ${payload.aud}`);
+            }
+
+            return {
+                provider: 'google',
+                id: payload.sub,
+                email: payload.email,
+                name: payload.name,
+                avatar_url: payload.picture
+            };
+        } catch (e: any) {
+            console.error('[AuthService] Google Verification Failed:', e.message);
+            throw new Error(`Unable to verify Google identity: ${e.message}`);
+        }
+    }
+
+    public static getAuthUrl(provider: string, config: ProviderConfig, state: string): string {
+        if (provider === 'google') {
+            const root = 'https://accounts.google.com/o/oauth2/v2/auth';
+            if (!config.clientId) throw new Error("Google Client ID missing");
+            const nonce = crypto.randomBytes(16).toString('base64');
+            const options = {
+                redirect_uri: config.redirectUri || '',
+                client_id: config.clientId,
+                access_type: 'offline',
+                response_type: 'code',
+                prompt: 'consent',
+                scope: 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+                state,
+                nonce
+            };
+            return `${root}?${new URLSearchParams(options).toString()}`;
+        }
+
+        if (provider === 'github') {
+            const root = 'https://github.com/login/oauth/authorize';
+            if (!config.clientId) throw new Error("GitHub Client ID missing");
+            const options = {
+                client_id: config.clientId,
+                redirect_uri: config.redirectUri || '',
+                scope: 'user:email',
+                state
+            };
+            return `${root}?${new URLSearchParams(options).toString()}`;
+        }
+
+        throw new Error(`Provider ${provider} does not support OAuth URL generation.`);
+    }
+
+    public static async handleCallback(provider: string, code: string, config: ProviderConfig): Promise<UserProfile> {
+        if (provider === 'google') {
+            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    client_id: config.clientId,
+                    client_secret: config.clientSecret,
+                    code,
+                    grant_type: 'authorization_code',
+                    redirect_uri: config.redirectUri
+                })
+            });
+            const tokens = await tokenRes.json();
+            if (tokens.error) throw new Error(`Google Token Error: ${tokens.error_description}`);
+
+            if (tokens.id_token) {
+                return this.verifyGoogleIdToken(tokens.id_token, config);
+            }
+
+            const profileRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+                headers: { Authorization: `Bearer ${tokens.access_token}` }
+            });
+            const profile = await profileRes.json();
+
+            return {
+                provider: 'google',
+                id: profile.id,
+                email: profile.email,
+                name: profile.name,
+                avatar_url: profile.picture
+            };
+        }
+
+        if (provider === 'github') {
+            const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({
+                    client_id: config.clientId,
+                    client_secret: config.clientSecret,
+                    code,
+                    redirect_uri: config.redirectUri
+                })
+            });
+            const tokens = await tokenRes.json();
+            if (tokens.error) throw new Error(`GitHub Token Error: ${tokens.error_description}`);
+
+            const profileRes = await fetch('https://api.github.com/user', {
+                headers: { Authorization: `Bearer ${tokens.access_token}` }
+            });
+            const profile = await profileRes.json();
+
+            let email = profile.email;
+            if (!email) {
+                try {
+                    const emailsRes = await fetch('https://api.github.com/user/emails', {
+                        headers: { Authorization: `Bearer ${tokens.access_token}` }
+                    });
+                    const emails = await emailsRes.json();
+                    if (Array.isArray(emails)) {
+                        const primary = emails.find((e: any) => e.primary && e.verified);
+                        if (primary) email = primary.email;
+                    }
+                } catch (e) { }
+            }
+
+            return {
+                provider: 'github',
+                id: String(profile.id),
+                email: email,
+                name: profile.name || profile.login,
+                avatar_url: profile.avatar_url
+            };
+        }
+
+        throw new Error(`Provider ${provider} not implemented in callback`);
+    }
+
+    public static resolveTemplate(
+        templates: Record<string, MessagingTemplate> | undefined,
+        templateId: string | undefined,
+        legacyTemplates: EmailTemplates | undefined,
+        type: 'confirmation' | 'recovery' | 'magic_link' | 'login_alert' | 'welcome_email' | 'otp_challenge',
+        language: string = 'en-US',
+        defaultSubject: string,
+        defaultBody: string
+    ): { subject: string; body: string } {
+        // 1. If a specific library template is bound and exists
+        if (templateId && templates && templates[templateId]) {
+            const tpl = templates[templateId];
+
+            // Try exact language match (e.g., pt-BR)
+            if (tpl.variants[language]) {
+                return tpl.variants[language];
+            }
+
+            // Try base language match (e.g., pt)
+            const baseLang = language.split('-')[0];
+            const baseMatchKey = Object.keys(tpl.variants).find(k => k.split('-')[0] === baseLang);
+            if (baseMatchKey) {
+                return tpl.variants[baseMatchKey];
+            }
+
+            // Try default language of the template
+            if (tpl.variants[tpl.default_language]) {
+                return tpl.variants[tpl.default_language];
+            }
+
+            // Fallback to the first available variant if everything else fails
+            const firstVariantKey = Object.keys(tpl.variants)[0];
+            if (firstVariantKey) {
+                return tpl.variants[firstVariantKey];
+            }
+        }
+
+        // 2. Legacy Fallback: check if old email_templates have an override for this type
+        // Note: otp_challenge doesn't exist in legacy EmailTemplates
+        if (legacyTemplates && type !== 'otp_challenge') {
+            const legacyType = type as keyof EmailTemplates;
+            if (legacyTemplates[legacyType]) {
+                return {
+                    subject: legacyTemplates[legacyType]?.subject || defaultSubject,
+                    body: legacyTemplates[legacyType]?.body || defaultBody
+                };
+            }
+        }
+
+        // 3. Absolute Fallback: hardcoded system defaults
+        return { subject: defaultSubject, body: defaultBody };
+    }
+
+    private static async sendEmail(to: string, subject: string, htmlContent: string, config: EmailConfig, projectSecret: string, actionType: string) {
+        const fromEmail = config.from_email || 'noreply@cascata.io';
+        const methods = config.delivery_methods || (config.delivery_method ? [config.delivery_method] : []);
+        console.log(`[AuthService] Sending ${actionType} email to ${to} via methods: ${methods.join(', ')}`);
+
+        if (methods.length === 0) {
+            console.warn(`[AuthService] No valid email provider configured. Simulating email to ${to}: ${subject}`);
+            return;
+        }
+
+        const promises = [];
+
+        if (methods.includes('webhook') && config.webhook_url) {
+            promises.push(
+                this.dispatchWebhook(config.webhook_url, {
+                    event: 'auth.email_request',
+                    action: actionType,
+                    to,
+                    from: fromEmail,
+                    subject,
+                    html: htmlContent,
+                    timestamp: new Date().toISOString()
+                }, projectSecret)
+            );
+        }
+
+        if (methods.includes('resend') && config.resend_api_key) {
+            promises.push(
+                fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${config.resend_api_key}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ from: fromEmail, to: [to], subject: subject, html: htmlContent })
+                }).then(async res => {
+                    if (!res.ok) {
+                        const err = await res.json();
+                        throw new Error(`Resend API Error: ${err.message || 'Unknown error'}`);
+                    }
+                })
+            );
+        }
+
+        if (methods.includes('smtp')) {
+            promises.push((async () => {
+                if (!config.smtp_host || !config.smtp_user || !config.smtp_pass) {
+                    throw new Error("SMTP Credentials incomplete.");
+                }
+                const port = Number(config.smtp_port) || 587;
+                const secure = config.smtp_secure || port === 465;
+                const transporter = nodemailer.createTransport({
+                    host: config.smtp_host,
+                    port: port,
+                    secure: secure,
+                    auth: { user: config.smtp_user, pass: config.smtp_pass },
+                });
+                try {
+                    await transporter.sendMail({ from: fromEmail, to, subject, html: htmlContent });
+                } catch (smtpError: any) {
+                    throw new Error(`SMTP Handshake Failed: ${smtpError.message}`);
+                }
+            })());
+        }
+
+        if (promises.length > 0) {
+            await Promise.all(promises);
+        }
+    }
+
+    private static replaceTemplate(template: string, data: Record<string, string>): string {
+        let result = template;
+        for (const key in data) {
+            result = result.replace(new RegExp(`{{\\s*\\.${key}\\s*}}`, 'g'), data[key]);
+            result = result.replace(new RegExp(`{{\\s*${key}\\s*}}`, 'g'), data[key]);
+        }
+        return result;
+    }
+
+    public static async sendConfirmationEmail(to: string, token: string, projectUrl: string, emailConfig: EmailConfig, templates: EmailTemplates | undefined, jwtSecret: string, language: string = 'en-US', messagingTemplates?: Record<string, MessagingTemplate>, templateBindings?: Record<string, string>) {
+        const actionUrl = `${projectUrl}/auth/v1/verify?token=${token}&type=signup&email=${encodeURIComponent(to)}`;
+        const { subject, body } = this.resolveTemplate(
+            messagingTemplates,
+            templateBindings?.['confirmation'],
+            templates,
+            'confirmation',
+            language,
+            'Confirm Your Email',
+            `<h2>Confirm your email</h2><p>Click the link below to confirm your email address:</p><p><a href="{{ .ConfirmationURL }}">Confirm Email</a></p>`
+        );
+        const html = this.replaceTemplate(body, { ConfirmationURL: actionUrl, Token: token, Email: to, AppName: 'Cascata' });
+        await this.sendEmail(to, subject, html, emailConfig, jwtSecret, 'signup_confirmation');
+    }
+
+    public static async sendWelcomeEmail(to: string, emailConfig: EmailConfig, templates: EmailTemplates | undefined, jwtSecret: string, language: string = 'en-US', messagingTemplates?: Record<string, MessagingTemplate>, templateBindings?: Record<string, string>) {
+        const { subject, body } = this.resolveTemplate(
+            messagingTemplates,
+            templateBindings?.['welcome_email'],
+            templates,
+            'welcome_email',
+            language,
+            'Welcome!',
+            `<h2>Welcome!</h2><p>We are excited to have you on board.</p>`
+        );
+        const html = this.replaceTemplate(body, { Email: to, Date: new Date().toLocaleString(), AppName: 'Cascata' });
+        await this.sendEmail(to, subject, html, emailConfig, jwtSecret, 'welcome_email');
+    }
+
+    public static async sendLoginAlert(to: string, emailConfig: EmailConfig, templates: EmailTemplates | undefined, jwtSecret: string, language: string = 'en-US', messagingTemplates?: Record<string, MessagingTemplate>, templateBindings?: Record<string, string>, reqIp?: string, reqUa?: string) {
+        const { subject, body } = this.resolveTemplate(
+            messagingTemplates,
+            templateBindings?.['login_alert'],
+            templates,
+            'login_alert',
+            language,
+            'New Login Alert',
+            `<h2>New Login Detected</h2><p>We detected a new login to your account at {{ .Date }} from IP {{ .IP }}.</p>`
+        );
+        const html = this.replaceTemplate(body, { Email: to, Date: new Date().toLocaleString(), IP: reqIp || 'Unknown', UserAgent: reqUa || 'Unknown', AppName: 'Cascata' });
+        await this.sendEmail(to, subject, html, emailConfig, jwtSecret, 'login_alert');
+    }
+
+    public static async sendMagicLink(pool: Pool, identifier: string, projectUrl: string, emailConfig: EmailConfig, jwtSecret: string, templates?: EmailTemplates, provider: string = 'email', language: string = 'en-US', messagingTemplates?: Record<string, MessagingTemplate>, templateBindings?: Record<string, string>) {
+        return this.sendAuthLink(pool, identifier, projectUrl, emailConfig, jwtSecret, 'magiclink', templates, provider, language, messagingTemplates, templateBindings);
+    }
+
+    public static async sendRecovery(pool: Pool, identifier: string, projectUrl: string, emailConfig: EmailConfig, jwtSecret: string, templates?: EmailTemplates, provider: string = 'email', language: string = 'en-US', messagingTemplates?: Record<string, MessagingTemplate>, templateBindings?: Record<string, string>) {
+        return this.sendAuthLink(pool, identifier, projectUrl, emailConfig, jwtSecret, 'recovery', templates, provider, language, messagingTemplates, templateBindings);
+    }
+
+    private static async sendAuthLink(pool: Pool, identifier: string, projectUrl: string, emailConfig: EmailConfig, jwtSecret: string, type: 'magiclink' | 'recovery', templates?: EmailTemplates, provider: string = 'email', language: string = 'en-US', messagingTemplates?: Record<string, MessagingTemplate>, templateBindings?: Record<string, string>) {
+        const token = crypto.randomBytes(32).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        const expirationMinutes = 60;
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            await client.query(`DELETE FROM auth.otp_codes WHERE provider = $1 AND identifier = $2 AND metadata->>'type' = $3`, [provider, identifier, type]);
+            await client.query(
+                `INSERT INTO auth.otp_codes (provider, identifier, code, expires_at, metadata) VALUES ($1, $2, $3, now() + interval '${expirationMinutes} minutes', $4::jsonb)`,
+                [provider, identifier, tokenHash, JSON.stringify({ type, generated_at: new Date() })]
+            );
+            await client.query('COMMIT');
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
+
+        // Action URLs explicitly carry the provider type down the chain
+        const actionUrl = `${projectUrl}/auth/v1/verify?token=${token}&type=${type}&email=${encodeURIComponent(identifier)}&provider=${encodeURIComponent(provider)}`;
+
+        const { subject, body } = this.resolveTemplate(
+            messagingTemplates,
+            templateBindings?.[type === 'magiclink' ? 'magic_link' : type],
+            templates,
+            type === 'magiclink' ? 'magic_link' : type,
+            language,
+            type === 'magiclink' ? 'Your Login Link' : 'Reset Your Password',
+            type === 'magiclink' ? `<h2>Login Request</h2><p>Click here to login:</p><a href="{{ .ConfirmationURL }}">Sign In</a>` : `<h2>Reset Password</h2><p>Click here to reset your password:</p><a href="{{ .ConfirmationURL }}">Reset Password</a>`
+        );
+
+        const html = this.replaceTemplate(body, { ConfirmationURL: actionUrl, Token: token, Email: identifier, AppName: 'Cascata' });
+
+        // If it's the email provider, send physically using the Email Service. 
+        // If it's a custom provider (e.g. CPF, Phone), they trigger webhooks independently via initiatePasswordless, 
+        // but if they hit this legacy path, we attempt dispatching via email if an email config exists.
+        await this.sendEmail(identifier, subject, html, emailConfig, jwtSecret, type);
+    }
+
+    private static generateCode(config: OtpConfig): string {
+        const length = config.length || 6;
+        const charsetType = config.charset || 'numeric';
+        let chars = '0123456789';
+        if (charsetType === 'alpha') chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        if (charsetType === 'alphanumeric') chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        if (charsetType === 'hex') chars = '0123456789ABCDEF';
+        const randomBytes = crypto.randomBytes(length);
+        let result = '';
+        for (let i = 0; i < length; i++) result += chars[randomBytes[i] % chars.length];
+        return result;
+    }
+
+    private static validateIdentifier(identifier: string, regexPattern?: string): boolean {
+        if (!regexPattern) return true;
+        try {
+            const regex = new RegExp(regexPattern);
+            return regex.test(identifier);
+        } catch (e) {
+            console.warn('[AuthService] Invalid Regex Pattern in Config:', regexPattern);
+            return true;
+        }
+    }
+
+    public static async dispatchWebhook(webhookUrl: string, payload: any, secret: string) {
+        const signature = crypto.createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+        try {
+            const res = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Cascata-Signature': signature, 'X-Cascata-Event': 'auth.challenge_request' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error(`Webhook failed with status ${res.status}`);
+        } catch (e: any) {
+            throw new Error(`Failed to send challenge via webhook transport.`);
+        }
+    }
+
+    public static async initiatePasswordless(pool: Pool, provider: string, identifier: string, webhookUrl: string, serviceKey: string, otpConfig: OtpConfig = {}, language: string = 'en-US', messagingTemplates?: Record<string, MessagingTemplate>, templateBindings?: Record<string, string>): Promise<void> {
+        if (otpConfig.regex_validation) {
+            const isValid = this.validateIdentifier(identifier, otpConfig.regex_validation);
+            if (!isValid) throw new Error(`Invalid format for ${provider}. Please check your input.`);
+        }
+        const code = this.generateCode(otpConfig);
+        const expirationMinutes = otpConfig.expiration_minutes || 15;
+
+        const { subject, body } = this.resolveTemplate(
+            messagingTemplates,
+            templateBindings?.['otp_challenge'],
+            undefined, // Legacy EmailTemplates does not support otp_challenge
+            'otp_challenge',
+            language,
+            'Verification Code',
+            `Your code is: {{ .Code }}. Valid for {{ .Expiration }} minutes.`
+        );
+
+        const finalMessageBody = this.replaceTemplate(body, { Code: code, Expiration: String(expirationMinutes), Identifier: identifier, Strategy: provider, AppName: 'Cascata' });
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            await client.query(`DELETE FROM auth.otp_codes WHERE provider = $1 AND identifier = $2`, [provider, identifier]);
+            await client.query(`INSERT INTO auth.otp_codes (provider, identifier, code, expires_at, metadata) VALUES ($1, $2, $3, now() + interval '${expirationMinutes} minutes', $4::jsonb)`, [provider, identifier, code, JSON.stringify({ generated_at: new Date(), format: otpConfig.charset, language })]);
+            const payload = {
+                action: 'send_challenge',
+                strategy: provider,
+                identifier,
+                code,
+                timestamp: new Date().toISOString(),
+                meta: { expiration: `${expirationMinutes}m`, format: otpConfig.charset || 'numeric' },
+                message: { subject, body: finalMessageBody, language }
+            };
+            await this.dispatchWebhook(webhookUrl, payload, serviceKey);
+            await client.query('COMMIT');
+        } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
+    }
+
+    public static async verifyPasswordless(pool: Pool, provider: string, identifier: string, code: string, isHashCheck: boolean = false): Promise<UserProfile> {
+        if (!provider || !identifier || !code) throw new Error("Missing verification parameters.");
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const res = await client.query(`SELECT * FROM auth.otp_codes WHERE provider = $1 AND identifier = $2 AND expires_at > now()`, [provider, isHashCheck ? code : identifier]);
+            if (res.rows.length === 0) throw new Error("Invalid or expired verification code.");
+            const record = res.rows[0];
+            if (record.attempts >= 5) {
+                await client.query(`DELETE FROM auth.otp_codes WHERE id = $1`, [record.id]);
+                await client.query('COMMIT');
+                throw new Error("Too many failed attempts. Code revoked.");
+            }
+
+            // TIMING ATTACK PROTECTION
+            const dbCode = Buffer.from(record.code);
+            const userCode = Buffer.from(code);
+            let match = true;
+            if (dbCode.length !== userCode.length) {
+                match = false;
+                // Dummy comparison to equalize time
+                crypto.timingSafeEqual(dbCode, dbCode);
+            } else {
+                match = crypto.timingSafeEqual(dbCode, userCode);
+            }
+
+            if (!match) {
+                await client.query(`UPDATE auth.otp_codes SET attempts = attempts + 1 WHERE id = $1`, [record.id]);
+                await client.query('COMMIT');
+                throw new Error("Invalid code.");
+            }
+
+            await client.query(`DELETE FROM auth.otp_codes WHERE id = $1`, [record.id]);
+            await client.query('COMMIT');
+            return { provider, id: identifier, email: identifier.includes('@') ? identifier : undefined, name: identifier };
+        } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
+    }
+
+    public static async verifyMagicLinkToken(pool: Pool, identifier: string, token: string, type: string, provider: string = 'email'): Promise<UserProfile> {
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const res = await client.query(`SELECT * FROM auth.otp_codes WHERE provider = $1 AND identifier = $2 AND metadata->>'type' = $3 AND expires_at > now()`, [provider, tokenHash, type]);
+            if (res.rows.length === 0) throw new Error("Invalid or expired link.");
+            const record = res.rows[0];
+            await client.query(`DELETE FROM auth.otp_codes WHERE id = $1`, [record.id]);
+            await client.query('COMMIT');
+            return { provider: provider, id: identifier, email: (identifier.includes('@') ? identifier : undefined), name: identifier.split('@')[0] };
+        } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
+    }
+
+    public static async upsertUser(projectPool: Pool, profile: UserProfile, authConfig?: any): Promise<string> {
+        // O SANTO GRAAL: 1-Roundtrip Authenticator
+        // Bypass completo da metralhadora N+1 (BEGIN, SELECT, SELECT, INSERT, UPDATE, COMMIT = 6 TCP Roundtrips)
+        // Substituído por uma função nativa PL/pgSQL encapsulada. 1 TCP Roundtrip.
+        // Fiel ao modelo de Identidades (Identity-First): Prioriza o vínculo (provider, identifier).
+        const providerAutoVerify = authConfig?.providers?.[profile.provider]?.auto_verify === true;
+        
+        const res = await projectPool.query(
+            `SELECT auth.upsert_user_v2($1::jsonb, $2::boolean) as user_id`,
+            [JSON.stringify(profile), providerAutoVerify]
+        );
+        return res.rows[0].user_id as string;
+    }
+
+    public static async createSession(
+        userId: string,
+        projectPool: Pool,
+        jwtSecret: string,
+        expiresIn: string = '1h',
+        refreshTokenExpiresInDays: number = 30,
+        loginProvider: string = 'cascata',
+        deviceInfo: { ip?: string, userAgent?: string } = {}
+    ): Promise<SessionTokens> {
+
+        // Locate the primary identifier for this session
+        const idRes = await projectPool.query(
+            `SELECT identifier FROM auth.identities WHERE user_id = $1 AND provider = $2 LIMIT 1`,
+            [userId, loginProvider]
+        );
+        const primaryIdentifier = idRes.rows[0]?.identifier;
+
+        // 1. Create JWT Payload
+        const payload = {
+            sub: userId,
+            role: 'authenticated',
+            aud: 'authenticated',
+            email: loginProvider === 'email' ? primaryIdentifier : undefined, // Legacy compat
+            identifier: primaryIdentifier,
+            provider: loginProvider,
+            app_metadata: {
+                provider: loginProvider,
+                role: 'authenticated'
+            }
+        };
+
+        const accessToken = jwt.sign(payload, jwtSecret, { expiresIn: expiresIn as any });
+
+        // 2. Generate Refresh Token
+        const rawRefreshToken = crypto.randomBytes(40).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawRefreshToken).digest('hex');
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + refreshTokenExpiresInDays);
+
+        // Insert with Fingerprint Metadata (Safe insertion even if columns missing due to dynamic migration handling)
+        // We use dynamic query construction or just try/catch if column missing, but best is to rely on schema being up to date
+        // Since we provided migration 027, we assume it runs.
+
+        try {
+            await projectPool.query(
+                `INSERT INTO auth.refresh_tokens (token_hash, user_id, expires_at, ip_address, user_agent) VALUES ($1, $2, $3, $4, $5)`,
+                [tokenHash, userId, expiresAt, deviceInfo.ip, deviceInfo.userAgent]
+            );
+        } catch (e: any) {
+            // Fallback for systems without migration 027 applied yet
+            if (e.code === '42703') { // Undefined column
+                await projectPool.query(
+                    `INSERT INTO auth.refresh_tokens (token_hash, user_id, expires_at) VALUES ($1, $2, $3)`,
+                    [tokenHash, userId, expiresAt]
+                );
+            } else {
+                throw e;
+            }
+        }
+
+        const userRes = await projectPool.query(`SELECT id, raw_user_meta_data FROM auth.users WHERE id = $1`, [userId]);
+        const user = userRes.rows[0];
+
+        return {
+            access_token: accessToken,
+            refresh_token: rawRefreshToken,
+            expires_in: this.parseSeconds(expiresIn),
+            user: {
+                id: user.id,
+                email: user.raw_user_meta_data?.email,
+                identifier: (payload as any).identifier,
+                provider: loginProvider,
+                user_metadata: user.raw_user_meta_data,
+                app_metadata: payload.app_metadata
+            }
+        };
+    }
+
+    public static async refreshSession(rawRefreshToken: string, projectPool: Pool, jwtSecret: string, expiresIn: string = '1h', deviceInfo: { ip?: string, userAgent?: string } = {}): Promise<SessionTokens> {
+        const tokenHash = crypto.createHash('sha256').update(rawRefreshToken).digest('hex');
+        
+        const newRawRefreshToken = crypto.randomBytes(40).toString('hex');
+        const newTokenHash = crypto.createHash('sha256').update(newRawRefreshToken).digest('hex');
+        
+        // C-Level Database Macro Execution (1 RCP Roundtrip)
+        // Substituindo 7 queries manuais (BEGIN, SELECT, UPDATE, INSERT, SELECT, COMMIT) 
+        const res = await projectPool.query(
+            `SELECT * FROM auth.refresh_session_v2($1, $2, $3, $4)`,
+            [tokenHash, newTokenHash, deviceInfo.ip || null, deviceInfo.userAgent || null]
+        );
+        
+        const data = res.rows[0];
+        
+        if (data.status === 'invalid_token') throw new Error("Invalid or expired refresh token");
+        if (data.status === 'revoked_reuse_detected') throw new Error("Token has been revoked (Reuse detected)");
+        
+        const accessToken = jwt.sign({ 
+            sub: data.p_user_id, 
+            role: 'authenticated', 
+            aud: 'authenticated', 
+            identifier: data.p_user_meta?.identifier, // If stored in metadata
+            provider: 'cascata' 
+        }, jwtSecret, { expiresIn: expiresIn as any });
+        
+        return { 
+            access_token: accessToken, 
+            refresh_token: newRawRefreshToken, 
+            expires_in: this.parseSeconds(expiresIn), 
+            user: { 
+                id: data.p_user_id, 
+                email: data.p_user_meta?.email, 
+                identifier: data.p_user_meta?.identifier,
+                provider: 'cascata',
+                user_metadata: data.p_user_meta, 
+                app_metadata: { provider: 'cascata', role: 'authenticated' } 
+            } 
+        };
+    }
+
+    public static getInstallSql(): string {
+        return `
+        -- IDENTITY-FIRST AUTHENTICATOR (The Holy Grail)
+        CREATE OR REPLACE FUNCTION auth.upsert_user_v2(profile jsonb, auto_verify boolean)
+        RETURNS uuid AS $$
+        DECLARE
+            v_user_id uuid;
+            v_current_meta jsonb;
+            v_provider text;
+            v_identifier text;
+        BEGIN
+            v_provider := profile->>'provider';
+            v_identifier := profile->>'id';
+
+            -- 1. Eixo Principal: Identidade (O vínculo imutável)
+            SELECT u.id INTO v_user_id 
+            FROM auth.identities i
+            JOIN auth.users u ON i.user_id = u.id
+            WHERE i.provider = v_provider AND i.identifier = v_identifier;
+
+            IF v_user_id IS NULL THEN
+                -- 2. Eixo Secundário: Cross-Link via Email (Apenas se e-mail estiver presente e for confiável)
+                IF profile->>'email' IS NOT NULL THEN
+                    SELECT id INTO v_user_id FROM auth.users WHERE raw_user_meta_data->>'email' = profile->>'email' LIMIT 1;
+                END IF;
+
+                -- 3. Criação de Usuário Neutro (Sem dependência rígida de campos)
+                IF v_user_id IS NULL THEN
+                    INSERT INTO auth.users (raw_user_meta_data, created_at, last_sign_in_at) 
+                    VALUES (profile, now(), now())
+                    RETURNING id INTO v_user_id;
+                END IF;
+
+                -- 4. Registro da Nova Identidade
+                INSERT INTO auth.identities (user_id, provider, identifier, identity_data, created_at, last_sign_in_at, verified_at) 
+                VALUES (v_user_id, v_provider, v_identifier, profile, now(), now(), CASE WHEN auto_verify THEN now() ELSE NULL END);
+            ELSE
+                -- 5. Atualização de Rastro
+                UPDATE auth.users SET last_sign_in_at = now() WHERE id = v_user_id;
+                UPDATE auth.identities SET last_sign_in_at = now(), identity_data = profile 
+                WHERE provider = v_provider AND identifier = v_identifier;
+            END IF;
+
+            -- 6. Sincronização de Metadados (Merge Seguro)
+            SELECT raw_user_meta_data INTO v_current_meta FROM auth.users WHERE id = v_user_id;
+            UPDATE auth.users SET raw_user_meta_data = COALESCE(v_current_meta, '{}'::jsonb) || profile 
+            WHERE id = v_user_id;
+
+            RETURN v_user_id;
+        END;
+        $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+        CREATE OR REPLACE FUNCTION auth.refresh_session_v2(p_old_hash text, p_new_hash text, p_ip text, p_ua text)
+        RETURNS TABLE (status text, p_user_id uuid, p_user_meta jsonb) AS $$
+        DECLARE
+            v_token record;
+            v_user_meta jsonb;
+        BEGIN
+            -- 1. Localização Atômica do Token
+            SELECT id, user_id, revoked, parent_token INTO v_token 
+            FROM auth.refresh_tokens WHERE token_hash = p_old_hash AND expires_at > now();
+
+            IF NOT FOUND THEN RETURN QUERY SELECT 'invalid_token'::text, NULL::uuid, NULL::jsonb; RETURN; END IF;
+            IF v_token.revoked THEN RETURN QUERY SELECT 'revoked_reuse_detected'::text, NULL::uuid, NULL::jsonb; RETURN; END IF;
+
+            -- 2. Invalidação (Revogação)
+            UPDATE auth.refresh_tokens SET revoked = true WHERE id = v_token.id;
+
+            -- 3. Rotação de Token (Encadeamento Imutável)
+            INSERT INTO auth.refresh_tokens (token_hash, user_id, expires_at, parent_token, ip_address, user_agent) 
+            VALUES (p_new_hash, v_token.user_id, now() + interval '30 days', v_token.id, p_ip, p_ua);
+
+            -- 4. Recuperação do Perfil Enriquecido
+            SELECT raw_user_meta_data INTO v_user_meta FROM auth.users WHERE id = v_token.user_id;
+
+            RETURN QUERY SELECT 'success'::text, v_token.user_id, v_user_meta;
+        END;
+        $$ LANGUAGE plpgsql SECURITY DEFINER;
+        `;
+    }
+
+    private static parseSeconds(str: string): number {
+        const match = str.match(/^(\d+)([smhd])$/);
+        if (!match) return 3600;
+        const val = parseInt(match[1]);
+        const unit = match[2];
+        if (unit === 's') return val;
+        if (unit === 'm') return val * 60;
+        if (unit === 'h') return val * 3600;
+        if (unit === 'd') return val * 86400;
+        return 3600;
+    }
+}

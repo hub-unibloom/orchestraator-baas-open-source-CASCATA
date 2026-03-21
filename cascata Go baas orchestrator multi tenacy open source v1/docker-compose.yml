@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # O Orquestrador Central Cascata (Condomínio Inteligente)
+  cascata-orchestrator:
+    build:
+      context: .
+      dockerfile: ./deployments/Dockerfile.backend
+    container_name: cascata-orchestrator
+    environment:
+      - PORT=8080
+      - DB_URL=postgres://cascata_admin:cascata_pass@cascata-db:5432/cascata_meta
+      - REDIS_URL=redis://cascata-cache:6379
+      - GO_ENV=development
+      - VAULT_ADDR=http://cascata-vault:8200
+      - VAULT_TOKEN=cascata_root_token
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - cascata_extension_payloads:/cascata_extensions:ro
+    depends_on:
+      cascata-db:
+        condition: service_healthy
+    networks:
+      - cascata-net
+
+  # Banco de Dados de Metadados (Onde os nomes dos apartamentos/tenancy são guardados)
+  cascata-db:
+    image: postgres:18-alpine
+    container_name: cascata-db
+    environment:
+      - POSTGRES_USER=cascata_admin
+      - POSTGRES_PASSWORD=cascata_pass
+      - POSTGRES_DB=cascata_meta
+    ports:
+      - "5432:5432"
+    volumes:
+      - cascata-db-data:/var/lib/postgresql/data
+      - ./scripts/phantom_linker.sh:/usr/local/bin/phantom_linker.sh:ro
+      - ./scripts/init-meta.sql:/docker-entrypoint-initdb.d/init-meta.sql:ro
+      - cascata_extension_payloads:/cascata_extensions
+    command: >
+      sh -c "
+      (apk add --no-cache inotify-tools || true) &&
+      (/usr/local/bin/phantom_linker.sh &) &&
+      docker-entrypoint.sh postgres"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cascata_admin -d cascata_meta"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cascata-net
+
+  # Dragonfly - Cache de Alta Performance (Redi-compatível) para Semáforos e Locks
+  cascata-cache:
+    image: 'docker.dragonflydb.io/dragonflydb/dragonfly'
+    container_name: cascata-cache
+    ports:
+      - "6379:6379"
+    networks:
+      - cascata-net
+
+  # Vault - O Cofre Central de Segredos (HashiCorp Vault 1.15)
+  cascata-vault:
+    image: hashicorp/vault:1.15
+    container_name: cascata-vault
+    environment:
+      - VAULT_ADDR=http://127.0.0.1:8200
+      - VAULT_DEV_ROOT_TOKEN_ID=cascata_root_token
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - cascata-net
+    command: server -dev -dev-listen-address=0.0.0.0:8200
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+networks:
+  cascata-net:
+    driver: bridge
+
+volumes:
+  cascata-db-data:
+  cascata_extension_payloads:
+    name: cascata_extension_payloads
