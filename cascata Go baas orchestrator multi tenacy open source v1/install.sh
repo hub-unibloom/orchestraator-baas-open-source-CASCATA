@@ -1,29 +1,26 @@
 #!/usr/bin/env bash
 
 # ==============================================================================
-# CASCATA v1.0.0.0 — INSTALLER SCRIPT
+# CASCATA v1.0.0.0 — REAL PLUG & PLAY INSTALLER SCRIPT
 # Environment: Linux (Ubuntu/Debian recommended) / VPS
 #
-# Este instalador tem responsabilidades rígidas:
-# 1. Validar e/ou instalar Docker e Docker Compose nativo.
-# 2. Configurar permissões de volumes essenciais.
-# 3. Levantar a infraestrutura via docker-compose de forma paralela.
-# 4. Aguardar o healthcheck síncrono dos serviços pesados (Postgres, Vault).
-# 5. Entregar as chaves e rotas da API em tela.
-#
-# Tolerância Zero a Falhas: Se um container crashear, a instalação aborta com log.
+# Propósito Deste Instalador (Plug & Play Real):
+# 1. Auto-elevar privilégios caso baixado e rodado via usuário normal.
+# 2. Instalar dependências de sistema host (Git, curl, Docker, Compose).
+# 3. Clonar o repositório completo (pois o docker-compose exige a pasta /scripts e etc).
+# 4. Garantir que os serviços essenciais inicializem e estejam hard-tested.
 # ==============================================================================
 
-set -eo pipefail # Fail fast na borda (Coding Standards)
+set -eo pipefail # Fail fast
 
 # --- Cores da Interface ---
 C_RESET='\033[0m'
 C_BOLD='\033[1m'
 C_DIM='\033[2m'
-C_BLUE='\033[38;2;99;102;241m'  # accent-primary do sistema
-C_GREEN='\033[38;2;34;197;94m'  # accent-success
-C_RED='\033[38;2;239;68;68m'    # accent-danger
-C_YELLOW='\033[38;2;234;179;8m' # accent-warning
+C_BLUE='\033[38;2;99;102;241m' 
+C_GREEN='\033[38;2;34;197;94m' 
+C_RED='\033[38;2;239;68;68m'    
+C_YELLOW='\033[38;2;234;179;8m'
 
 log_info() { echo -e "${C_BLUE}ℹ${C_RESET} ${C_BOLD}$1${C_RESET}"; }
 log_success() { echo -e "${C_GREEN}✓${C_RESET} ${C_BOLD}$1${C_RESET}"; }
@@ -31,26 +28,10 @@ log_warn() { echo -e "${C_YELLOW}⚠${C_RESET} ${C_BOLD}$1${C_RESET}"; }
 log_error() { echo -e "${C_RED}✗${C_RESET} ${C_BOLD}$1${C_RESET}"; exit 1; }
 log_step() { echo -e "\n${C_DIM}---${C_RESET} ${C_BOLD}$1${C_RESET} ${C_DIM}---${C_RESET}"; }
 
-# Verifica se estamos em Linux (obrigatório para VPS alvo)
-if [[ "$(uname -s)" != "Linux" ]]; then
-    log_warn "O instalador oficial foi projetado para Linux/VPS. Comportamento não garantido em OSX/Windows."
-fi
-
-# Verifica privilegios sudo dinamicamente
-if [ "$EUID" -ne 0 ]; then
-    # Se o docker já existe e o usuário tem acesso (grupo docker), seguimos em frente sem root.
-    if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-        log_info "Sessão usuária verificada válida para manipulação do Docker. Seguindo sem root."
-    else
-        log_warn "O Docker daemon não parece acessível ou não está instalado."
-        log_info "Tentando elevar privilégios automaticamente para prosseguir..."
-        if command -v sudo >/dev/null 2>&1; then
-            exec sudo bash "$0" "$@"
-        else
-            log_error "O comando 'sudo' não está disponível. Por favor, rode o script como 'root'."
-        fi
-    fi
-fi
+# Configurações do Repositório Alvo
+REPO_URL="https://github.com/hub-unibloom/orchestraator-baas-open-source-CASCATA.git"
+INSTALL_DIR="/opt/cascata-v1"
+PROJECT_FOLDER="cascata Go baas orchestrator multi tenacy open source v1"
 
 clear
 echo -e "${C_BLUE}
@@ -61,72 +42,107 @@ echo -e "${C_BLUE}
 ██████  ██   ██ ███████  ██████ ██   ██    ██    ██   ██ 
                                             v1.0.0.0 Studio
 ${C_RESET}"
-echo -e "Inicializando orquestração BaaS Multi-Tenant...\n"
+echo -e "Inicializando instalador Plug & Play Cascata...\n"
 
 # ==============================================================================
-# START: FASE 1 - DEPENDÊNCIAS DO HOST
+# 1. VERIFICAÇÃO DE ROOT AUTOMÁTICA
+# ==============================================================================
+if [ "$EUID" -ne 0 ]; then
+    if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+        log_info "Sessão atual possui acesso ao Docker. Prosseguindo."
+    else
+        log_warn "O Docker não está acessível ou necessitamos de privilégios para instalar pacotes."
+        log_info "Tentando elevar com sudo automaticamente..."
+        if command -v sudo >/dev/null 2>&1; then
+            exec sudo bash "$0" "$@"
+        else
+            log_error "Comando 'sudo' ausente. Rode 'sudo ./install.sh' ou logue como root."
+        fi
+    fi
+fi
+
+# ==============================================================================
+# 2. INSTALAÇÃO DE PACOTES BÁSICOS DO HOST (Git, curl)
+# ==============================================================================
+log_step "Verificando pacotes vitais (Git/Curl)"
+if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
+    log_info "Git ou Curl ausentes. Instalando via apt-get..."
+    apt-get update -y >/dev/null 2>&1 || true
+    apt-get install -y git curl >/dev/null 2>&1 || log_error "Falha ao instalar Git/Curl nativo."
+fi
+log_success "Git e Curl operacionais."
+
+# ==============================================================================
+# 3. INSTALAÇÃO DO DOCKER
 # ==============================================================================
 log_step "Validando Docker Runtime"
 
 if ! command -v docker >/dev/null 2>&1; then
-    log_info "Docker engine não encontrado. Provisionando instalação nativa..."
-    curl -fsSL https://get.docker.com -o get-docker.sh || log_error "Falha ao baixar instalador Docker"
-    sh get-docker.sh || log_error "Falha na instalação do Docker Engine"
+    log_info "Docker engine não encontrado na VPS. Provisionando via get.docker.com..."
+    curl -fsSL https://get.docker.com -o get-docker.sh || log_error "Falha ao baixar script oficial do Docker."
+    sh get-docker.sh >/dev/null 2>&1 || log_error "Falha na instalação do Docker Engine."
     rm get-docker.sh
-    systemctl enable docker
-    systemctl start docker
-    log_success "Docker nativo instalado e ativo."
+    systemctl enable docker >/dev/null 2>&1 || true
+    systemctl start docker >/dev/null 2>&1 || true
+    log_success "Docker nativo instalado."
 else
     log_success "Docker daemon presente: $(docker --version)"
 fi
 
 if ! docker compose version >/dev/null 2>&1; then
-    log_info "Plugin Docker Compose não encontrado."
     if ! command -v docker-compose >/dev/null 2>&1; then
-        log_error "Nem o 'docker-compose' e nem o 'docker compose' (plugin) estão instalados. Instale o docker-compose-plugin manualmente."
+        log_info "Docker Compose não detectado. Instalando plugin nativo..."
+        apt-get install -y docker-compose-plugin >/dev/null 2>&1 || log_error "Falha instalando Compose Plugin."
+        DOCKER_COMPOSE_CMD="docker compose"
     else
         DOCKER_COMPOSE_CMD="docker-compose"
-        log_success "Usando docker-compose legado secundário."
     fi
 else
     DOCKER_COMPOSE_CMD="docker compose"
-    log_success "Docker Compose gen v2 presente."
 fi
 
 # ==============================================================================
-# START: FASE 2 - DOCKER NETWORK & IMAGES
+# 4. CLONE DO REPOSITÓRIO FÍSICO (A MÁGICA DO PLUG & PLAY)
 # ==============================================================================
-log_step "Aplicando Configurações do Cluster"
+log_step "Sincronizando Código Fonte Oficial ($INSTALL_DIR)"
 
-# Parar tudo se ja estiver rodando
-log_info "Matando containeres antigos (Fail Fast se houver conflito)"
-$DOCKER_COMPOSE_CMD down --remove-orphans || true
+if [ -d "$INSTALL_DIR" ]; then
+    log_info "Diretório $INSTALL_DIR já existe. Atualizando via Git pull..."
+    cd "$INSTALL_DIR"
+    git reset --hard HEAD >/dev/null 2>&1
+    git pull origin main >/dev/null 2>&1 || log_warn "Não foi possivel fazer hard pull. Usando a versão local do diretório."
+else
+    log_info "Clonando repositório para a VPS..."
+    git clone "$REPO_URL" "$INSTALL_DIR" >/dev/null 2>&1 || log_error "Falha ao clonar repositório."
+fi
 
-# Criação de volumes de base para que as permissões não buguem (Vault / Postgres)
-log_info "Provisionando Persistent Volumes..."
-$DOCKER_COMPOSE_CMD pull
-log_success "Imagens atualizadas validadas via registry."
+# Navega especificamente para a sub-pasta do projeto v1
+cd "$INSTALL_DIR/$PROJECT_FOLDER" || log_error "Diretório alvo '$PROJECT_FOLDER' não encontrado dentro do repositório."
+log_success "Repositório baixado e posicionado na raiz do Orquestrador v1."
 
 # ==============================================================================
-# START: FASE 3 - DEPLOYMENT CONCORRENTE 
+# 5. DEPLOYMENT (DOCKER COMPOSE)
 # ==============================================================================
-log_step "Lançando Infraestrutura em Background (-d)"
+log_step "Aplicando Configurações e Orquestrando Cluster"
 
+log_info "Baixando e alinhando imagens base..."
+$DOCKER_COMPOSE_CMD pull -q || true
+
+log_info "Iniciando infraestrutura principal do Cascata (-d)..."
 $DOCKER_COMPOSE_CMD up -d
 
 # ==============================================================================
-# START: FASE 4 - HEATHCHECKS SÍNCRONOS
+# 6. HEATHCHECKS SÍNCRONOS
 # ==============================================================================
-log_step "Injetando código defensivo: Aguardando Prontidão de I/O..."
+log_step "Injetando código defensivo: Aguardando Servidores de Apoio..."
 
 wait_for_service() {
     local SERVICE_NAME=$1
-    local MAX_RETRIES=30
+    local MAX_RETRIES=40
     local RETRY_COUNT=0
     
     echo -ne "  ${C_DIM}Aguardando ${SERVICE_NAME} estabilizar...${C_RESET}\r"
     while : ; do
-        # Busca o estado de 'health' dentro dos containers que exportam nativo no compose
         STATUS=$(docker inspect --format='{{json .State.Health.Status}}' cascata-${SERVICE_NAME} 2>/dev/null || echo "\"unknown\"")
         STATUS=$(echo "$STATUS" | tr -d '"')
 
@@ -134,15 +150,13 @@ wait_for_service() {
             echo -e "  ${C_GREEN}✓${C_RESET} ${SERVICE_NAME} Operacional (~${RETRY_COUNT}s de boot)         "
             return 0
         elif [[ "$STATUS" == "unhealthy" ]]; then
-            echo -e "\n  ${C_RED}✗${C_RESET} Falha crítica: ${SERVICE_NAME} subiu corrompido ou preso em loop."
-            echo -e "\n${C_DIM}Log dump (${SERVICE_NAME}):${C_RESET}"
+            echo -e "\n  ${C_RED}✗${C_RESET} Falha crítica: ${SERVICE_NAME} quebrou loop de teste."
             docker logs --tail 20 cascata-${SERVICE_NAME}
-            log_error "Instalação atômica revertida manualmente. Verifique os logs."
+            log_error "Orquestração falhou. Verifique logs e recursos de Hardware da VPS."
         fi
 
-        # Para Vault e outros que não tiverem health map via dockerd, ou fallback se demorar
+        # Para serviços que não declaram healthcheck nativo
         if [[ "$SERVICE_NAME" == "vault" && "$STATUS" == "unknown" ]]; then
-            # curl defensivo com retry exponencial mitigado
             local VAULT_HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8200/v1/sys/health || echo "000")
             if [[ "$VAULT_HTTP" == "200" || "$VAULT_HTTP" == "429" || "$VAULT_HTTP" == "473" ]]; then
                echo -e "  ${C_GREEN}✓${C_RESET} Vault Master Key ativa (~${RETRY_COUNT}s de boot)         "
@@ -153,34 +167,33 @@ wait_for_service() {
         sleep 1
         ((RETRY_COUNT++))
         if [ "$RETRY_COUNT" -gt "$MAX_RETRIES" ]; then
-            echo -e "\n  ${C_RED}✗${C_RESET} Timeout de ${MAX_RETRIES} segundos atingido."
+            echo -e "\n  ${C_RED}✗${C_RESET} Timeout atingido para ${SERVICE_NAME}."
             docker logs --tail 20 cascata-${SERVICE_NAME}
-            log_error "O serviço ${SERVICE_NAME} não reportou saúde sadia a tempo."
+            log_error "O serviço ${SERVICE_NAME} não iniciou a tempo."
         fi
     done
 }
 
-# Valida os 3 core base, aguardando o banco primeiro obrigatoriamente
+# Aguardamos os 4 pilares:
 wait_for_service "db"
 wait_for_service "cache"
 wait_for_service "vault"
 wait_for_service "orchestrator"
 
 # ==============================================================================
-# START: FASE FINAL - PAINEL SECRETO
+# END: PAINEL SECRETO E SUCESSO
 # ==============================================================================
-log_step "Tudo Operacional"
+log_step "Plataforma Hospedada Ativa"
 
 HOST_IP=$(curl -s ifconfig.me || echo "127.0.0.1")
 
-echo -e "  ${C_BOLD}CASCATA STUDIO (FRONTEND v1.0)${C_RESET} Em breve na rota da API ou via Vite Dev"
+echo -e "  ${C_BOLD}CASCATA STUDIO (FRONTEND v1.0)${C_RESET} Acesse de seu computador de Dev ou aguarde a porta Front."
 echo -e "  ${C_BOLD}ORQUESTRADOR (BACKEND API)${C_RESET}   http://${HOST_IP}:8080"
 echo -e "  ${C_BOLD}POSTGRES MULTI-TENANT META${C_RESET}   postgres://cascata_admin:cascata_pass@${HOST_IP}:5432/cascata_meta"
 echo -e "  ${C_BOLD}VAULT UI (DEV MODE)${C_RESET}          http://${HOST_IP}:8200\n"
 
-echo -e "${C_YELLOW}⚠ IMPORTANTE: O Vault está rodando em '-dev' e o token raiz é:${C_RESET}"
-echo -e "${C_BLUE}  cascata_root_token${C_RESET}\n"
+echo -e "${C_YELLOW}⚠ IMPORTANTE - CREDENCIAIS DEV:${C_RESET}"
+echo -e "${C_BLUE}  Vault Token:${C_RESET} cascata_root_token\n"
 
-echo -e "${C_DIM}Todos os dados agora sofrem Fail Fast na borda, o frontend UI usa Design Tokens rígidos,"
-echo -e "os logs em Go são estruturados e I/O nunca bloqueia a stack.${C_RESET}"
-log_success "Deploy Completo e Perfeito."
+echo -e "${C_DIM}A pasta oficial do projeto ficou na VPS em: $INSTALL_DIR${C_RESET}"
+log_success "Deploy Concluído perfeitamente. Pode fechar o terminal e agir."
