@@ -36,9 +36,20 @@ if [[ "$(uname -s)" != "Linux" ]]; then
     log_warn "O instalador oficial foi projetado para Linux/VPS. Comportamento não garantido em OSX/Windows."
 fi
 
-# Verifica privilegios sudo
+# Verifica privilegios sudo dinamicamente
 if [ "$EUID" -ne 0 ]; then
-  log_error "Por favor, execute como root (sudo ./install.sh). Necessário para gerenciar o Docker daemon."
+    # Se o docker já existe e o usuário tem acesso (grupo docker), seguimos em frente sem root.
+    if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+        log_info "Sessão usuária verificada válida para manipulação do Docker. Seguindo sem root."
+    else
+        log_warn "O Docker daemon não parece acessível ou não está instalado."
+        log_info "Tentando elevar privilégios automaticamente para prosseguir..."
+        if command -v sudo >/dev/null 2>&1; then
+            exec sudo bash "$0" "$@"
+        else
+            log_error "O comando 'sudo' não está disponível. Por favor, rode o script como 'root'."
+        fi
+    fi
 fi
 
 clear
