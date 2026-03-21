@@ -8,15 +8,15 @@
 # ╚██████╗██║  ██║███████║╚██████╗ ██║  ██║   ██║   ██║  ██║
 #  ╚═════╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝
 # ==============================================================================
-# CASCATA v1.0.0.0 — SECURE ENTERPRISE INSTALLER (HARDENED)
+# CASCATA v1.0.0.0 — FULL PLUG & PLAY INSTALLER
 # Environment: Linux (Multi-Distro) / Production / VPS
-# Philosophy: Plug & Play, Context-Aware, Military Hardening.
+# Philosophy: Comprehensive Orchestration, Self-Cloning, Remote Ready.
 # ==============================================================================
 
 set -euo pipefail
 IFS=$'\n\t'
 
-# --- 1. DESIGN SYSTEM & IDENTITY ---
+# --- 1. DESIGN SYSTEM ---
 readonly C_BOLD='\033[1m'
 readonly C_DIM='\033[2m'
 readonly C_BLUE='\033[38;2;99;102;241m' 
@@ -32,10 +32,10 @@ log_warn()    { echo -e "${C_YELLOW}⚠${C_RESET} ${C_BOLD}$1${C_RESET}"; }
 log_error()   { echo -e "${C_RED}✗${C_RESET} ${C_BOLD}$1${C_RESET}"; exit 1; }
 log_step()    { echo -e "\n${C_BOLD}${C_BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}\n${C_BOLD}  ▸ $1${C_RESET}"; }
 
-# --- 2. CONTEXT & PRE-FLIGHT ---
-# Ensures the script runs with absolute directory awareness
-ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$ROOT_DIR" || log_error "Falha crítica ao acessar diretório raiz."
+# --- 2. GLOBAL CONSTANTS ---
+readonly REPO_URL="https://github.com/hub-unibloom/orchestraator-baas-open-source-CASCATA.git"
+readonly TARGET_DIR="$HOME/cascata_root"
+readonly V1_SUBPATH="cascata Go baas orchestrator multi tenacy open source v1"
 
 print_banner() {
     clear
@@ -51,12 +51,6 @@ ${C_RESET}${C_DIM}                              v1.0.0.0 | Orchestrator Studio${
     log_info "Inicializando orquestração BaaS Multi-Tenant..."
 }
 
-check_integrity() {
-    if [ ! -f "docker-compose.yml" ]; then
-        log_error "Aquivo 'docker-compose.yml' ausente em $ROOT_DIR. O instalador deve permanecer na raiz do projeto."
-    fi
-}
-
 check_privileges() {
     if [ "$EUID" -ne 0 ]; then
         log_warn "O instalador necessita de privilégios elevados para tuning de Kernel e Docker."
@@ -69,133 +63,166 @@ check_privileges() {
     fi
 }
 
-# --- 3. INFRASTRUCTURE & TUNING ---
-ensure_dependencies() {
-    log_step "Validando Docker Runtime & System Binaries"
+# --- 3. REPOSITORY SYNC (THE "PLUG") ---
+sync_repository() {
+    log_step "Sincronizando Código Fonte e Arquivos de Orquestração"
     
+    if [ -d "$TARGET_DIR" ]; then
+        log_info "Diretório alvo detectado. Atualizando repositório..."
+        cd "$TARGET_DIR"
+        git fetch --all --quiet
+        git reset --hard origin/main --quiet
+    else
+        log_info "Clonando plataforma do repositório remoto..."
+        git clone --quiet "$REPO_URL" "$TARGET_DIR"
+        cd "$TARGET_DIR"
+    fi
+
+    local V1_ABS_PATH="$TARGET_DIR/$V1_SUBPATH"
+    if [ ! -d "$V1_ABS_PATH" ]; then
+        log_error "Diretório de versão '$V1_SUBPATH' não encontrado no repositório."
+    fi
+
+    # Entering the actual version folder where docker-compose.yml lives
+    cd "$V1_ABS_PATH"
+    log_success "Sincronizado e posicionado em: $V1_ABS_PATH"
+}
+
+# --- 4. DEPENDENCIES ---
+ensure_dependencies() {
+    log_step "Validando Runtime (Docker) e Ferramentas"
+    
+    # 1. Base Tools (Git, Curl, JQ)
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        case $ID in
+            ubuntu|debian|pop|mint) apt-get update -qq && apt-get install -qq -y curl git jq >/dev/null ;;
+            centos|rhel|almalinux|rocky|fedora) dnf install -y -q curl git jq >/dev/null ;;
+            *) log_warn "Distribuição não mapeada. Certifique-se de que git/curl/jq estão instalados." ;;
+        esac
+    fi
+
+    # 2. Docker Engine
     if ! command -v docker >/dev/null 2>&1; then
-        log_info "Provisionando Docker Engine nativo..."
+        log_info "Docker Engine ausente. Instalando canal oficial..."
         curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh && rm get-docker.sh
         systemctl enable --now docker >/dev/null 2>&1 || true
     fi
     
-    # Check for Compose v2 or v1
-    DOCKER_COMPOSE_CMD="docker compose"
+    # 3. Docker Compose v2 Integration
+    DOCKER_CMD="docker compose"
     if ! docker compose version >/dev/null 2>&1; then
         if command -v docker-compose >/dev/null 2>&1; then
-            DOCKER_COMPOSE_CMD="docker-compose"
-            log_warn "Usando legado: docker-compose (v1). Recomendado v2."
+            DOCKER_CMD="docker-compose"
+            log_warn "Usando legado: docker-compose (v1)."
         else
-            log_error "Docker Compose não detectado. Instale 'docker-compose-plugin'."
+            log_error "Docker Compose (v2) não detectado. Instale via 'docker-compose-plugin'."
         fi
     fi
     
-    log_success "Docker Runtime operacional: $(docker --version)"
+    log_success "Docker Engine pronto: $(docker --version)"
 }
 
-apply_hardening() {
-    log_step "Aplicando Hardening e Tuning de Performance (Kernel)"
+# --- 5. PERF & SECURITY ---
+apply_tuning() {
+    log_step "Aplicando Tuning de Performance (Kernel)"
     
-    # BDB & Dragonfly Optimization
+    # Required for PostgreSQL/Dragonfly large mappings
     sysctl -w vm.max_map_count=524288 >/dev/null 2>&1 || true
     sysctl -w fs.file-max=131072 >/dev/null 2>&1 || true
     
-    # TCP Keepalives (BaaS Performance)
-    sysctl -w net.ipv4.tcp_keepalive_time=60 >/dev/null 2>&1 || true
-    
-    log_success "Tuning de Kernel concluído."
+    log_success "Kernel otimizado."
 }
 
-# --- 4. SECURE PROVISIONING ---
-secure_env() {
-    log_step "Gerando Identidade Criptográfica (Vault Bootstrap)"
+secure_bootstrap() {
+    log_step "Bootstrapping de Identidade e Vault"
     
     if [ -f ".env" ]; then
-        log_warn "Identidade .env já existente. Ignorando regeração para preservar chaves ativas."
+        log_warn "Arquivo .env já existe. Preservando credenciais atuais."
         return
     fi
 
-    # Entropy-driven keys
-    PG_PASS=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
-    JWT_SECRET=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 64)
-    VAULT_TOKEN=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 48)
+    local DB_PASS=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24)
+    local JWT_SEC=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 64)
+    local VLT_TOK=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
 
     cat <<EOF > .env
-# --- CASCATA V1 MASTER IDENT ---
+# --- CASCATA V1 MASTER ENVS ---
 PROJECT_NAME=cascata
 NODE_ENV=production
 
-# Database (Logical Isolator)
+# PG Stack
 DB_USER=cascata_admin
-DB_PASS=${PG_PASS}
+DB_PASS=${DB_PASS}
 DB_NAME=cascata_meta
 
-# Networking & Proxy
+# Cache Stack
 DRAGONFLY_PORT=6379
-VAULT_ADDR=http://vault:8200
-VAULT_TOKEN=${VAULT_TOKEN}
 
-# Logic & Handshake
-SYSTEM_JWT_SECRET=${JWT_SECRET}
+# Security Stack (Vault)
+VAULT_ADDR=http://vault:8200
+VAULT_TOKEN=${VLT_TOK}
+SYSTEM_JWT_SECRET=${JWT_SEC}
 EOF
     chmod 600 .env
-    log_success "Secrets protegidos em .env (Mode 600)."
+    log_success "Ambiente .env gerado com entropia segura."
 }
 
-# --- 5. ORCHESTRATION ---
-start_cluster() {
-    log_step "Aplicando Configurações do Cluster"
+# --- 6. LAUNCH ---
+launch_cluster() {
+    log_step "Orquestrando Cluster (Docker Compose)"
     
-    # FAIL-FAST: Kill old zombie containers from this project
-    log_info "Matando containeres antigos (Fail Fast se houver conflito)"
-    $DOCKER_COMPOSE_CMD down --remove-orphans >/dev/null 2>&1 || true
-    
-    log_info "Provisionando Persistent Volumes..."
-    docker volume create cascata_data >/dev/null 2>&1 || true
-    docker volume create cascata_vault >/dev/null 2>&1 || true
+    if [ ! -f "docker-compose.yml" ]; then
+        log_error "Aquivo 'docker-compose.yml' não encontrado no sub-diretório de execução."
+    fi
 
-    log_info "Orquestrando Pillar Services (-d)..."
-    $DOCKER_COMPOSE_CMD up -d --build
-    
-    log_info "Bootstrapping Healthchecks..."
-    local wait_count=0
+    # CLEANUP PHASE (The Fix)
+    log_info "Limpando conflitos e processos zumbis..."
+    $DOCKER_CMD down --remove-orphans >/dev/null 2>&1 || true
+
+    log_info "Subindo Pilares de Dados e Orquestração..."
+    $DOCKER_CMD pull -q || true
+    $DOCKER_CMD up -d --build
+
+    log_info "Aguardando Healthchecks..."
+    local timer=0
     while : ; do
-        local total_ready=$(docker ps --filter "health=healthy" --filter "name=cascata" --format "{{.Names}}" | wc -l)
-        local total_containers=$(docker ps --filter "name=cascata" --format "{{.Names}}" | wc -l)
+        local healthy=$(docker ps --filter "name=cascata" --filter "health=healthy" --format "{{.Names}}" | wc -l)
+        local total=$(docker ps --filter "name=cascata" --format "{{.Names}}" | wc -l)
         
-        if [ "$total_ready" -ge "$total_containers" ] && [ "$total_containers" -gt 0 ]; then
+        if [ "$healthy" -ge "$total" ] && [ "$total" -gt 0 ]; then
             break
         fi
         
-        echo -ne "  ${C_DIM}Aguardando estabilização: ${total_ready}/${total_containers}...${C_RESET}\r"
+        echo -ne "  ${C_DIM}Estabilizando malha: ${healthy}/${total}...${C_RESET}\r"
         sleep 2
-        ((wait_count++))
-        if [ $wait_count -gt 25 ]; then
-            log_warn "Timeout parcial. Alguns serviços podem exigir monitoramento manual."
+        ((timer++))
+        if [ $timer -gt 30 ]; then
+            log_warn "Alguns serviços excederam tempo de resposta inicial."
             break
         fi
     done
 }
 
-# --- 6. COMPLETION ---
+# --- 7. COMPLETE ---
 show_final() {
-    local EXTERNAL_IP=$(curl -s -m 5 ifconfig.me || echo "127.0.0.1")
+    local EXTERNAL_IP=$(curl -s -m 5 ifconfig.me || echo "localhost")
     
-    log_step "CASCATA INSTALADO COM SUCESSO"
+    log_step "CASCATA v1 INICIALIZADO COM SUCESSO"
     
-    echo -e "  ✦ ${C_BOLD}Front-End Portal:${C_RESET} http://${EXTERNAL_IP}:3000"
-    echo -e "  ✦ ${C_BOLD}API Core Handler:${C_RESET} http://${EXTERNAL_IP}:8080"
-    echo -e "  ✦ ${C_BOLD}Vault Management:${C_RESET} http://${EXTERNAL_IP}:8200\n"
+    echo -e "  ✦ ${C_BOLD}Cascata Dashboard (Alpha):${C_RESET} http://${EXTERNAL_IP}:3000"
+    echo -e "  ✦ ${C_BOLD}Backend Data API Plane:${C_RESET} http://${EXTERNAL_IP}:8080"
+    echo -e "  ✦ ${C_BOLD}Security Vault Console:${C_RESET} http://${EXTERNAL_IP}:8200\n"
     
-    log_success "Deploy concluído perfeitamente. O orquestrador v1.0.0.0 está online.\n"
+    log_success "Deploy completo. Orquestrador online.\n"
 }
 
-# --- EXECUTION FLOW ---
+# --- FLOW ---
 print_banner
-check_integrity
 check_privileges
+sync_repository
 ensure_dependencies
-apply_hardening
-secure_env
-start_cluster
+apply_tuning
+secure_bootstrap
+launch_cluster
 show_final
