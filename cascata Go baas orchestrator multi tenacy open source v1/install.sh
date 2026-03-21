@@ -10,7 +10,7 @@
 # ==============================================================================
 # CASCATA v1.0.0.0 — FULL PLUG & PLAY INSTALLER
 # Environment: Linux (Multi-Distro) / Production / VPS
-# Philosophy: Comprehensive Orchestration, Self-Cloning, Remote Ready.
+# Solution: Robust Command Dispatching via Bash Arrays.
 # ==============================================================================
 
 set -euo pipefail
@@ -36,6 +36,7 @@ log_step()    { echo -e "\n${C_BOLD}${C_BLUE}━━━━━━━━━━━�
 readonly REPO_URL="https://github.com/hub-unibloom/orchestraator-baas-open-source-CASCATA.git"
 readonly TARGET_DIR="$HOME/cascata_root"
 readonly V1_SUBPATH="cascata Go baas orchestrator multi tenacy open source v1"
+DOCKER_CMD=(docker compose)
 
 print_banner() {
     clear
@@ -53,9 +54,9 @@ ${C_RESET}${C_DIM}                              v1.0.0.0 | Orchestrator Studio${
 
 check_privileges() {
     if [ "$EUID" -ne 0 ]; then
-        log_warn "O instalador necessita de privilégios elevados para tuning de Kernel e Docker."
+        log_warn "O instalador necessita de privilégios elevados."
         if command -v sudo >/dev/null 2>&1; then
-            log_info "Tentando elevar automaticamente via sudo..."
+            log_info "Elevando privilégios automaticamente..."
             exec sudo bash "$0" "$@"
         else
             log_error "Permissão negada. Execute: sudo ./install.sh"
@@ -63,12 +64,12 @@ check_privileges() {
     fi
 }
 
-# --- 3. REPOSITORY SYNC (THE "PLUG") ---
+# --- 3. REPOSITORY SYNC ---
 sync_repository() {
     log_step "Sincronizando Código Fonte e Arquivos de Orquestração"
     
     if [ -d "$TARGET_DIR" ]; then
-        log_info "Diretório alvo detectado. Atualizando repositório..."
+        log_info "Atualizando repositório em $TARGET_DIR..."
         cd "$TARGET_DIR"
         git fetch --all --quiet
         git reset --hard origin/main --quiet
@@ -80,44 +81,44 @@ sync_repository() {
 
     local V1_ABS_PATH="$TARGET_DIR/$V1_SUBPATH"
     if [ ! -d "$V1_ABS_PATH" ]; then
-        log_error "Diretório de versão '$V1_SUBPATH' não encontrado no repositório."
+        log_error "Sub-diretório '$V1_SUBPATH' não encontrado. Repositório incompleto."
     fi
 
-    # Entering the actual version folder where docker-compose.yml lives
     cd "$V1_ABS_PATH"
-    log_success "Sincronizado e posicionado em: $V1_ABS_PATH"
+    log_success "Sincronizado e posicionado na raiz de Orquestração v1."
 }
 
-# --- 4. DEPENDENCIES ---
+# --- 4. DEPENDENCIES & DISPATCHER ---
 ensure_dependencies() {
     log_step "Validando Runtime (Docker) e Ferramentas"
     
-    # 1. Base Tools (Git, Curl, JQ)
+    # OS Detection
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         case $ID in
             ubuntu|debian|pop|mint) apt-get update -qq && apt-get install -qq -y curl git jq >/dev/null ;;
             centos|rhel|almalinux|rocky|fedora) dnf install -y -q curl git jq >/dev/null ;;
-            *) log_warn "Distribuição não mapeada. Certifique-se de que git/curl/jq estão instalados." ;;
         esac
     fi
 
-    # 2. Docker Engine
+    # Docker Install
     if ! command -v docker >/dev/null 2>&1; then
-        log_info "Docker Engine ausente. Instalando canal oficial..."
+        log_info "Instalando Docker Engine canal oficial..."
         curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh && rm get-docker.sh
         systemctl enable --now docker >/dev/null 2>&1 || true
     fi
     
-    # 3. Docker Compose v2 Integration
-    DOCKER_CMD="docker compose"
-    if ! docker compose version >/dev/null 2>&1; then
-        if command -v docker-compose >/dev/null 2>&1; then
-            DOCKER_CMD="docker-compose"
-            log_warn "Usando legado: docker-compose (v1)."
-        else
-            log_error "Docker Compose (v2) não detectado. Instale via 'docker-compose-plugin'."
-        fi
+    # Docker Compose Detection (Array-Ready)
+    if docker compose version >/dev/null 2>&1; then
+        DOCKER_CMD=(docker compose)
+        log_info "Usando Docker Compose (V2 Plugin)"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        DOCKER_CMD=(docker-compose)
+        log_warn "Usando Docker-Compose (V1 Legado)"
+    else
+        log_info "Provisionando Docker Compose Plugin (V2)..."
+        apt-get install -y docker-compose-plugin >/dev/null 2>&1 || true
+        DOCKER_CMD=(docker compose)
     fi
     
     log_success "Docker Engine pronto: $(docker --version)"
@@ -126,46 +127,35 @@ ensure_dependencies() {
 # --- 5. PERF & SECURITY ---
 apply_tuning() {
     log_step "Aplicando Tuning de Performance (Kernel)"
-    
-    # Required for PostgreSQL/Dragonfly large mappings
     sysctl -w vm.max_map_count=524288 >/dev/null 2>&1 || true
     sysctl -w fs.file-max=131072 >/dev/null 2>&1 || true
-    
     log_success "Kernel otimizado."
 }
 
 secure_bootstrap() {
-    log_step "Bootstrapping de Identidade e Vault"
-    
+    log_step "Gerando Identidade e Vault"
     if [ -f ".env" ]; then
-        log_warn "Arquivo .env já existe. Preservando credenciais atuais."
+        log_warn "Arquivo .env preservado."
         return
     fi
 
-    local DB_PASS=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24)
+    local DB_PASS=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
     local JWT_SEC=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 64)
-    local VLT_TOK=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
+    local VLT_TOK=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 48)
 
     cat <<EOF > .env
-# --- CASCATA V1 MASTER ENVS ---
 PROJECT_NAME=cascata
 NODE_ENV=production
-
-# PG Stack
 DB_USER=cascata_admin
 DB_PASS=${DB_PASS}
 DB_NAME=cascata_meta
-
-# Cache Stack
 DRAGONFLY_PORT=6379
-
-# Security Stack (Vault)
 VAULT_ADDR=http://vault:8200
 VAULT_TOKEN=${VLT_TOK}
 SYSTEM_JWT_SECRET=${JWT_SEC}
 EOF
     chmod 600 .env
-    log_success "Ambiente .env gerado com entropia segura."
+    log_success "Ambiente .env gerado."
 }
 
 # --- 6. LAUNCH ---
@@ -173,18 +163,17 @@ launch_cluster() {
     log_step "Orquestrando Cluster (Docker Compose)"
     
     if [ ! -f "docker-compose.yml" ]; then
-        log_error "Aquivo 'docker-compose.yml' não encontrado no sub-diretório de execução."
+        log_error "docker-compose.yml não encontrado em $(pwd)"
     fi
 
-    # CLEANUP PHASE (The Fix)
-    log_info "Limpando conflitos e processos zumbis..."
-    $DOCKER_CMD down --remove-orphans >/dev/null 2>&1 || true
+    log_info "Limpando conflitos..."
+    "${DOCKER_CMD[@]}" down --remove-orphans >/dev/null 2>&1 || true
 
-    log_info "Subindo Pilares de Dados e Orquestração..."
-    $DOCKER_CMD pull -q || true
-    $DOCKER_CMD up -d --build
+    log_info "Iniciando orquestração v1.0.0.0..."
+    "${DOCKER_CMD[@]}" pull -q || true
+    "${DOCKER_CMD[@]}" up -d --build
 
-    log_info "Aguardando Healthchecks..."
+    log_info "Bootstrapping Healthchecks..."
     local timer=0
     while : ; do
         local healthy=$(docker ps --filter "name=cascata" --filter "health=healthy" --format "{{.Names}}" | wc -l)
@@ -194,11 +183,11 @@ launch_cluster() {
             break
         fi
         
-        echo -ne "  ${C_DIM}Estabilizando malha: ${healthy}/${total}...${C_RESET}\r"
+        echo -ne "  ${C_DIM}Sincronizando malha: ${healthy}/${total}...${C_RESET}\r"
         sleep 2
         ((timer++))
-        if [ $timer -gt 30 ]; then
-            log_warn "Alguns serviços excederam tempo de resposta inicial."
+        if [ $timer -gt 40 ]; then
+            log_warn "Timeout parcial detectado."
             break
         fi
     done
@@ -207,14 +196,11 @@ launch_cluster() {
 # --- 7. COMPLETE ---
 show_final() {
     local EXTERNAL_IP=$(curl -s -m 5 ifconfig.me || echo "localhost")
-    
-    log_step "CASCATA v1 INICIALIZADO COM SUCESSO"
-    
-    echo -e "  ✦ ${C_BOLD}Cascata Dashboard (Alpha):${C_RESET} http://${EXTERNAL_IP}:3000"
-    echo -e "  ✦ ${C_BOLD}Backend Data API Plane:${C_RESET} http://${EXTERNAL_IP}:8080"
+    log_step "CASCATA INICIALIZADO COM SUCESSO"
+    echo -e "  ✦ ${C_BOLD}Dashboard Portal:${C_RESET} http://${EXTERNAL_IP}:3000"
+    echo -e "  ✦ ${C_BOLD}API Core Handler:${C_RESET} http://${EXTERNAL_IP}:8080"
     echo -e "  ✦ ${C_BOLD}Security Vault Console:${C_RESET} http://${EXTERNAL_IP}:8200\n"
-    
-    log_success "Deploy completo. Orquestrador online.\n"
+    log_success "Deploy concluído. Orquestrador online.\n"
 }
 
 # --- FLOW ---
