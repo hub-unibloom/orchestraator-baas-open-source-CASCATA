@@ -11,6 +11,7 @@ import (
 
 	"cascata/internal/config"
 	"cascata/internal/database"
+	"github.com/go-chi/chi/v5"
 )
 
 // Server represents the API server instance.
@@ -36,29 +37,41 @@ func NewServer(cfg *config.Config, repo *Repository, authM *AuthMiddleware, memb
 
 // Start initiates the server on a TCP port or Unix socket.
 func (s *Server) Start(ctx context.Context, id int) error {
-	router := http.NewServeMux()
+	router := chi.NewRouter()
 	
 	// Routes
 	// 1. PUBLIC ROUTES
-	router.HandleFunc("/health", s.handleHealth)
-	router.HandleFunc("/system/auth/login", s.SystemH.HandleLogin) // Public (Rate limited inside handler)
+	router.Get("/health", s.handleHealth)
+	router.Post("/system/auth/login", s.SystemH.HandleLogin) // Public
 	
 	// 2. PROTECTED SYSTEM ROUTES (Dashboard/Members)
-	systemMux := http.NewServeMux()
-	systemMux.HandleFunc("/system/projects", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"message": "List of projects (Mocked)"}`))
+	router.Group(func(r chi.Router) {
+		r.Use(s.MemberMiddle.EnforceMemberSession)
+		
+		r.Get("/system/projects", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(`{"message": "List of projects (Mocked)"}`))
+		})
 	})
-	router.Handle("/system/", s.MemberMiddle.EnforceMemberSession(systemMux))
 
 	// 3. PROTECTED TENANT ROUTES (V1 API)
-	v1Mux := http.NewServeMux()
-	// All V1 tenant operations go here
-	v1Mux.HandleFunc("/v1/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"message": "Welcome to Tenant API (Mocked)"}`))
+	// We use chi for path parameter capturing used in DataHandlers
+	router.Group(func(r chi.Router) {
+		r.Use(s.AuthMiddle.EnforceTripleMode)
+		
+		// Map v1 tenant operations
+		r.Route("/v1/{project}", func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				w.Write([]byte(`{"message": "Welcome to Tenant API"}`))
+			})
+			
+			// Table access (consumed by DataHandler)
+			r.Get("/{table}", func(w http.ResponseWriter, r *http.Request) {
+				w.Write([]byte(`{"message": "Table route"}`))
+			})
+		})
 	})
-	router.Handle("/v1/", s.AuthMiddle.EnforceTripleMode(v1Mux))
 
-	// Use the root router as the main handler
+	// Use the chi router as the main handler
 	mainHandler := router
 
 	// Determine the listener: Unix Socket or TCP
