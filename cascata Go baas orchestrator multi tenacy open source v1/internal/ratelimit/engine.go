@@ -128,7 +128,7 @@ func (e *AdaptiveEngine) IsIPBanned(ctx context.Context, ip string) (bool, time.
 // deductTokens uses Redis INCR + EXPIRE tracking to subtract multi-weight tokens
 func (e *AdaptiveEngine) deductTokens(ctx context.Context, key string, limit, window, weight int) (bool, error) {
 	pipe := e.redis.TxPipeline()
-	ctr := pipe.IncrBy(ctx, key, int64(weight))
+	_ = pipe.IncrBy(ctx, key, int64(weight))
 	pipe.Expire(ctx, key, time.Duration(window)*time.Second)
 	res, err := pipe.Exec(ctx)
 	if err != nil {

@@ -1,82 +1,37 @@
-=> [builder 5/8] COPY . .                                                                                            0.0s
- => ERROR [builder 6/8] RUN go mod tidy                                                                              11.2s
+ => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go          41.1s 
 ------                                                                                                                     
- > [builder 6/8] RUN go mod tidy:                                                                                          
-0.289 go: downloading github.com/redis/go-redis/v9 v9.3.0                                                                  
-0.303 go: downloading golang.org/x/net v0.22.0                                                                             
-1.005 go: downloading github.com/go-chi/chi/v5 v5.0.12                                                                     
-1.070 go: downloading golang.org/x/crypto v0.21.0                                                                          
-1.606 go: downloading github.com/hibiken/asynq v0.24.0
-2.275 go: downloading github.com/jackc/pgx/v5 v5.5.0
-2.598 go: downloading github.com/tetratelabs/wazero v1.5.0
-3.605 go: downloading golang.org/x/term v0.18.0
-4.238 go: downloading github.com/traefik/yaegi v0.16.1
-4.985 go: downloading github.com/hashicorp/vault-client-go v0.4.0
-5.513 go: downloading github.com/cespare/xxhash/v2 v2.2.0
-5.515 go: downloading github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f
-5.520 go: downloading github.com/bsm/ginkgo/v2 v2.12.0
-5.536 go: downloading github.com/bsm/gomega v1.27.10
-5.613 go: downloading golang.org/x/text v0.14.0
-6.413 go: downloading github.com/go-redis/redis/v8 v8.11.2
-6.414 go: downloading github.com/google/uuid v1.2.0
-6.423 go: downloading github.com/robfig/cron/v3 v3.0.1
-6.432 go: downloading golang.org/x/sys v0.18.0
-6.926 go: downloading golang.org/x/time v0.0.0-20220922220347-f3bd1da661af
-6.927 go: downloading github.com/google/go-cmp v0.5.8
-6.950 go: downloading go.uber.org/goleak v1.1.12
-6.964 go: downloading github.com/stretchr/testify v1.8.1
-6.996 go: downloading github.com/jackc/puddle/v2 v2.2.1
-7.073 go: downloading github.com/hashicorp/go-cleanhttp v0.5.2
-7.074 go: downloading github.com/hashicorp/go-retryablehttp v0.7.1
-7.091 go: downloading github.com/hashicorp/go-rootcerts v1.0.2
-7.111 go: downloading github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
-7.155 go: downloading github.com/golang/protobuf v1.4.2
-7.155 go: downloading google.golang.org/protobuf v1.25.0
-7.320 go: downloading github.com/spf13/cast v1.3.1
-7.329 go: downloading github.com/onsi/ginkgo v1.15.0
-7.584 go: downloading github.com/onsi/gomega v1.10.5
-7.650 go: downloading github.com/jackc/pgpassfile v1.0.0
-7.667 go: downloading github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a
-7.686 go: downloading github.com/davecgh/go-spew v1.1.1
-7.707 go: downloading github.com/pmezard/go-difflib v1.0.0
-7.717 go: downloading gopkg.in/yaml.v3 v3.0.1
-7.756 go: downloading golang.org/x/sync v0.1.0
-7.757 go: downloading github.com/mitchellh/go-homedir v1.1.0
-7.775 go: downloading github.com/ryanuber/go-glob v1.0.0
-7.785 go: downloading github.com/nxadm/tail v1.4.4
-7.794 go: downloading gopkg.in/yaml.v2 v2.3.0
-7.800 go: downloading gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
-7.809 go: downloading github.com/fsnotify/fsnotify v1.4.9
-7.865 go: downloading github.com/hashicorp/go-hclog v0.9.2
-7.954 go: finding module for package github.com/hashicorp/vault-client-go/system
-8.167 go: downloading github.com/hashicorp/vault-client-go v0.4.3
-10.96 go: cascata/internal/vault imports
-10.96 	github.com/hashicorp/vault-client-go/system: module github.com/hashicorp/vault-client-go@latest found (v0.4.3), but does not contain package github.com/hashicorp/vault-client-go/system
+ > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                      
+30.22 # cascata/internal/repository                                                                                        
+30.22 internal/repository/member.go:7:2: "time" imported and not used                                                      
+36.68 # cascata/internal/vault                                                                                             
+36.68 internal/vault/transit.go:22:24: s.client.Transit undefined (type *"github.com/hashicorp/vault-client-go".Client has no field or method Transit)
+36.68 internal/vault/transit.go:22:60: undefined: vault.TransitEncryptRequest
+36.68 internal/vault/transit.go:34:24: s.client.Transit undefined (type *"github.com/hashicorp/vault-client-go".Client has no field or method Transit)
+36.68 internal/vault/transit.go:34:60: undefined: vault.TransitDecryptRequest
+36.68 internal/vault/vault.go:45:19: resp.Data.Ciphertext undefined (type map[string]interface{} has no field or method Ciphertext)
+36.68 internal/vault/vault.go:57:19: resp.Data.Plaintext undefined (type map[string]interface{} has no field or method Plaintext)
+36.73 # cascata/internal/storage
+36.73 internal/storage/service.go:13:2: "time" imported and not used
+36.73 internal/storage/service.go:105:26: undefined: path
+40.88 # cascata/internal/ratelimit
+40.88 internal/ratelimit/engine.go:131:2: ctr declared and not used
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                               12.2s
-Dockerfile.backend:16
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                               50.5s
+Dockerfile.backend:20
 
 --------------------
-
-  14 |     
-
-  15 |     # Resolver dependências e gerar go.sum fresco (Garante build mesmo com sum local ausente)
-
-  16 | >>> RUN go mod tidy
-
-  17 |     RUN go mod download
 
   18 |     
 
+  19 |     # Fazer o build do orchestrator e do provisionador CLI
+
+  20 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
+
+  21 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
+
+  22 |     
+
 --------------------
 
-failed to solve: process "/bin/sh -c go mod tidy" did not complete successfully: exit code: 1
-
-ubuntu@ip-172-26-7-197:~$ go version
-Command 'go' not found, but can be installed with:
-sudo snap install go         # version 1.26.1, or
-sudo apt  install golang-go  # version 2:1.21~2
-sudo apt  install gccgo-go   # version 2:1.21~2
-See 'snap info go' for additional versions.
-ubuntu@ip-172-26-7-197:~$ 
+failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1

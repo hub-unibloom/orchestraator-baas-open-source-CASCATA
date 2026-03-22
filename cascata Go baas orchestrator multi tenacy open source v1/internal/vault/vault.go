@@ -42,7 +42,12 @@ func (s *VaultService) TransitEncrypt(ctx context.Context, keyName, plaintext st
 		return "", fmt.Errorf("vault.TransitEncrypt [%s]: %w", keyName, err)
 	}
 
-	return resp.Data.Ciphertext, nil
+	ciphertext, ok := resp.Data["ciphertext"].(string)
+	if !ok {
+		return "", fmt.Errorf("vault.TransitEncrypt: ciphertext not found in response")
+	}
+
+	return ciphertext, nil
 }
 
 // TransitDecrypt reverses the Transit encryption.
@@ -54,7 +59,12 @@ func (s *VaultService) TransitDecrypt(ctx context.Context, keyName, ciphertext s
 		return "", fmt.Errorf("vault.TransitDecrypt [%s]: %w", keyName, err)
 	}
 
-	return resp.Data.Plaintext, nil
+	plaintext, ok := resp.Data["plaintext"].(string)
+	if !ok {
+		return "", fmt.Errorf("vault.TransitDecrypt: plaintext not found in response")
+	}
+
+	return plaintext, nil
 }
 
 // WriteSecret stores a secret in the KV-V2 engine.
