@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/vault-client-go"
+	"github.com/hashicorp/vault-client-go/schema"
 )
 
 // TransitService handles on-the-fly encryption/decryption using Vault.
@@ -19,7 +20,7 @@ func NewTransitService(client *vault.Client) *TransitService {
 
 // Encrypt wraps the Vault Transit 'encrypt' operation.
 func (s *TransitService) Encrypt(ctx context.Context, keyName string, data string) (string, error) {
-	resp, err := s.client.Transit.Encrypt(ctx, keyName, vault.TransitEncryptRequest{
+	resp, err := s.client.Secrets.TransitEncrypt(ctx, keyName, schema.TransitEncryptRequest{
 		Plaintext: base64.StdEncoding.EncodeToString([]byte(data)),
 	})
 	if err != nil {
@@ -36,7 +37,7 @@ func (s *TransitService) Encrypt(ctx context.Context, keyName string, data strin
 
 // Decrypt wraps the Vault Transit 'decrypt' operation.
 func (s *TransitService) Decrypt(ctx context.Context, keyName string, ciphertext string) (string, error) {
-	resp, err := s.client.Transit.Decrypt(ctx, keyName, vault.TransitDecryptRequest{
+	resp, err := s.client.Secrets.TransitDecrypt(ctx, keyName, schema.TransitDecryptRequest{
 		Ciphertext: ciphertext,
 	})
 	if err != nil {
