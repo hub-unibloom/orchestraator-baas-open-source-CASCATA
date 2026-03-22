@@ -9,12 +9,25 @@ import {
 import Dashboard from './pages/Dashboard';
 import { useLayoutStore } from './hooks/useLayoutStore';
 import { MOTION, VARIANTS } from './lib/motion';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthGuard } from './components/AuthGuard';
 
 type Route = 'dashboard' | 'database' | 'logic' | 'auth' | 'storage' | 'events' | 'push' | 'settings';
 
 export default function App() {
+  return (
+    <AuthProvider>
+      <AuthGuard>
+        <LayoutOrchestrator />
+      </AuthGuard>
+    </AuthProvider>
+  );
+}
+
+function LayoutOrchestrator() {
   const { t } = useTranslation();
   const { preferences, updatePreference } = useLayoutStore();
+  const { logout } = useAuth();
   const [currentRoute, setCurrentRoute] = React.useState<Route>('dashboard');
   const [currentEnv, setCurrentEnv] = React.useState<'live' | 'draft'>('draft');
 
@@ -121,6 +134,7 @@ export default function App() {
           <NavItem icon={<Settings />} label={t('modules.settings')} route="settings" active={currentRoute === 'settings'} expanded={isExpanded} onClick={() => setCurrentRoute('settings')} />
           
           <button 
+            onClick={logout}
             className={`
               w-full mt-2 flex items-center rounded-xl transition-all duration-200 group relative sidebar-item
               ${isExpanded ? 'px-3 py-2.5 text-accent-danger hover:bg-accent-danger/10' : 'justify-center p-[12px] text-accent-danger hover:bg-accent-danger/10'}

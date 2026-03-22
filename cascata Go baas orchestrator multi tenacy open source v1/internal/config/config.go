@@ -14,8 +14,9 @@ type Config struct {
 	McpEnabled   bool
 	LogLevel     string
 	SocketDir    string
-	VaultAddr    string
-	VaultToken   string
+	VaultAddr       string
+	VaultToken      string
+	SystemJWTSecret string
 }
 
 // Load fetches configurations from environment variables and returns a Config object.
@@ -28,8 +29,9 @@ func Load() *Config {
 		McpEnabled:  getEnv("MCP_ENABLED", "true") == "true",
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
 		SocketDir:   getEnv("SOCKET_DIR", "/tmp/cascata_sockets"),
-		VaultAddr:   getEnv("VAULT_ADDR", "http://cascata-vault:8200"),
-		VaultToken:  getEnv("VAULT_TOKEN", "cascata_root_token"),
+		VaultAddr:       getEnv("VAULT_ADDR", "http://cascata-vault:8200"),
+		VaultToken:      getEnv("VAULT_TOKEN", "cascata_root_token"),
+		SystemJWTSecret: getEnv("SYSTEM_JWT_SECRET", "cascata_system_default_secret_32_chars"),
 	}
 
 	// Fail-fast validation

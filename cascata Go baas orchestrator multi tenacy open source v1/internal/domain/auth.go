@@ -19,6 +19,7 @@ const (
 // AuthContext carries the identity and mode throughout a request.
 type AuthContext struct {
 	Mode        string
+	Project     *Project
 	ProjectSlug string
 	UserID      string
 	Role        string

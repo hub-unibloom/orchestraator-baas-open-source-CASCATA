@@ -15,18 +15,22 @@ import (
 
 // Server represents the API server instance.
 type Server struct {
-	Cfg      *config.Config
-	Repo     *database.Repository
-	Middle   *AuthMiddleware
-	http     *http.Server
+	Cfg          *config.Config
+	Repo         *Repository
+	AuthMiddle   *AuthMiddleware
+	MemberMiddle *MemberAuthMiddleware
+	SystemH      *SystemHandler
+	http         *http.Server
 }
 
 // NewServer creates a new API server with the given dependencies.
-func NewServer(cfg *config.Config, repo *database.Repository, middle *AuthMiddleware) *Server {
+func NewServer(cfg *config.Config, repo *Repository, authM *AuthMiddleware, memberM *MemberAuthMiddleware, systemH *SystemHandler) *Server {
 	return &Server{
-		Cfg:    cfg,
-		Repo:   repo,
-		Middle: middle,
+		Cfg:          cfg,
+		Repo:         repo,
+		AuthMiddle:   authM,
+		MemberMiddle: memberM,
+		SystemH:      systemH,
 	}
 }
 
@@ -35,11 +39,27 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	router := http.NewServeMux()
 	
 	// Routes
+	// 1. PUBLIC ROUTES
 	router.HandleFunc("/health", s.handleHealth)
+	router.HandleFunc("/system/auth/login", s.SystemH.HandleLogin) // Public (Rate limited inside handler)
 	
-	// Protected Area (V1 API)
-	// We wrap the entire router or specific paths
-	v1Handler := s.Middle.EnforceTripleMode(router)
+	// 2. PROTECTED SYSTEM ROUTES (Dashboard/Members)
+	systemMux := http.NewServeMux()
+	systemMux.HandleFunc("/system/projects", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"message": "List of projects (Mocked)"}`))
+	})
+	router.Handle("/system/", s.MemberMiddle.EnforceMemberSession(systemMux))
+
+	// 3. PROTECTED TENANT ROUTES (V1 API)
+	v1Mux := http.NewServeMux()
+	// All V1 tenant operations go here
+	v1Mux.HandleFunc("/v1/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"message": "Welcome to Tenant API (Mocked)"}`))
+	})
+	router.Handle("/v1/", s.AuthMiddle.EnforceTripleMode(v1Mux))
+
+	// Use the root router as the main handler
+	mainHandler := router
 
 	// Determine the listener: Unix Socket or TCP
 	var ln net.Listener
@@ -64,7 +84,7 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	}
 
 	s.http = &http.Server{
-		Handler:      v1Handler,
+		Handler:      mainHandler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		BaseContext:  func(net.Listener) context.Context { return ctx },

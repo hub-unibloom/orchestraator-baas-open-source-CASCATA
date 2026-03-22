@@ -22,10 +22,10 @@ func NewAuthService(projectService *service.ProjectService) *AuthService {
 }
 
 // AuthenticateRequest validates incoming headers and returns an AuthContext.
-// it identifies a project via `projectSlug` identifier (e.g., from URL).
-func (s *AuthService) AuthenticateRequest(ctx context.Context, projectSlug, apiKey, authHeader string) (*domain.AuthContext, error) {
+// it identifies a project via `identifier` (Slug or Custom Domain).
+func (s *AuthService) AuthenticateRequest(ctx context.Context, identifier, apiKey, authHeader string) (*domain.AuthContext, error) {
 	// 1. Resolve Project.
-	p, err := s.projectService.Resolve(ctx, projectSlug)
+	p, err := s.projectService.Resolve(ctx, identifier)
 	if err != nil {
 		return nil, fmt.Errorf("auth.Authenticate: resolve project: %w", err)
 	}
@@ -36,6 +36,7 @@ func (s *AuthService) AuthenticateRequest(ctx context.Context, projectSlug, apiK
 	if apiKey == p.ServiceKey {
 		return &domain.AuthContext{
 			Mode:        domain.ModeService,
+			Project:     p,
 			ProjectSlug: p.Slug,
 			Role:        "service_role",
 		}, nil
@@ -47,6 +48,7 @@ func (s *AuthService) AuthenticateRequest(ctx context.Context, projectSlug, apiK
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			return &domain.AuthContext{
 				Mode:        domain.ModeAnon,
+				Project:     p,
 				ProjectSlug: p.Slug,
 				Role:        "anon",
 			}, nil
@@ -61,6 +63,7 @@ func (s *AuthService) AuthenticateRequest(ctx context.Context, projectSlug, apiK
 
 		return &domain.AuthContext{
 			Mode:        domain.ModeUser,
+			Project:     p,
 			ProjectSlug: p.Slug,
 			UserID:      fmt.Sprintf("%v", claims["sub"]),
 			Role:        fmt.Sprintf("%v", claims["role"]),
@@ -70,7 +73,7 @@ func (s *AuthService) AuthenticateRequest(ctx context.Context, projectSlug, apiK
 		}, nil
 	}
 
-	return nil, fmt.Errorf("auth.Authenticate: invalid apikey for project %s", projectSlug)
+	return nil, fmt.Errorf("auth.Authenticate: invalid apikey for project %s", identifier)
 }
 
 // verifyJWT simulates JWT verification (Actual implementation will use a library like golang-jwt).

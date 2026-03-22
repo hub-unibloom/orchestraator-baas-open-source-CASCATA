@@ -6,7 +6,11 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 
 	"cascata/internal/api"
 	"cascata/internal/auth"
@@ -60,7 +64,7 @@ func runPrimary(ctx context.Context, cfg *config.Config) {
 func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	slog.Info("Cascata v1.0.0.0 Worker: Initializing", "id", id)
 
-	// 1. Data Layer
+	// 1. Core Infrastucture (DB & Redis/Dragonfly)
 	repo, err := database.Connect(ctx, cfg.DatabaseURL)
 	if err != nil {
 		slog.Error("worker: database bootstrap failed", "id", id, "error", err)
@@ -68,37 +72,36 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	}
 	defer repo.Close()
 
+	rdb := redis.NewClient(&redis.Options{
+		Addr: strings.TrimPrefix(cfg.RedisURL, "redis://"),
+	})
+	defer rdb.Close()
+
 	// 2. Repository Layer
 	projectRepo := repository.NewProjectRepository(repo)
 	tenantRepo := repository.NewTenantRepository(repo)
+	memberRepo := repository.NewMemberRepository(repo)
 
-	// 3. Service Layer
-	projectService := service.NewProjectService(projectRepo)
-	migrationService := service.NewMigrationService(cfg)
-	phantomInjector := phantom.NewInjector()
-	_ = service.NewExtensionService(repo, phantomInjector)
-	vaultService, err := vault.NewVaultService(cfg.VaultAddr, cfg.VaultToken)
-	if err != nil {
-		slog.Warn("vault disabled: connection failed", "error", err)
-	}
-	
-	transitSvc := vault.NewTransitService(vaultService.Client)
-	privacyEngine := privacy.NewEngine(transitSvc)
-	_ = privacyEngine // will be used in Dispatcher
+	// 3. Manager/Service Layer
+	// Connection Pool Isolation per tenant
+	poolManager := database.NewTenantPoolManager(cfg.DatabaseURL, 5000)
+	go poolManager.CleanupTask(ctx, 5*time.Minute)
 
-	storageIndexer := storage.NewIndexer(repo)
-	storageSvc := storage.NewService(storageIndexer, repo, "/cascata/storage")
-	_ = storageSvc // will be used in Storage Handler
+	// Adaptive Rate Limiting & Firewall
+	rlEngine := ratelimit.NewAdaptiveEngine(rdb, repo)
 
-	_ = service.NewOrchestratorService(projectRepo, tenantRepo, migrationService, vaultService)
+	// Auth & Project Services
+	projectService := service.NewProjectService(projectRepo, poolManager)
 	authService := auth.NewAuthService(projectService)
-	_ = auth.NewGovernanceService()
+	systemAuth := auth.NewSystemAuthService(memberRepo)
+	sessionSvc := auth.NewSessionManager(cfg.SystemJWTSecret)
 
-	// 4. API Layer (Middleware & Server)
-	authMiddleware := api.NewAuthMiddleware(authService)
-	srv := api.NewServer(cfg, repo, authMiddleware)
-	
-	// TODO: Wrap routes in authMiddleware.EnforceTripleMode in api/server.go
+	// 4. API Layer (Handlers & Middleware)
+	authMiddleware := api.NewAuthMiddleware(authService, rlEngine)
+	memberMiddleware := api.NewMemberAuthMiddleware(sessionSvc)
+	systemHandler := api.NewSystemHandler(systemAuth, sessionSvc, rlEngine)
+
+	srv := api.NewServer(cfg, repo, authMiddleware, memberMiddleware, systemHandler)
 	
 	if err := srv.Start(ctx, id); err != nil {
 		slog.Error("worker: server lifecycle ended with error", "id", id, "error", err)

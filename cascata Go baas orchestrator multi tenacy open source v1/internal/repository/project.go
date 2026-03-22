@@ -39,19 +39,22 @@ func (r *ProjectRepository) Create(ctx context.Context, p *domain.Project) error
 	return nil
 }
 
-// GetBySlug retrieves a project by its unique slug.
-func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (*domain.Project, error) {
+// GetByIdentifier retrieves a project by its unique slug or its custom domain.
+// Critical for Multi-Tenancy resolution at Phase 2 and 17.
+func (r *ProjectRepository) GetByIdentifier(ctx context.Context, identifier string) (*domain.Project, error) {
 	const sql = `
-		SELECT id, name, slug, db_name, status, custom_domain, default_domain, anon_key, service_key, metadata, log_retention_days, created_at, updated_at
-		FROM system.projects WHERE slug = $1
+		SELECT id, name, slug, db_name, status, custom_domain, default_domain, anon_key, service_key, jwt_secret, metadata, log_retention_days, created_at, updated_at
+		FROM system.projects 
+		WHERE slug = $1 OR custom_domain = $1 OR default_domain = $1
+		LIMIT 1
 	`
 	p := &domain.Project{}
-	err := r.repo.Pool.QueryRow(ctx, sql, slug).Scan(
-		&p.ID, &p.Name, &p.Slug, &p.DBName, &p.Status, &p.CustomDomain, &p.DefaultDomain, &p.AnonKey, &p.ServiceKey, &p.Metadata, &p.LogRetentionDays, &p.CreatedAt, &p.UpdatedAt,
+	err := r.repo.Pool.QueryRow(ctx, sql, identifier).Scan(
+		&p.ID, &p.Name, &p.Slug, &p.DBName, &p.Status, &p.CustomDomain, &p.DefaultDomain, &p.AnonKey, &p.ServiceKey, &p.JWTSecret, &p.Metadata, &p.LogRetentionDays, &p.CreatedAt, &p.UpdatedAt,
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("repository.Project.GetBySlug: %w", err)
+		return nil, fmt.Errorf("repository.Project.GetByIdentifier(%s): %w", identifier, err)
 	}
 
 	return p, nil

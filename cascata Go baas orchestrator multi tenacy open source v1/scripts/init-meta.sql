@@ -1,16 +1,40 @@
 CREATE SCHEMA IF NOT EXISTS system;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA system;
+
+-- Identity Distinction (Crucial for auditing)
+DO $$ BEGIN
+    CREATE TYPE system.member_type AS ENUM ('human', 'agent');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE system.member_role AS ENUM ('worner', 'manager', 'developer', 'analyst', 'agent');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
 
 -- Registry for all projects/tenants
 CREATE TABLE IF NOT EXISTS system.projects (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
     db_name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    custom_domain TEXT UNIQUE, -- e.g. api.clientapp.com
+    default_domain TEXT UNIQUE, -- e.g. clientapp.cascata.io
     service_key TEXT NOT NULL,
     anon_key TEXT NOT NULL,
     jwt_secret TEXT NOT NULL,
+    log_retention_days INTEGER DEFAULT 30,
     metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_projects_custom_domain ON system.projects (custom_domain);
+CREATE INDEX IF NOT EXISTS idx_projects_slug ON system.projects (slug);
 
 -- AI Architect Sessions
 CREATE TABLE IF NOT EXISTS system.ai_sessions (
@@ -119,3 +143,31 @@ CREATE TABLE IF NOT EXISTS system.project_envs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(project_slug, key)
 );
+
+-- System Members (The highest level operators starting with the Worner)
+CREATE TABLE IF NOT EXISTS system.members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL, -- Bcrypt Cost 12+ required by design
+    role system.member_role NOT NULL DEFAULT 'worner',
+    type system.member_type NOT NULL DEFAULT 'human',
+    mfa_enabled BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Central Audit Trail (Immutable Log for Dashboard/Management actions)
+CREATE TABLE IF NOT EXISTS system.audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    member_id UUID NOT NULL, -- Who did it (Member or Agent)
+    member_type system.member_type NOT NULL, -- Distinguishes Human vs AI Agent immediately
+    action TEXT NOT NULL, -- e.g., 'CREATE_TENANT', 'UPDATE_SCHEMA'
+    entity_type TEXT NOT NULL,
+    entity_id TEXT,
+    tenant_slug TEXT, -- NULL if it's a global action
+    metadata JSONB DEFAULT '{}', -- E.g., JSON diff of changes
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_member ON system.audit_logs (member_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant ON system.audit_logs (tenant_slug);
