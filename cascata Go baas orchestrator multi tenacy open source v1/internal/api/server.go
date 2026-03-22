@@ -14,10 +14,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// Server represents the API server instance.
 type Server struct {
 	Cfg          *config.Config
-	Repo         *Repository
+	Repo         *database.Repository
 	AuthMiddle   *AuthMiddleware
 	MemberMiddle *MemberAuthMiddleware
 	SystemH      *SystemHandler
@@ -25,7 +24,7 @@ type Server struct {
 }
 
 // NewServer creates a new API server with the given dependencies.
-func NewServer(cfg *config.Config, repo *Repository, authM *AuthMiddleware, memberM *MemberAuthMiddleware, systemH *SystemHandler) *Server {
+func NewServer(cfg *config.Config, repo *database.Repository, authM *AuthMiddleware, memberM *MemberAuthMiddleware, systemH *SystemHandler) *Server {
 	return &Server{
 		Cfg:          cfg,
 		Repo:         repo,

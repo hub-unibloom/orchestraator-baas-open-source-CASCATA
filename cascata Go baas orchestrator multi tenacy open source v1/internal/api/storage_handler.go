@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"path"
 
-	"cascata/internal/auth"
 	"cascata/internal/domain"
 	"cascata/internal/storage"
 )
