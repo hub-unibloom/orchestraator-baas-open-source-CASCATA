@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/vault-client-go"
-	"github.com/hashicorp/vault-client-go/system"
 )
 
 // TransitService handles on-the-fly encryption/decryption using Vault.

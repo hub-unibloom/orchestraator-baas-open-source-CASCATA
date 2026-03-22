@@ -1,52 +1,82 @@
-Problema 22 dde março 9h da manhã
-
-=> => transferring context: 407.42kB                                                                                 0.1s
- => [stage-1 1/4] FROM docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f  0.1s
- => => resolve docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f6  0.0s 
- => [stage-1 2/4] RUN apk add --no-cache ca-certificates tzdata                                                       2.3s 
- => [stage-1 3/4] WORKDIR /root/                                                                                      0.1s 
- => [builder 2/7] RUN apk add --no-cache gcc musl-dev                                                                 2.6s 
- => [builder 3/7] WORKDIR /app                                                                                        0.0s 
- => [builder 4/7] COPY go.mod ./                                                                                      0.0s 
- => [builder 5/7] RUN go mod download                                                                                 6.0s 
- => [builder 6/7] COPY . .                                                                                            0.2s 
- => ERROR [builder 7/7] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go           0.6s 
+=> [builder 5/8] COPY . .                                                                                            0.0s
+ => ERROR [builder 6/8] RUN go mod tidy                                                                              11.2s
 ------                                                                                                                     
- > [builder 7/7] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                      
-0.498 internal/database/database.go:9:2: missing go.sum entry for module providing package github.com/jackc/pgx/v5 (imported by cascata/internal/database); to add:
-0.498 	go get cascata/internal/database
-0.500 internal/database/database.go:10:2: missing go.sum entry for module providing package github.com/jackc/pgx/v5/pgxpool (imported by cascata/internal/database); to add:
-0.500 	go get cascata/internal/database
-0.500 internal/vault/transit.go:8:2: missing go.sum entry for module providing package github.com/hashicorp/vault-client-go (imported by cascata/internal/vault); to add:
-0.500 	go get cascata/internal/vault
-0.500 internal/vault/vault.go:10:2: missing go.sum entry for module providing package github.com/hashicorp/vault-client-go/schema (imported by cascata/internal/vault); to add:
-0.500 	go get cascata/internal/vault
-0.500 internal/vault/transit.go:9:2: missing go.sum entry for module providing package github.com/hashicorp/vault-client-go/system (imported by cascata/internal/vault); to add:
-0.500 	go get cascata/internal/vault
-0.500 internal/auth/system_auth.go:10:2: missing go.sum entry for module providing package golang.org/x/crypto/bcrypt (imported by cascata/internal/auth); to add:
-0.500 	go get cascata/internal/auth
-0.500 internal/ratelimit/engine.go:11:2: missing go.sum entry for module providing package github.com/redis/go-redis/v9; to add:
-0.500 	go mod download github.com/redis/go-redis/v9
-0.500 internal/api/data_handler.go:10:2: no required module provides package github.com/go-chi/chi/v5; to add it:
-0.500 	go get github.com/go-chi/chi/v5
+ > [builder 6/8] RUN go mod tidy:                                                                                          
+0.289 go: downloading github.com/redis/go-redis/v9 v9.3.0                                                                  
+0.303 go: downloading golang.org/x/net v0.22.0                                                                             
+1.005 go: downloading github.com/go-chi/chi/v5 v5.0.12                                                                     
+1.070 go: downloading golang.org/x/crypto v0.21.0                                                                          
+1.606 go: downloading github.com/hibiken/asynq v0.24.0
+2.275 go: downloading github.com/jackc/pgx/v5 v5.5.0
+2.598 go: downloading github.com/tetratelabs/wazero v1.5.0
+3.605 go: downloading golang.org/x/term v0.18.0
+4.238 go: downloading github.com/traefik/yaegi v0.16.1
+4.985 go: downloading github.com/hashicorp/vault-client-go v0.4.0
+5.513 go: downloading github.com/cespare/xxhash/v2 v2.2.0
+5.515 go: downloading github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f
+5.520 go: downloading github.com/bsm/ginkgo/v2 v2.12.0
+5.536 go: downloading github.com/bsm/gomega v1.27.10
+5.613 go: downloading golang.org/x/text v0.14.0
+6.413 go: downloading github.com/go-redis/redis/v8 v8.11.2
+6.414 go: downloading github.com/google/uuid v1.2.0
+6.423 go: downloading github.com/robfig/cron/v3 v3.0.1
+6.432 go: downloading golang.org/x/sys v0.18.0
+6.926 go: downloading golang.org/x/time v0.0.0-20220922220347-f3bd1da661af
+6.927 go: downloading github.com/google/go-cmp v0.5.8
+6.950 go: downloading go.uber.org/goleak v1.1.12
+6.964 go: downloading github.com/stretchr/testify v1.8.1
+6.996 go: downloading github.com/jackc/puddle/v2 v2.2.1
+7.073 go: downloading github.com/hashicorp/go-cleanhttp v0.5.2
+7.074 go: downloading github.com/hashicorp/go-retryablehttp v0.7.1
+7.091 go: downloading github.com/hashicorp/go-rootcerts v1.0.2
+7.111 go: downloading github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
+7.155 go: downloading github.com/golang/protobuf v1.4.2
+7.155 go: downloading google.golang.org/protobuf v1.25.0
+7.320 go: downloading github.com/spf13/cast v1.3.1
+7.329 go: downloading github.com/onsi/ginkgo v1.15.0
+7.584 go: downloading github.com/onsi/gomega v1.10.5
+7.650 go: downloading github.com/jackc/pgpassfile v1.0.0
+7.667 go: downloading github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a
+7.686 go: downloading github.com/davecgh/go-spew v1.1.1
+7.707 go: downloading github.com/pmezard/go-difflib v1.0.0
+7.717 go: downloading gopkg.in/yaml.v3 v3.0.1
+7.756 go: downloading golang.org/x/sync v0.1.0
+7.757 go: downloading github.com/mitchellh/go-homedir v1.1.0
+7.775 go: downloading github.com/ryanuber/go-glob v1.0.0
+7.785 go: downloading github.com/nxadm/tail v1.4.4
+7.794 go: downloading gopkg.in/yaml.v2 v2.3.0
+7.800 go: downloading gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
+7.809 go: downloading github.com/fsnotify/fsnotify v1.4.9
+7.865 go: downloading github.com/hashicorp/go-hclog v0.9.2
+7.954 go: finding module for package github.com/hashicorp/vault-client-go/system
+8.167 go: downloading github.com/hashicorp/vault-client-go v0.4.3
+10.96 go: cascata/internal/vault imports
+10.96 	github.com/hashicorp/vault-client-go/system: module github.com/hashicorp/vault-client-go@latest found (v0.4.3), but does not contain package github.com/hashicorp/vault-client-go/system
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                               16.0s
-Dockerfile.backend:18
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                               12.2s
+Dockerfile.backend:16
 
 --------------------
 
-  16 |     
+  14 |     
 
-  17 |     # Fazer o build do orchestrator
+  15 |     # Resolver dependências e gerar go.sum fresco (Garante build mesmo com sum local ausente)
 
-  18 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
+  16 | >>> RUN go mod tidy
 
-  19 |     
+  17 |     RUN go mod download
 
-  20 |     # --- Estágio de Produção ---
+  18 |     
 
 --------------------
 
-failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
+failed to solve: process "/bin/sh -c go mod tidy" did not complete successfully: exit code: 1
 
+ubuntu@ip-172-26-7-197:~$ go version
+Command 'go' not found, but can be installed with:
+sudo snap install go         # version 1.26.1, or
+sudo apt  install golang-go  # version 2:1.21~2
+sudo apt  install gccgo-go   # version 2:1.21~2
+See 'snap info go' for additional versions.
+ubuntu@ip-172-26-7-197:~$ 

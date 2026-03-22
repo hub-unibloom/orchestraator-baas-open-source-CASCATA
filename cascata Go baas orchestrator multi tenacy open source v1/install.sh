@@ -161,6 +161,7 @@ ensure_dependencies() {
     fi
     
     log_success "Docker Engine verificado (v$MAJOR_DOCKER_VER.x)."
+    log_info "Cascata Architecture: Zero-Host-Dependency (Go is only used inside Docker Build Stage)."
 }
 
 # --- 5. PERF & SECURITY HYGIENE ---
@@ -382,15 +383,13 @@ provision_worner_execution() {
 
     log_info "Calculando Bcrypt Custo 12 e persistindo via Cascata-Engine..."
     
-    # 1. Provisionamento via Go Helper (Gera o ID e o Hash sem expor no ps/logs do PG)
-    # Passamos via STDIN ou Env para o container para evitar logs simples, mas aqui usamos exec direto 
-    # pois o 'docker exec' é interno. O helper retorna o ID gerado.
+    # 1. Provisionamento via Binário Compilado (Não requer Go no container final)
     local PROVISION_OUT
     PROVISION_OUT=$(docker exec -e DB_URL="postgres://cascata_admin:$(grep '^DB_PASS=' .env | cut -d'=' -f2)@cascata-db:5432/cascata_meta" \
-        "$ORCH_CONTAINER" go run cmd/cli/worner-provision.go "$WORNER_EMAIL" "$WORNER_PASS" "$MFA_ENABLED" 2>&1)
+        "$ORCH_CONTAINER" ./worner-provision "$WORNER_EMAIL" "$WORNER_PASS" "$MFA_ENABLED" 2>&1)
 
     if [[ ! "$PROVISION_OUT" =~ "SUCCESS_ID:" ]]; then
-        log_error "Falha no provisionamento Go: $PROVISION_OUT"
+        log_error "Falha no provisionamento: $PROVISION_OUT"
     fi
 
     local WORNER_ID

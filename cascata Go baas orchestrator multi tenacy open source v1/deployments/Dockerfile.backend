@@ -16,8 +16,9 @@ COPY . .
 RUN go mod tidy
 RUN go mod download
 
-# Fazer o build do orchestrator
+# Fazer o build do orchestrator e do provisionador CLI
 RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
 
 # --- Estágio de Produção ---
 FROM alpine:latest
@@ -26,8 +27,9 @@ RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /root/
 
-# Copiar o binário final
+# Copiar os binários compilados
 COPY --from=builder /app/cascata-orchestrator .
+COPY --from=builder /app/worner-provision .
 
 # Definir porta padrão (exemplo)
 EXPOSE 8080
