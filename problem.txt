@@ -1,16 +1,16 @@
- => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go          41.7s 
-------                                                                                                                     
- > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                      
-37.24 # cascata/internal/vault                                                                                             
-37.24 internal/vault/transit.go:22:24: s.client.Transit undefined (type *"github.com/hashicorp/vault-client-go".Client has no field or method Transit)                                                                                                
-37.24 internal/vault/transit.go:22:60: undefined: vault.TransitEncryptRequest                                              
-37.24 internal/vault/transit.go:39:24: s.client.Transit undefined (type *"github.com/hashicorp/vault-client-go".Client has no field or method Transit)
-37.24 internal/vault/transit.go:39:60: undefined: vault.TransitDecryptRequest
-37.25 # cascata/internal/storage
-37.25 internal/storage/service.go:16:2: syntax error: non-declaration statement outside function body
+ => [builder 6/9] RUN go mod tidy                                                                                                                                                        8.0s
+ => [builder 7/9] RUN go mod download                                                                                                                                                    0.8s 
+ => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             41.5s 
+------                                                                                                                                                                                        
+ > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                                                         
+37.06 # cascata/internal/service                                                                                                                                                              
+37.06 internal/service/project.go:7:2: "time" imported and not used                                                                                                                           
+37.06 internal/service/project.go:16:11: undefined: database                                                                                                                                  
+37.06 internal/service/project.go:20:67: undefined: database
+37.06 internal/service/project.go:28:76: undefined: database
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                               51.1s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  51.1s
 Dockerfile.backend:20
 
 --------------------
@@ -30,4 +30,3 @@ Dockerfile.backend:20
 failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
 
 ubuntu@ip-172-26-7-197:~$ 
-
