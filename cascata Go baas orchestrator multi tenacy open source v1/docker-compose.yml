@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # O Orquestrador Central Cascata (Condomínio Inteligente)
   cascata-orchestrator:

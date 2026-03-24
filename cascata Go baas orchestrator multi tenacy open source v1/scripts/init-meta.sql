@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA system;
 
 -- Identity Distinction (Crucial for auditing)
 DO $$ BEGIN
-    CREATE TYPE system.member_type AS ENUM ('human', 'agent');
+    CREATE TYPE system.member_type AS ENUM ('MEMBER', 'AGENT');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
@@ -148,9 +148,9 @@ CREATE TABLE IF NOT EXISTS system.project_envs (
 CREATE TABLE IF NOT EXISTS system.members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL, -- Bcrypt Cost 12+ required by design
+    password_hash TEXT NOT NULL, 
     role system.member_role NOT NULL DEFAULT 'worner',
-    type system.member_type NOT NULL DEFAULT 'human',
+    type system.member_type NOT NULL DEFAULT 'MEMBER',
     mfa_enabled BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

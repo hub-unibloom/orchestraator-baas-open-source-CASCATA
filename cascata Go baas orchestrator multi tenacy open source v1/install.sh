@@ -240,10 +240,16 @@ vault_bootstrap() {
     log_step "Vault Operator: Inicialização Avançada e Unseal"
     
     local VAULT_CONTAINER
-    VAULT_CONTAINER=$(docker ps --filter "name=vault" --format "{{.Names}}" | head -n 1)
+    # Melhor detecção: busca pelo container exact name ou pelo serviço do compose local
+    VAULT_CONTAINER=$(docker ps --filter "name=cascata-vault" --format "{{.Names}}" | head -n 1)
     
     if [[ -z "$VAULT_CONTAINER" ]]; then
-        log_error "Container Vault estritamente inoperante. Falha."
+        # Tenta fallback pelo filtro genérico se o nome exato falhar por prefixos
+        VAULT_CONTAINER=$(docker ps --filter "name=vault" --format "{{.Names}}" | head -n 1)
+    fi
+
+    if [[ -z "$VAULT_CONTAINER" ]]; then
+        log_error "Container Vault estritamente inoperante ou não iniciado. Verifique 'docker logs cascata-vault'."
     fi
 
     log_info "Aguardando Protocolo Ping Vault API..."
@@ -303,6 +309,9 @@ vault_bootstrap() {
         log_info "Habilitando Engines Base (Transit e Secrets)..."
         docker exec "$VAULT_CONTAINER" vault secrets enable -path=secret kv-v2 >/dev/null 2>&1 || true
         docker exec "$VAULT_CONTAINER" vault secrets enable transit >/dev/null 2>&1 || true
+        
+        log_info "Configurando Soberania: Criando chave Transit 'cascata-pepper'..."
+        docker exec "$VAULT_CONTAINER" vault write -f transit/keys/cascata-pepper >/dev/null 2>&1 || true
         
         log_info "Aplicando Matriz de Acesso Mínimo Privilégio via CP..."
         
