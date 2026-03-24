@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/service"
-	"cascata/internal/utils"
 )
 
 // ExecutionContext carries the state, variables and project resolution through the workflow graph.
@@ -116,6 +114,12 @@ func (e *WorkflowEngine) ExecuteWorkflow(ctx context.Context, wf *domain.Workflo
 		return nil, fmt.Errorf("automation: failed to resolve project meta: %w", err)
 	}
 
+	// 0.5 Resolve MaxConns from metadata with fallback
+	maxConns := 10
+	if val, ok := proj.Metadata["max_connections"].(float64); ok {
+		maxConns = int(val)
+	}
+
 	// 1. Prepare Initial Execution State
 	execCtx := &ExecutionContext{
 		Vars: map[string]interface{}{
@@ -129,7 +133,7 @@ func (e *WorkflowEngine) ExecuteWorkflow(ctx context.Context, wf *domain.Workflo
 		Payload:     event,
 		ProjectSlug: event.ProjectSlug,
 		DBName:      proj.DBName,
-		MaxConns:    proj.MaxConnections,
+		MaxConns:    maxConns,
 		PoolManager: e.poolMgr,
 	}
 

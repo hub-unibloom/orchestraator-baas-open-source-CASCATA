@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"time"
 
-	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/repository"
 	"cascata/internal/service"
@@ -57,10 +56,16 @@ func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug
 		return nil, "", fmt.Errorf("resident.auth.AuthenticateByCPF: pool resolution failed: %w", err)
 	}
 
-	// 2. Lookup Resident
+	// 3. Lookup Resident
 	res, hashedPassword, err := s.resRepo.FindByIdentifier(ctx, pool, cpf)
 	if err != nil {
 		return nil, "", fmt.Errorf("resident.auth.AuthenticateByCPF: resident lookup failed: %w", err)
+	}
+
+	// 3.5. Password Validation (Bcrypt Sinergy)
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+		slog.Warn("resident.auth: password mismatch", "slug", projectSlug, "cpf", cpf)
+		return nil, "", fmt.Errorf("invalid credentials")
 	}
 
 	// 4. Issue Token

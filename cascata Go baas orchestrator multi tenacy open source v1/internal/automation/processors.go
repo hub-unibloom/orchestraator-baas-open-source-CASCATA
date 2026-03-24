@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"cascata/internal/ai"
 	"cascata/internal/database"
 	"cascata/internal/domain"
 	"github.com/jackc/pgx/v5"

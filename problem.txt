@@ -1,29 +1,17 @@
- => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             78.8s 
+ => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             79.6s 
 ------                                                                                                                                                                                        
  > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                                                         
-62.64 # cascata/internal/service                                                                                                                                                              
-62.64 internal/service/sync_service.go:9:2: "cascata/internal/database" imported and not used                                                                                                 
-62.64 internal/service/sync_service.go:80:4: unknown field ActorType in struct literal of type domain.AuditEntry
+63.57 # cascata/internal/auth                                                                                                                                                                 
+63.57 internal/auth/resident_service.go:9:2: "cascata/internal/database" imported and not used                                                                                                
+63.57 internal/auth/resident_service.go:61:7: declared and not used: hashedPassword                                                                                                           
+63.57 internal/auth/external_auth.go:7:2: "net/http" imported and not used                                                                                                                    
+63.62 # cascata/internal/automation
+63.62 internal/automation/engine.go:7:2: "net/http" imported and not used
+63.62 internal/automation/engine.go:17:2: "cascata/internal/utils" imported and not used
+63.62 internal/automation/engine.go:132:21: proj.MaxConnections undefined (type *domain.Project has no field or method MaxConnections)
+63.62 internal/automation/processors.go:80:13: undefined: ai
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  91.8s
-Dockerfile.backend:20
-
---------------------
-
-  18 |     
-
-  19 |     # Fazer o build do orchestrator e do provisionador CLI
-
-  20 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
-
-  21 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
-
-  22 |     
-
---------------------
-
-failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
-
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                 120.3s
+failed to execute bake: exit status 1
 ubuntu@ip-172-26-7-197:~$ 
-

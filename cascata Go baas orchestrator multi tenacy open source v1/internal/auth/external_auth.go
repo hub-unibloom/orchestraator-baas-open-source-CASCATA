@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 
 	"cascata/internal/domain"
 	"cascata/internal/repository"
