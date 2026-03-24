@@ -66,33 +66,12 @@ func (p *TrinityPostman) SendEmail(ctx context.Context, to, subject, body string
 
 // SendWhatsApp dispatches a message via a high-performance WhatsApp API provider.
 func (p *TrinityPostman) SendWhatsApp(ctx context.Context, to, message string) error {
-	tr := otel.Tracer("communication")
-	ctx, span := tr.Start(ctx, "SendWhatsApp", trace.WithAttributes(
-		attribute.String("messaging.system", "whatsapp"),
-		attribute.String("messaging.destination", to),
-	))
-	defer span.End()
-
-	slog.Info("postman: whatsapp dispatch initialized", "to", to)
-	return nil
+	// REAL API Integration (Twilio/Meta) pending Vault credentials in Phase 10.3
+	return fmt.Errorf("postman.SendWhatsApp: not implemented")
 }
 
 // SendPush dispatches a mobile notification via FCM (Firebase Cloud Messaging).
 func (p *TrinityPostman) SendPush(ctx context.Context, token, title, body string, data map[string]string) error {
-	tr := otel.Tracer("communication")
-	ctx, span := tr.Start(ctx, "SendPush", trace.WithAttributes(
-		attribute.String("messaging.system", "fcm"),
-		attribute.String("messaging.destination", token),
-	))
-	defer span.End()
-
-	slog.Info("postman: push dispatch initialized", "token", token, "title", title)
-	
-	if token == "" {
-		err := fmt.Errorf("postman.SendPush: missing target token")
-		span.RecordError(err)
-		return err
-	}
-
-	return nil
+	// Real Push Integration (Firebase) pending service account JSON in Phase 10.4
+	return fmt.Errorf("postman.SendPush: not implemented")
 }

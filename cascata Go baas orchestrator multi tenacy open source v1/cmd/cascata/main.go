@@ -100,10 +100,12 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	transitSvc := vault.NewTransitService(vaultSvc.GetClient())
 	pEngine := privacy.NewEngine(transitSvc)
 	sessionSvc := auth.NewSessionManager(cfg.SystemJWTSecret)
+	govSvc := auth.NewGovernanceService()
 	
 	// --- 3. Repository Layer ---
 	projectRepo := repository.NewProjectRepository(repo)
 	memberRepo := repository.NewMemberRepository(repo)
+	tenantRepo := repository.NewTenantRepository(repo)
 	resRepo := repository.NewResidentRepository()
 
 	// --- 4. Core Business Logic (Service Mesh) ---
@@ -117,13 +119,13 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	cacheMgr := database.NewCacheManager(dfly)
 	postman := communication.NewTrinityPostman(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom)
 
-	residentAuthSvc := auth.NewResidentAuthService(projectService, resRepo, sessionSvc, otpMgr, postman, auditService)
+	residentAuthSvc := auth.NewResidentAuthService(projectService, resRepo, sessionSvc, otpMgr, postman, govSvc, auditService)
 	externalAuthSvc := auth.NewExternalAuthService(projectService, resRepo, residentAuthSvc)
 	systemAuth := auth.NewSystemAuthService(memberRepo, auditService)
 	
 	// --- 6. Orchestration Engines (Phase 11-15) ---
-	syncService := service.NewSyncService(poolManager, auditService)
-	migrationService := service.NewMigrationService(poolManager, auditService)
+	syncService := service.NewSyncService(projectService, auditService)
+	migrationService := service.NewMigrationService(projectService, auditService)
 	
 	realtimeHub := api.NewRealtimeHub(projectService, pEngine)
 	workflowEngine := automation.NewWorkflowEngine(repo, poolManager, postman, aiEngine, realtimeHub)
@@ -139,7 +141,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	}()
 
 	// --- 7. Provisioning & Storage (Phase 2 & 8) ---
-	genesisSvc := service.NewGenesisService(repo, projectRepo, poolManager, vaultSvc, migrationService)
+	genesisSvc := service.NewGenesisService(repo, projectRepo, tenantRepo, poolManager, vaultSvc, migrationService)
 	indexer := storage.NewIndexer(repo)
 	storageSvc := storage.NewService(cfg.StoragePath, dfly, repo, indexer)
 	
@@ -154,7 +156,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 		api.NewAuthMiddleware(authService, rlEngine), 
 		api.NewMemberAuthMiddleware(sessionSvc), 
 		interceptor, 
-		api.NewSystemHandler(systemAuth, sessionSvc, rlEngine, genesisSvc, projectRepo, storage.NewBackupService(poolManager, repo)), 
+		api.NewSystemHandler(systemAuth, sessionSvc, rlEngine, genesisSvc, projectRepo, storage.NewBackupService(projectService, repo)), 
 		api.NewDataHandler(projectService, interceptor, pEngine, cacheMgr, aiEngine), 
 		api.NewAuthHandler(residentAuthSvc, externalAuthSvc, projectService),
 		api.NewGraphQLHandler(projectService),

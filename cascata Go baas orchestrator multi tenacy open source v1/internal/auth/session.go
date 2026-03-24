@@ -55,7 +55,7 @@ func (s *SessionManager) ValidateSession(ctx context.Context, tokenString string
 
 	return &domain.AuthContext{
 		Mode:         domain.ModeService,
-		IdentityType: domain.IdentityCascataMember,
+		IdentityType: domain.IdentityMember,
 		Role:         fmt.Sprintf("%v", claims["role"]),
 		UserID:       fmt.Sprintf("%v", claims["sub"]),
 		Email:        fmt.Sprintf("%v", claims["email"]),

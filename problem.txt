@@ -1,15 +1,88 @@
- => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             77.9s 
+
+ℹ Inicializando Orquestração Zero-Trust...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Identidade Corporativa: Provisionamento do Worner
+  O 'Worner' é o administrador supremo do Condomínio Cascata.
+  Este será o único membro criado fora do Audit Trail visual.
+
+  E-mail do Worner: thalesjed@gmail.com
+  Senha Mestre (Mínimo 12 caracteres): 
+  Habilitar OTP / MFA Obrigatório? (s/n): n
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Sincronizando Código Fonte
+ℹ Atualizando repositório local...
+✓ Diretório de operação definido: /root/cascata_root/cascata Go baas orchestrator multi tenacy open source v1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Validando Runtime (Docker) e Ferramentas
+✓ Docker Engine verificado (v29.x).
+ℹ Cascata Architecture: Zero-Host-Dependency (Go is only used inside Docker Build Stage).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Aplicando Tuning de Performance Persistente (Sysctl)
+✓ Parâmetros Kernel gravados e persistidos.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Provisão de Identidade Criptográfica (.env)
+⚠ Arquivo .env já existente. Ignorando overwrite.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Iniciando Orquestração do Cluster Base
+ℹ Limpando Containers e Redes Órfãs...
+ℹ Realizando boot isolado da malha Docker...
+WARN[0000] /root/cascata_root/cascata Go baas orchestrator multi tenacy open source v1/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] pull 4/4
+ ✔ cascata-orchestrator                              Skipped No image to be pulled                                                                                                        0.0s
+ ✔ Image hashicorp/vault:1.15                        Pulled                                                                                                                               0.3s
+ ✔ Image postgres:18-alpine                          Pulled                                                                                                                               0.3s
+ ✔ Image docker.dragonflydb.io/dragonflydb/dragonfly Pulled                                                                                                                               0.2s
+WARN[0000] /root/cascata_root/cascata Go baas orchestrator multi tenacy open source v1/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] Building 90.5s (17/20)                                                                                                                                                                    
+ => [internal] load local bake definitions                                                                                                                                               0.0s
+ => => reading from stdin 760B                                                                                                                                                           0.0s
+ => [internal] load build definition from Dockerfile.backend                                                                                                                             0.0s
+ => => transferring dockerfile: 1.05kB                                                                                                                                                   0.0s
+ => [internal] load metadata for docker.io/library/alpine:latest                                                                                                                         0.2s
+ => [internal] load metadata for docker.io/library/golang:1.26-alpine                                                                                                                    0.2s
+ => [internal] load .dockerignore                                                                                                                                                        0.0s
+ => => transferring context: 2B                                                                                                                                                          0.0s
+ => [stage-1 1/5] FROM docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659                                                           0.0s
+ => => resolve docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659                                                                   0.0s
+ => [builder 1/9] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039                                                      0.0s
+ => => resolve docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039                                                              0.0s
+ => [internal] load build context                                                                                                                                                        0.0s
+ => => transferring context: 22.20kB                                                                                                                                                     0.0s
+ => CACHED [stage-1 2/5] RUN apk add --no-cache ca-certificates tzdata                                                                                                                   0.0s
+ => CACHED [stage-1 3/5] WORKDIR /root/                                                                                                                                                  0.0s
+ => CACHED [builder 2/9] RUN apk add --no-cache gcc musl-dev                                                                                                                             0.0s
+ => CACHED [builder 3/9] WORKDIR /app                                                                                                                                                    0.0s
+ => CACHED [builder 4/9] COPY go.mod ./                                                                                                                                                  0.0s
+ => [builder 5/9] COPY . .                                                                                                                                                               0.3s
+ => [builder 6/9] RUN go mod tidy                                                                                                                                                        9.8s
+ => [builder 7/9] RUN go mod download                                                                                                                                                    0.8s 
+ => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             79.1s 
 ------                                                                                                                                                                                        
  > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                                                         
-55.43 # cascata/internal/privacy                                                                                                                                                              
-55.43 internal/privacy/engine.go:61:59: undefined: VaultFormatPrefix                                                                                                                          
-55.43 internal/privacy/engine.go:135:58: undefined: VaultFormatPrefix                                                                                                                         
-55.43 internal/privacy/engine.go:144:17: undefined: VaultFormatPrefix                                                                                                                         
-55.75 # cascata/internal/database
-55.75 internal/database/database.go:100:6: declared and not used: pgErr
+55.71 # cascata/internal/vault                                                                                                                                                                
+55.71 internal/vault/transit.go:30:19: resp.Data.Ciphertext undefined (type map[string]interface{} has no field or method Ciphertext)                                                         
+55.71 internal/vault/transit.go:42:60: resp.Data.Plaintext undefined (type map[string]interface{} has no field or method Plaintext)                                                           
+56.29 # cascata/internal/ai                                                                                                                                                                   
+56.29 internal/ai/orchestrator.go:48:23: syntax error: unexpected literal `` in argument list; possibly missing comma or )
+56.29 internal/ai/orchestrator.go:49:16: syntax error: unexpected keyword for at end of statement
+56.29 internal/ai/orchestrator.go:88:20: string not terminated
+56.31 # cascata/internal/repository
+56.31 internal/repository/resident_repository.go:23:83: undefined: database.TenantPool
+56.31 internal/repository/resident_repository.go:43:73: undefined: database.TenantPool
+56.31 internal/repository/resident_repository.go:60:82: undefined: database.TenantPool
+63.06 # cascata/internal/storage
+63.06 internal/storage/backup_service.go:75:38: not enough arguments in call to s.poolMgr.GetPool
+63.06 	have (context.Context, string)
+63.06 	want (context.Context, string, string, int)
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  91.3s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  90.5s
 Dockerfile.backend:20
 
 --------------------

@@ -69,8 +69,9 @@ func (r *Repository) WithRLS(ctx context.Context, claims UserClaims, projectSlug
 			if role == "" { role = "anon" }
 
 			// We use a single multiline statement for performance and atomic security.
+			// %%q in Sprintf double-quotes the identifier for safety.
 			atomicSQL := fmt.Sprintf(`
-				SET LOCAL ROLE %s;
+				SET LOCAL ROLE %%q;
 				SET LOCAL statement_timeout = $1;
 				SET LOCAL "cascata.project_slug" = $2;
 				SET LOCAL "cascata.isolation_scope" = 'tenant';
@@ -80,7 +81,7 @@ func (r *Repository) WithRLS(ctx context.Context, claims UserClaims, projectSlug
 			`, role)
 
 			if _, err := tx.Exec(ctx, atomicSQL, timeout, projectSlug, claims.Sub, claims.Email, claims.Role); err != nil {
-				slog.Error("security context injection failed", "slug", projectSlug, "err", err)
+				slog.Error("security context injection failed", "slug", projectSlug, "err", err, "role", role)
 				return fmt.Errorf("security_injection: %w", err)
 			}
 

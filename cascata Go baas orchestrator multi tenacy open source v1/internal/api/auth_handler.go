@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"log/slog"
+	"net"
 	"net/http"
 
 	"cascata/internal/auth"
@@ -39,7 +40,8 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	switch payload.Strategy {
 	case domain.StrategyPassword:
-		res, signedJWT, err := h.residentAuth.AuthenticateByCPF(r.Context(), projectSlug, payload.Identifier, payload.Password)
+		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+		res, signedJWT, err := h.residentAuth.AuthenticateByCPF(r.Context(), projectSlug, payload.Identifier, payload.Password, ip)
 		if err != nil {
 			slog.Warn("auth.resident: login lookup failed", "tenant_slug", projectSlug, "err", err)
 			SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, "AUTHENTICATION_FAILED")
@@ -90,7 +92,8 @@ func (h *AuthHandler) HandleVerifyOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, signedJWT, err := h.residentAuth.VerifyOTP(r.Context(), projectSlug, payload.Identifier, payload.Code)
+	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	res, signedJWT, err := h.residentAuth.VerifyOTP(r.Context(), projectSlug, payload.Identifier, payload.Code, ip)
 	if err != nil {
 		SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, "INVALID_OR_EXPIRED_CODE")
 		return

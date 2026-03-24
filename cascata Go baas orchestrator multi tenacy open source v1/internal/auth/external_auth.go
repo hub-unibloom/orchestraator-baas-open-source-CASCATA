@@ -63,7 +63,9 @@ func (s *ExternalAuthService) Callback(ctx context.Context, slug, provider, code
 	}
 
 	// 4. Resolve Tenant Pool
-	pool, err := s.projectSvc.GetPool(ctx, slug)
+	p, err := s.projectSvc.Resolve(ctx, slug)
+	if err != nil { return nil, "", err }
+	pool, err := s.projectSvc.GetPool(ctx, p)
 	if err != nil { return nil, "", err }
 
 	// 5. Linked Identity Logic (Upsert Identity Pattern)
@@ -73,7 +75,7 @@ func (s *ExternalAuthService) Callback(ctx context.Context, slug, provider, code
 		// Create new resident user from external profile
 		r = &domain.Resident{
 			Email: profile.Email,
-			Role:  domain.RoleResident,
+			Role:  domain.RoleResidentAuthenticated,
 		}
 		if err := s.residentSvc.SignupResident(ctx, slug, r, ""); err != nil {
 			return nil, "", err

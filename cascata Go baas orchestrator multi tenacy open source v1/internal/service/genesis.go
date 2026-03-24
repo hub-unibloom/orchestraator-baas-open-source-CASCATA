@@ -13,17 +13,19 @@ import (
 // GenesisService orchestrates the physical creation and initialization of new Tenants.
 // It is the midwife of the Cascata ecosystem, handling from DB creation to RLS hardening.
 type GenesisService struct {
-	repo         *database.Repository // Master pool (can create databases)
+	repo         *database.Repository // Master pool (Administrative access)
 	projectRepo  *repository.ProjectRepository
+	tenantRepo   *repository.TenantRepository
 	poolMgr      *database.TenantPoolManager
 	vault        *vault.VaultService
 	migrationSvc *MigrationService
 }
 
-func NewGenesisService(repo *database.Repository, projectRepo *repository.ProjectRepository, poolMgr *database.TenantPoolManager, vault *vault.VaultService, migrationSvc *MigrationService) *GenesisService {
+func NewGenesisService(repo *database.Repository, projectRepo *repository.ProjectRepository, tenantRepo *repository.TenantRepository, poolMgr *database.TenantPoolManager, vault *vault.VaultService, migrationSvc *MigrationService) *GenesisService {
 	return &GenesisService{
 		repo:         repo,
 		projectRepo:  projectRepo,
+		tenantRepo:   tenantRepo,
 		poolMgr:      poolMgr,
 		vault:        vault,
 		migrationSvc: migrationSvc,
@@ -34,10 +36,8 @@ func NewGenesisService(repo *database.Repository, projectRepo *repository.Projec
 func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) error {
 	slog.Info("genesis: starting project creation", "slug", p.Slug, "db", p.DBName)
 
-	// 1. Physical Database Creation
-	createDBSql := fmt.Sprintf("CREATE DATABASE %q", p.DBName)
-	if _, err := s.repo.Pool.Exec(ctx, createDBSql); err != nil {
-		slog.Error("genesis: failed to create physical database", "db", p.DBName, "err", err)
+	// 1. Physical Database Creation (Sanitized via Repository)
+	if err := s.tenantRepo.ProvisionNewDatabase(ctx, p.DBName); err != nil {
 		return fmt.Errorf("genesis: create db failed: %w", err)
 	}
 
@@ -46,8 +46,7 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 	defer func() {
 		if !success {
 			slog.Warn("genesis: rolling back project creation (dropping db)", "slug", p.Slug, "db", p.DBName)
-			dropSql := fmt.Sprintf("DROP DATABASE IF EXISTS %q", p.DBName)
-			_, _ = s.repo.Pool.Exec(context.Background(), dropSql)
+			_ = s.tenantRepo.DropDatabase(context.Background(), p.DBName)
 		}
 	}()
 
@@ -84,11 +83,9 @@ func (s *GenesisService) DeleteProject(ctx context.Context, slug string) error {
 
 	slog.Info("genesis: starting project deletion", "slug", slug, "db", p.DBName)
 
-	// 1. Termination: Drop Database
-	dropSql := fmt.Sprintf("DROP DATABASE %q", p.DBName)
-	if _, err := s.repo.Pool.Exec(ctx, dropSql); err != nil {
-		slog.Error("genesis: failed to drop physical database", "db", p.DBName, "err", err)
-		// We continue to metadata cleanup even if DB is missing (Antifragility)
+	// 1. Termination: Drop Database (Antifragile)
+	if err := s.tenantRepo.DropDatabase(ctx, p.DBName); err != nil {
+		slog.Warn("genesis: drop db failed during deletion (might already be gone)", "db", p.DBName, "err", err)
 	}
 
 	// 2. Vault Tombstoning (Historical record of destruction)
@@ -97,9 +94,8 @@ func (s *GenesisService) DeleteProject(ctx context.Context, slug string) error {
 		"status":     "deleted",
 	})
 
-	// 3. System Metadata Purge (Hard Delete for v1)
-	const sql = "DELETE FROM system.projects WHERE slug = $1"
-	_, err = s.repo.Pool.Exec(ctx, sql, slug)
+	// 3. System Metadata Purge
+	err = s.projectRepo.Delete(ctx, slug)
 	
 	slog.Info("genesis: project deleted successfully", "slug", slug)
 	return err
@@ -151,13 +147,18 @@ func (s *GenesisService) initializeSchema(ctx context.Context, slug string) erro
 		CREATE EXTENSION IF NOT EXISTS pgcrypto;
 		CREATE EXTENSION IF NOT EXISTS pg_graphql;
 
-		-- Resident Auth Table (Phase 11 Sync Foundation)
+		-- Resident Auth Table (Phase 11 Sync Foundation + Phase 10.1 Lexicon)
 		CREATE TABLE IF NOT EXISTS auth.users (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			email TEXT UNIQUE,
+			cpf TEXT UNIQUE,
+			whatsapp TEXT UNIQUE,
+			password_hash TEXT,
 			role TEXT DEFAULT 'authenticated',
 			is_email_verified BOOLEAN DEFAULT false,
+			is_phone_verified BOOLEAN DEFAULT false,
 			metadata JSONB DEFAULT '{}',
+			last_login TIMESTAMP WITH TIME ZONE,
 			created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
 			updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 		);

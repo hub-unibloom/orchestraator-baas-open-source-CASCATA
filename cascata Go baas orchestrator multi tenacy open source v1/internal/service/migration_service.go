@@ -21,14 +21,14 @@ import (
 // MigrationService is the "Structural Orchestrator" of Cascata (Phase 15).
 // It applies schema changes to tenant pools with zero-downtime, collision detection and OTel tracing.
 type MigrationService struct {
-	poolMgr *database.TenantPoolManager
-	audit   *AuditService
+	projectSvc *ProjectService
+	audit      *AuditService
 }
 
-func NewMigrationService(poolMgr *database.TenantPoolManager, audit *AuditService) *MigrationService {
+func NewMigrationService(projectSvc *ProjectService, audit *AuditService) *MigrationService {
 	return &MigrationService{
-		poolMgr: poolMgr,
-		audit:   audit,
+		projectSvc: projectSvc,
+		audit:      audit,
 	}
 }
 
@@ -47,8 +47,14 @@ func (s *MigrationService) ApplyMigration(ctx context.Context, slug string, name
 	// 1. Calculate and verify checksum
 	checksum := s.calculateChecksum(ddl)
 	
-	// 2. Resolve Pool
-	pool, err := s.poolMgr.GetPool(ctx, slug)
+	// 2. Resolve Project & Acquire Pool
+	p, err := s.projectSvc.Resolve(ctx, slug)
+	if err != nil {
+		span.RecordError(err)
+		return fmt.Errorf("migration.ApplyMigration: project resolution failed: %w", err)
+	}
+
+	pool, err := s.projectSvc.GetPool(ctx, p)
 	if err != nil {
 		span.RecordError(err)
 		return fmt.Errorf("migration.ApplyMigration: pool resolution failed: %w", err)

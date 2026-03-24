@@ -18,16 +18,16 @@ import (
 // SyncService orchestrates the convergent data synchronization (CRDT).
 // It ensures that distributed clients (web, mobile, offline-first) reach a consistent state using LWW-Element-Set.
 type SyncService struct {
-	poolMgr *database.TenantPoolManager
-	repo    *repository.SyncRepository
-	audit   *AuditService
+	projectSvc *ProjectService
+	repo       *repository.SyncRepository
+	audit      *AuditService
 }
 
-func NewSyncService(poolMgr *database.TenantPoolManager, audit *AuditService) *SyncService {
+func NewSyncService(projectSvc *ProjectService, audit *AuditService) *SyncService {
 	return &SyncService{
-		poolMgr: poolMgr,
-		repo:    repository.NewSyncRepository(),
-		audit:   audit,
+		projectSvc: projectSvc,
+		repo:       repository.NewSyncRepository(),
+		audit:      audit,
 	}
 }
 
@@ -45,7 +45,14 @@ func (s *SyncService) MergeBatch(ctx context.Context, payload *domain.SyncPayloa
 
 	slog.Info("sync: starting merge operation", "table", payload.Table, "slug", payload.ProjectSlug)
 	
-	pool, err := s.poolMgr.GetPool(ctx, payload.ProjectSlug)
+	// 1. Resolve & Acquire Pool
+	p, err := s.projectSvc.Resolve(ctx, payload.ProjectSlug)
+	if err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("sync.MergeBatch: project resolution failed: %w", err)
+	}
+
+	pool, err := s.projectSvc.GetPool(ctx, p)
 	if err != nil {
 		span.RecordError(err)
 		return nil, fmt.Errorf("sync.MergeBatch: pool unreachable: %w", err)

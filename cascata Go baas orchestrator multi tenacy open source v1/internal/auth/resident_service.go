@@ -23,24 +23,36 @@ type ResidentAuthService struct {
 	sessionMgr *SessionManager
 	otpMgr     *OTPManager
 	postman    communication.Dispatcher
+	govSvc     *GovernanceService
 	auditSvc   domain.Auditor
 }
 
-func NewResidentAuthService(projectSvc *service.ProjectService, resRepo *repository.ResidentRepository, sessionMgr *SessionManager, otpMgr *OTPManager, postman communication.Dispatcher, audit domain.Auditor) *ResidentAuthService {
+func NewResidentAuthService(projectSvc *service.ProjectService, resRepo *repository.ResidentRepository, sessionMgr *SessionManager, otpMgr *OTPManager, postman communication.Dispatcher, govSvc *GovernanceService, audit domain.Auditor) *ResidentAuthService {
 	return &ResidentAuthService{
 		projectSvc: projectSvc,
 		resRepo:    resRepo,
 		sessionMgr: sessionMgr,
 		otpMgr:     otpMgr,
 		postman:    postman,
+		govSvc:     govSvc,
 		auditSvc:   audit,
 	}
 }
 
 // AuthenticateByCPF validates a resident user using their CPF and password.
-func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug string, cpf, password string) (*domain.Resident, string, error) {
-	// 1. Acquire Tenant Pool
-	pool, err := s.projectSvc.GetPool(ctx, projectSlug)
+func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug string, cpf, password, clientIP string) (*domain.Resident, string, error) {
+	// 1. Resolve Project & Acquire Pool
+	p, err := s.projectSvc.Resolve(ctx, projectSlug)
+	if err != nil {
+		return nil, "", fmt.Errorf("resident.auth.AuthenticateByCPF: project resolution failed: %w", err)
+	}
+
+	// 2. Enforce Perimeter (Zero-Trust)
+	if err := s.govSvc.EnforcePerimeter(ctx, p, clientIP); err != nil {
+		return nil, "", err
+	}
+
+	pool, err := s.projectSvc.GetPool(ctx, p)
 	if err != nil {
 		return nil, "", fmt.Errorf("resident.auth.AuthenticateByCPF: pool resolution failed: %w", err)
 	}
@@ -64,6 +76,15 @@ func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug
 }
 
 // IssueStepUpOTP initiates an elevated authentication prompt for an already logged-in user.
+func (s *ResidentAuthService) IssueStepUpOTP(ctx context.Context, slug, resID string) error {
+	p, err := s.projectSvc.Resolve(ctx, slug)
+	if err != nil { return err }
+	pool, err := s.projectSvc.GetPool(ctx, p)
+	if err != nil { return err }
+	
+	r, _, err := s.resRepo.FindByIdentifier(ctx, pool, resID)
+	if err != nil { return err }
+
 	slog.Info("resident.auth: issuing step-up challenge", "slug", slug, "resident_id", resID)
 	
 	// We use the email/whatsapp as identifier for the OTP
@@ -75,8 +96,8 @@ func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug
 
 	body := fmt.Sprintf("[SECURITY] Elevated access requested for your account. Code: %s", code)
 	go func() {
-		if u.Email != "" { _ = s.postman.SendEmail(context.Background(), identifier, "Step-up Verification", body) }
-		if u.WhatsApp != "" { _ = s.postman.SendWhatsApp(context.Background(), identifier, body) }
+		if r.Email != "" { _ = s.postman.SendEmail(context.Background(), r.Email, "Step-up Verification", body) }
+		if r.WhatsApp != "" { _ = s.postman.SendWhatsApp(context.Background(), r.WhatsApp, body) }
 	}()
 
 	return nil
@@ -84,7 +105,10 @@ func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug
 
 // VerifyStepUp validates the elevated challenge and issues a 'mfa-elevated' JWT.
 func (s *ResidentAuthService) VerifyStepUp(ctx context.Context, slug, residentID, code string) (string, error) {
-	pool, _ := s.projectSvc.GetPool(ctx, slug)
+	p, err := s.projectSvc.Resolve(ctx, slug)
+	if err != nil { return "", err }
+	pool, err := s.projectSvc.GetPool(ctx, p)
+	if err != nil { return "", err }
 	r, _, _ := s.resRepo.FindByIdentifier(ctx, pool, residentID)
 	
 	identifier := r.Email
@@ -158,7 +182,7 @@ func (s *ResidentAuthService) RequestWhatsAppOTP(ctx context.Context, slug, what
 }
 
 // VerifyOTP checks the code and issues a Resident Token if valid.
-func (s *ResidentAuthService) VerifyOTP(ctx context.Context, projectSlug, identifier, code string) (*domain.Resident, string, error) {
+func (s *ResidentAuthService) VerifyOTP(ctx context.Context, projectSlug, identifier, code, clientIP string) (*domain.Resident, string, error) {
 	// 1. Verify in Dragonfly (Phase 10.1 OTP Engine)
 	valid, err := s.otpMgr.VerifyOTP(ctx, projectSlug, identifier, code)
 	if err != nil || !valid {
@@ -167,7 +191,17 @@ func (s *ResidentAuthService) VerifyOTP(ctx context.Context, projectSlug, identi
 	}
 
 	// 2. Resolve Pool
-	pool, err := s.projectSvc.GetPool(ctx, projectSlug)
+	p, err := s.projectSvc.Resolve(ctx, projectSlug)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// 3. Enforce Perimeter
+	if err := s.govSvc.EnforcePerimeter(ctx, p, clientIP); err != nil {
+		return nil, "", err
+	}
+
+	pool, err := s.projectSvc.GetPool(ctx, p)
 	if err != nil {
 		return nil, "", err
 	}
@@ -196,7 +230,11 @@ func (s *ResidentAuthService) VerifyOTP(ctx context.Context, projectSlug, identi
 // SignupResident registers a new end-user inside the tenant's auth.users table.
 func (s *ResidentAuthService) SignupResident(ctx context.Context, projectSlug string, r *domain.Resident, rawPassword string) error {
 	// 1. Resolve Pool
-	pool, err := s.projectSvc.GetPool(ctx, projectSlug)
+	p, err := s.projectSvc.Resolve(ctx, projectSlug)
+	if err != nil {
+		return fmt.Errorf("resident.auth.SignupResident: project resolution failed: %w", err)
+	}
+	pool, err := s.projectSvc.GetPool(ctx, p)
 	if err != nil {
 		return fmt.Errorf("resident.auth.SignupResident: pool resolution failed: %w", err)
 	}

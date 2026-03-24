@@ -20,7 +20,7 @@ func NewResidentRepository() *ResidentRepository {
 }
 
 // FindByIdentifier searches for a resident by Email, CPF or WhatsApp within a tenant pool.
-func (r *ResidentRepository) FindByIdentifier(ctx context.Context, pool *database.TenantPool, identifier string) (*domain.Resident, string, error) {
+func (r *ResidentRepository) FindByIdentifier(ctx context.Context, pool *database.Repository, identifier string) (*domain.Resident, string, error) {
 	const sql = `
 		SELECT id, email, cpf, whatsapp, password_hash, role, metadata, created_at, updated_at 
 		FROM auth.users 
@@ -40,7 +40,7 @@ func (r *ResidentRepository) FindByIdentifier(ctx context.Context, pool *databas
 }
 
 // Create persists a new resident.
-func (r *ResidentRepository) Create(ctx context.Context, pool *database.TenantPool, u *domain.Resident, hashedPassword string) error {
+func (r *ResidentRepository) Create(ctx context.Context, pool *database.Repository, u *domain.Resident, hashedPassword string) error {
 	const sql = `
 		INSERT INTO auth.users (email, cpf, whatsapp, password_hash, role, metadata) 
 		VALUES ($1, $2, $3, $4, $5, $6) 
@@ -57,7 +57,7 @@ func (r *ResidentRepository) Create(ctx context.Context, pool *database.TenantPo
 }
 
 // UpdateLastLogin updates the login timestamp for auditing.
-func (r *ResidentRepository) UpdateLastLogin(ctx context.Context, pool *database.TenantPool, residentID string) error {
+func (r *ResidentRepository) UpdateLastLogin(ctx context.Context, pool *database.Repository, residentID string) error {
 	const sql = `UPDATE auth.users SET last_login = now() WHERE id = $1`
 	_, err := pool.Pool.Exec(ctx, sql, residentID)
 	if err != nil {

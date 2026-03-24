@@ -42,13 +42,12 @@ func (o *Orchestrator) Chat(ctx context.Context, projectSlug string, sessionID s
 	schema, err := extractor.GetSchemaContext(ctx, projectSlug)
 	if err != nil { schema = "No context available" }
 
-	// 3. Build Prompt
-	systemMsg := fmt.Sprintf(`You are Cascata Architect. Helping with project: %s.
-	Rules:
-	- Return SQL inside ```sql blocks.
-	- Output JSON for structural changes.
-	
-	%s`, projectSlug, schema)
+	// 3. Build Prompt with safe escaping for markdown blocks
+	systemMsg := "You are Cascata Architect. Helping with project: " + projectSlug + ".\n" +
+		"Rules:\n" +
+		"- Return SQL inside ```sql blocks.\n" +
+		"- Output JSON for structural changes.\n\n" +
+		schema
 
 	// 4. Call LLM (OpenAI-Compatible)
 	return o.callLLM(ctx, systemMsg, userMsg)

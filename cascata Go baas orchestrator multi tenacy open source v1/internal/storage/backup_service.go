@@ -24,14 +24,14 @@ type Manifest struct {
 // BackupService orchestrates the creation and restoration of Cascata Archive Files (.caf).
 // .caf files are immutable blueprints containing schema, initial data and secrets (Phase 10.5).
 type BackupService struct {
-	poolMgr *database.TenantPoolManager
-	repo    *database.Repository
+	projectSvc *service.ProjectService
+	repo       *database.Repository
 }
 
-func NewBackupService(poolMgr *database.TenantPoolManager, repo *database.Repository) *BackupService {
+func NewBackupService(projectSvc *service.ProjectService, repo *database.Repository) *BackupService {
 	return &BackupService{
-		poolMgr: poolMgr,
-		repo:    repo,
+		projectSvc: projectSvc,
+		repo:       repo,
 	}
 }
 
@@ -72,7 +72,14 @@ func (s *BackupService) ExportProject(ctx context.Context, projectSlug string, o
 
 // reconstructSchema digs into the PostgreSQL catalog to rebuild the full DDL of a tenant.
 func (s *BackupService) reconstructSchema(ctx context.Context, projectSlug string) (string, error) {
-	pool, err := s.poolMgr.GetPool(ctx, projectSlug)
+	// 1. Resolve Project Metadata
+	p, err := s.projectSvc.Resolve(ctx, projectSlug)
+	if err != nil {
+		return "", fmt.Errorf("backup: project resolution failed: %w", err)
+	}
+
+	// 2. Acquire Pool via Sinergy Service
+	pool, err := s.projectSvc.GetPool(ctx, p)
 	if err != nil {
 		return "", err
 	}

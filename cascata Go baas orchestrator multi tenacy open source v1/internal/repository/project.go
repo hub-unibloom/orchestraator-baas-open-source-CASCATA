@@ -99,3 +99,13 @@ func (r *ProjectRepository) GetWorkflows(ctx context.Context, slug string) ([]do
 	}
 	return wfs, nil
 }
+// Delete removes a project from the metadata storage.
+func (r *ProjectRepository) Delete(ctx context.Context, slug string) error {
+	const sql = "DELETE FROM system.projects WHERE slug = $1"
+	_, err := r.repo.Pool.Exec(ctx, sql, slug)
+	if err != nil {
+		return fmt.Errorf("repository.Project.Delete: %w", err)
+	}
+	slog.Warn("project metadata PURGED", "slug", slug)
+	return nil
+}
