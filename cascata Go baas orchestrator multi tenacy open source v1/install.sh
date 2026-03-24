@@ -229,6 +229,9 @@ launch_cluster_base() {
     "${DOCKER_CMD[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
 
     log_info "Realizando boot isolado da malha Docker..."
+    # Garantir permissões do arquivo de configuração do Vault (user 'vault' do alpine precisa ler)
+    chmod 644 deployments/vault-config.hcl || true
+    
     "${DOCKER_CMD[@]}" pull -q || true
     "${DOCKER_CMD[@]}" up -d --build
     
@@ -249,7 +252,10 @@ vault_bootstrap() {
     fi
 
     if [[ -z "$VAULT_CONTAINER" ]]; then
-        log_error "Container Vault estritamente inoperante ou não iniciado. Verifique 'docker logs cascata-vault'."
+        # Check se o container existe mas caiu
+        local EXITED_VAULT
+        EXITED_VAULT=$(docker ps -a --filter "name=vault" --format "{{.Status}}" | head -n 1)
+        log_error "Container Vault estritamente inoperante. Status detectado: ${EXITED_VAULT}. Logs do container: \n$(docker logs cascata-vault 2>&1 | tail -n 20)"
     fi
 
     log_info "Aguardando Protocolo Ping Vault API..."
@@ -264,7 +270,7 @@ vault_bootstrap() {
         fi
         sleep 2
         v_timer=$((v_timer + 1))
-        if [[ "$v_timer" -gt 15 ]]; then
+        if [[ "$v_timer" -gt 25 ]]; then # Aumentado para 50s de segurança
             log_warn "Vault demorando no boot."
             break
         fi

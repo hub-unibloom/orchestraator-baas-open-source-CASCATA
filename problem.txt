@@ -1,94 +1,19 @@
-
-ℹ Inicializando Orquestração Zero-Trust...
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Identidade Corporativa: Provisionamento do Worner
-  O 'Worner' é o administrador supremo do Condomínio Cascata.
-  Este será o único membro criado fora do Audit Trail visual.
-
-  E-mail do Worner: thalesjed@gmail.com
-  Senha Mestre (Mínimo 12 caracteres): 
-  Habilitar OTP / MFA Obrigatório? (s/n): n
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Sincronizando Código Fonte
-ℹ Atualizando repositório local...
-✓ Diretório de operação definido: /root/cascata_root/cascata Go baas orchestrator multi tenacy open source v1
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Validando Runtime (Docker) e Ferramentas
-✓ Docker Engine verificado (v29.x).
-ℹ Cascata Architecture: Zero-Host-Dependency (Go is only used inside Docker Build Stage).
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Aplicando Tuning de Performance Persistente (Sysctl)
-✓ Parâmetros Kernel gravados e persistidos.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Provisão de Identidade Criptográfica (.env)
-⚠ Arquivo .env já existente. Fazendo backup e gerando novo para FRESH INSTALL.
-✓ Arquivo Base Criptográfico (Zero Dev-Mode) concluído.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Iniciando Orquestração do Cluster Base
-ℹ ANICILAÇÃO DE DADOS: Limpando Containers, Redes e VOLUMES Órfãos...
-ℹ Realizando boot isolado da malha Docker...
-WARN[0000] /root/cascata_root/cascata Go baas orchestrator multi tenacy open source v1/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
-[+] pull 4/4
- ✔ cascata-orchestrator                            Skipped 0.0s
- ✔ Image docker.dragonflydb.io/dragonflydb/drag... Pulled  0.3s
- ✔ Image hashicorp/vault:1.15                      Pulled  0.3s
- ✔ Image postgres:18-alpine                        Pulled  0.4s
-WARN[0000] /root/cascata_root/cascata Go baas orchestrator multi tenacy open source v1/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
-[+] Building 121.9s (22/22) FINISHED                           
- => [internal] load local bake definitions                0.0s
- => => reading from stdin 760B                            0.0s
- => [internal] load build definition from Dockerfile.bac  0.0s
- => => transferring dockerfile: 1.05kB                    0.0s
- => [internal] load metadata for docker.io/library/alpin  0.2s
- => [internal] load metadata for docker.io/library/golan  0.2s
- => [internal] load .dockerignore                         0.0s
- => => transferring context: 2B                           0.0s
- => [stage-1 1/5] FROM docker.io/library/alpine:latest@s  0.0s
- => => resolve docker.io/library/alpine:latest@sha256:25  0.0s
- => [builder 1/9] FROM docker.io/library/golang:1.26-alp  0.0s
- => => resolve docker.io/library/golang:1.26-alpine@sha2  0.0s
- => [internal] load build context                         0.0s
- => => transferring context: 13.52kB                      0.0s
- => CACHED [stage-1 2/5] RUN apk add --no-cache ca-certi  0.0s
- => CACHED [stage-1 3/5] WORKDIR /root/                   0.0s
- => CACHED [builder 2/9] RUN apk add --no-cache gcc musl  0.0s
- => CACHED [builder 3/9] WORKDIR /app                     0.0s
- => CACHED [builder 4/9] COPY go.mod ./                   0.0s
- => [builder 5/9] COPY . .                                0.6s
- => [builder 6/9] RUN go mod tidy                        11.4s
- => [builder 7/9] RUN go mod download                     1.1s 
- => [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build  98.8s 
- => [builder 9/9] RUN CGO_ENABLED=0 GOOS=linux go build   5.1s 
- => [stage-1 4/5] COPY --from=builder /app/cascata-orche  0.2s 
- => [stage-1 5/5] COPY --from=builder /app/worner-provis  0.1s 
- => exporting to image                                    3.9s 
- => => exporting layers                                   3.0s
- => => exporting manifest sha256:17baede5a8e4f6de35a2d0e  0.0s
- => => exporting config sha256:3be2aff22fd551f6803afa589  0.0s
- => => exporting attestation manifest sha256:083beecfe66  0.0s
- => => exporting manifest list sha256:e7dd0f96eb5ea0a5f7  0.0s
- => => naming to docker.io/library/cascatagobaasorchestr  0.0s
- => => unpacking to docker.io/library/cascatagobaasorche  0.8s
- => resolving provenance for metadata file                0.0s
 [+] up 9/9
- ✔ Image cascatagobaasorchestratormultitenacy... Built   122.0s
+ ✔ Image cascatagobaasorchestratormultitenacy... Built   115.8s
  ✔ Network cascatagobaasorchestratormultitena... Created 0.1s
  ✔ Volume cascatagobaasorchestratormultitenac... Created 0.0s
  ✔ Volume cascata_extension_payloads             Created 0.0s
  ✔ Volume cascatagobaasorchestratormultitenac... Created 0.0s
- ✔ Container cascata-vault                       Started 0.9s
- ✔ Container cascata-db                          Healthy 11.6s
- ✔ Container cascata-cache                       Started 1.0s
- ✔ Container cascata-orchestrator                Started 11.5s
+ ✔ Container cascata-vault                       Started 0.7s
+ ✔ Container cascata-db                          Healthy 11.3s
+ ✔ Container cascata-cache                       Started 0.7s
+ ✔ Container cascata-orchestrator                Started 11.3s
 ✓ Containers Base enviados à rede.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ▸ Vault Operator: Inicialização Avançada e Unseal
-✗ Container Vault estritamente inoperante. Falha.
+✗ Container Vault estritamente inoperante ou não iniciado. Verifique 'docker logs cascata-vault'.
+ubuntu@ip-172-26-7-197:~$ docker logs cascata-vault
+permission denied while trying to connect to the docker API at unix:///var/run/docker.sock
 ubuntu@ip-172-26-7-197:~$ 
+
