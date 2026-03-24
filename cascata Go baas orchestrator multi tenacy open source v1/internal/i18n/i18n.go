@@ -16,9 +16,8 @@ func Init() {
 	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
 	
 	// Files will be loaded from the 'languages' directory
-	// These will be populated in the next steps
-	_ = bundle.LoadMessageFile("languages/pt-BR.json")
-	_ = bundle.LoadMessageFile("languages/en-US.json")
+	_, _ = bundle.LoadMessageFile("languages/pt-BR.json")
+	_, _ = bundle.LoadMessageFile("languages/en-US.json")
 }
 
 // GetLocalizer returns a localizer based on the Accept-Language header.

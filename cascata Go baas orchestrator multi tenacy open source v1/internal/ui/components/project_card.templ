@@ -14,7 +14,7 @@ type Project struct {
 	Status       string
 	MaxUsers     int
 	MaxConns     int
-	MaxStorageMB int
+	MaxStorageMB int64
 }
 
 templ ProjectCard(p Project, loc *i18n.Localizer) {

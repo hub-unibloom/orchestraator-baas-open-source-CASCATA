@@ -1,11 +1,14 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
+	"strings"
 	"cascata/internal/ui/layouts"
 	"cascata/internal/ui/pages"
 	"cascata/internal/i18n"
 	"cascata/internal/ui/components"
+	"cascata/internal/domain"
 	"github.com/a-h/templ"
 )
 
@@ -23,8 +26,6 @@ func NewUIHandler(systemH *SystemHandler) *UIHandler {
 // ServeIndex renders the main entry point with the correct localization.
 func (h *UIHandler) ServeIndex(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
-	
-	// Base Layout renders everything with the localizer context
 	component := layouts.Base(i18n.T(loc, "dashboard_title"), loc)
 	templ.Handler(component).ServeHTTP(w, r)
 }
@@ -42,8 +43,9 @@ func (h *UIHandler) ServeSystemDashboard(w http.ResponseWriter, r *http.Request)
 // HandleUIListProjects returns a fragment containing the grid of project cards.
 func (h *UIHandler) HandleUIListProjects(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
-	dbProjects, err := h.SystemH.Repo.ListTenants(r.Context())
+	dbProjects, err := h.SystemH.ProjectRepo.List(r.Context())
 	if err != nil {
+		slog.Error("ui: failed to list projects", "err", err)
 		http.Error(w, "Failed to fetch projects", http.StatusInternalServerError)
 		return
 	}
@@ -83,9 +85,9 @@ func (h *UIHandler) HandleUIOnboarding(w http.ResponseWriter, r *http.Request) {
 // HandleUIProjectDashboard renders the main cockpit page for a tenant.
 func (h *UIHandler) HandleUIProjectDashboard(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
-	slug := r.URL.Query().Get("slug") // In a real Chi router, this would be chi.URLParam(r, "slug")
-	if slug == "" {
-		slug = r.URL.Path[len("/system/projects/"):]
+	slug := r.URL.Path[len("/system/projects/"):]
+	if strings.Contains(slug, "/") {
+		slug = slug[:strings.Index(slug, "/")]
 	}
 
 	if r.Header.Get("HX-Request") == "true" {
@@ -98,18 +100,21 @@ func (h *UIHandler) HandleUIProjectDashboard(w http.ResponseWriter, r *http.Requ
 // HandleUIProjectOverview returns the stats fragment for the cockpit.
 func (h *UIHandler) HandleUIProjectOverview(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
-	
-	// Extraction of Project Slug from path: /system/projects/{slug}/overview
 	path := r.URL.Path
 	slug := strings.TrimPrefix(path, "/system/projects/")
 	slug = strings.TrimSuffix(slug, "/overview")
 
-	// 1. Fetch real metrics from DB
-	dbTenants, _ := h.SystemH.Repo.ListTenants(r.Context())
-	var currentTenant *database.Tenant
-	for _, t := range dbTenants {
+	dbProjects, err := h.SystemH.ProjectRepo.List(r.Context())
+	if err != nil {
+		slog.Error("ui: failed to list tenants for overview", "err", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	var currentTenant *domain.Project
+	for _, t := range dbProjects {
 		if t.Slug == slug {
-			currentTenant = &t
+			currentTenant = t
 			break
 		}
 	}
@@ -119,25 +124,21 @@ func (h *UIHandler) HandleUIProjectOverview(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// 2. Prepare Stats Model (Simplified for initial migration)
-	stats := pages.ProjectStats{
+	stats := pages.ProjectUIStats{
 		Status:           currentTenant.Status,
-		TotalUsers:       currentTenant.MaxUsers, // Using max users as initial proxy
-		TotalTables:      0,                      // To be detailed in Phase 2
-		SchemaSizeBytes:  int64(currentTenant.MaxStorageMB) * 1024 * 1024 / 2, // Proxy usage for UI view
+		TotalUsers:       currentTenant.MaxUsers,
+		TotalTables:      0,
+		SchemaSizeBytes:  currentTenant.MaxStorageMB * 1024 * 1024 / 2, 
 		TrafficRate:      "0.0 KB/s",
-		TableNames:       []string{},             // Empty for now (Genesis Phase)
+		TableNames:       []string{},
 	}
 
-	// 3. Render the fragment
 	templ.Handler(pages.ProjectOverview(slug, loc, stats)).ServeHTTP(w, r)
 }
 
 // HandleUIProjectSettings returns the settings modal fragment for a project.
 func (h *UIHandler) HandleUIProjectSettings(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
-	
-	// Extraction of Project Slug from path: /system/projects/{slug}/settings
 	path := r.URL.Path
 	slug := strings.TrimPrefix(path, "/system/projects/")
 	slug = strings.TrimSuffix(slug, "/settings")

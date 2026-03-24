@@ -27,3 +27,37 @@ Dockerfile.backend:23
 failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
 
 ubuntu@ip-172-26-7-197:~$ 
+
+
+LOG PARTE 2:
+
+
+
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linu  71.7s 
+------                                                       
+ > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                   
+49.76 # cascata/internal/i18n                                
+49.76 internal/i18n/i18n.go:20:6: assignment mismatch: 1 variable but bundle.LoadMessageFile returns 2 values             
+49.76 internal/i18n/i18n.go:21:6: assignment mismatch: 1 variable but bundle.LoadMessageFile returns 2 values
+------
+[+] up 0/1
+ ⠙ Image cascatagobaasorchestratormultitena... Building 84.2s
+Dockerfile.backend:23
+
+--------------------
+
+  21 |     
+
+  22 |     # Fazer o build do orchestrator e do provisionador CLI
+
+  23 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
+
+  24 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
+
+  25 |     
+
+--------------------
+
+failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
+
+ubuntu@ip-172-26-7-197:~$ 

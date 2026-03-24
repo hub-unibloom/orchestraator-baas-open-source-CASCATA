@@ -5,7 +5,7 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-type ProjectStats struct {
+type ProjectUIStats struct {
 	Status           string
 	TotalUsers       int
 	TotalTables      int
@@ -14,7 +14,7 @@ type ProjectStats struct {
 	TableNames       []string
 }
 
-templ ProjectOverview(slug string, loc *i18n.Localizer, stats ProjectStats) {
+templ ProjectOverview(slug string, loc *i18n.Localizer, stats ProjectUIStats) {
 	<div class="max-w-7xl mx-auto space-y-12 pb-20 animate-fade-in">
 		<!-- GRID DE MÉTRICAS RÁPIDAS -->
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
