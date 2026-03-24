@@ -8,10 +8,10 @@ import (
 
 	"cascata/internal/ai"
 	"cascata/internal/database"
-	"cascata/internal/domain"
 	"cascata/internal/privacy"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // PhantomService is the "Cyber-Nervous System" of Cascata.
@@ -87,7 +87,7 @@ func (s *PhantomService) AnalyzeIntent(ctx context.Context, projectSlug, sql str
 // Integrated with OpenTelemetry and Cache Sinergy.
 func (s *PhantomService) InvokeFunction(ctx context.Context, projectSlug, functionName string, binary []byte, params map[string]interface{}) ([]byte, error) {
 	tr := otel.Tracer("phantom-service")
-	ctx, span := tr.Start(ctx, "InvokeFunction", otel.WithAttributes(
+	ctx, span := tr.Start(ctx, "InvokeFunction", trace.WithAttributes(
 		attribute.String("cascata.project", projectSlug),
 		attribute.String("phantom.function", functionName),
 	))
