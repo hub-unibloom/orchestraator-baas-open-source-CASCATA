@@ -3,12 +3,12 @@ package cron
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"time"
 
 	"cascata/internal/automation"
 	"cascata/internal/database"
+	"cascata/internal/domain"
 	"cascata/internal/service"
 	"cascata/internal/telemetry"
 
@@ -26,14 +26,14 @@ type Scheduler struct {
 	client    *asynq.Client
 	scheduler *asynq.Scheduler
 	server    *asynq.Server
-	engine    *automation.Engine
+	engine    *automation.WorkflowEngine
 	repo      *database.Repository
 	auditSvc  *service.AuditService
 	telemetry *telemetry.TelemetryEngine
 }
 
-func NewScheduler(dflyAddr string, engine *automation.Engine, repo *database.Repository, audit *service.AuditService, tele *telemetry.TelemetryEngine) *Scheduler {
-	dflyOpt := asynq.DragonflyClientOpt{Addr: dflyAddr}
+func NewScheduler(dflyAddr string, engine *automation.WorkflowEngine, repo *database.Repository, audit *service.AuditService, tele *telemetry.TelemetryEngine) *Scheduler {
+	dflyOpt := asynq.RedisClientOpt{Addr: dflyAddr}
 	
 	return &Scheduler{
 		client:    asynq.NewClient(dflyOpt),
@@ -96,13 +96,14 @@ func (s *Scheduler) SyncAll() error {
 		}
 
 		var config map[string]interface{}
-		var nodes []automation.Node
+		var nodes []domain.WorkflowNode
 		json.Unmarshal(configIn, &config)
 		json.Unmarshal(nodesIn, &nodes)
 
 		cron, _ := config["cron"].(string)
 		if cron == "" { continue }
 
+		tzStr := "UTC"
 		var metadataIn []byte
 		err := s.repo.Pool.QueryRow(ctx, "SELECT metadata FROM system.projects WHERE slug = $1", slug).Scan(&metadataIn)
 		if err == nil {
@@ -112,6 +113,7 @@ func (s *Scheduler) SyncAll() error {
 				tzStr = tz
 			}
 		}
+		_ = tzStr // Force usage/readability if asynq uses it later
 
 		s.ScheduleAuto(id, slug, cron)
 	}
@@ -148,7 +150,7 @@ func (s *Scheduler) HandleAutomationTask(ctx context.Context, t *asynq.Task) err
 	slug := p["project_slug"]
 
 	// Phase 24 Sinergy: Start a Trace for the background task
-	ctx, span := s.telemetry.GetTracer().Start(ctx, "cron.HandleAutomationTask")
+	ctx, span := s.telemetry.Tracer("scheduler").Start(ctx, "cron.HandleAutomationTask")
 	defer span.End()
 
 	slog.Info("cron: executing automation task", "automation_id", id, "project", slug)
@@ -162,10 +164,10 @@ func (s *Scheduler) HandleAutomationTask(ctx context.Context, t *asynq.Task) err
 	err := s.repo.Pool.QueryRow(ctx, "SELECT nodes FROM system.automations WHERE id = $1", id).Scan(&nodesRaw)
 	if err != nil { return err }
 
-	var nodes []automation.Node
+	var nodes []domain.WorkflowNode
 	json.Unmarshal(nodesRaw, &nodes)
 
-	// 2. Run Engine
+	// 2. Run Engine (Dynamic Execution Phase 10)
 	_, err = s.engine.Run(ctx, nodes, map[string]interface{}{"source": "cron"}, id, slug)
 	return err
 }

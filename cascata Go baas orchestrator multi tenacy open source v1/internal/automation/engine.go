@@ -114,13 +114,12 @@ func (e *WorkflowEngine) ExecuteWorkflow(ctx context.Context, wf *domain.Workflo
 		return nil, fmt.Errorf("automation: failed to resolve project meta: %w", err)
 	}
 
-	// 0.5 Resolve MaxConns from metadata with fallback
+	// 1. Prepare Initial Execution State
 	maxConns := 10
 	if val, ok := proj.Metadata["max_connections"].(float64); ok {
 		maxConns = int(val)
 	}
 
-	// 1. Prepare Initial Execution State
 	execCtx := &ExecutionContext{
 		Vars: map[string]interface{}{
 			"trigger": map[string]interface{}{
@@ -195,4 +194,17 @@ func (e *WorkflowEngine) ExecuteWorkflow(ctx context.Context, wf *domain.Workflo
 
 	slog.Info("automation: workflow completed successfully", "wf_id", wf.ID)
 	return execCtx.Vars["$last"], nil
+}
+
+// Run is a convenience helper for executing a raw set of nodes as a transient workflow.
+func (e *WorkflowEngine) Run(ctx context.Context, nodes []domain.WorkflowNode, data map[string]interface{}, id, slug string) (interface{}, error) {
+	wf := &domain.Workflow{
+		ID:    id,
+		Nodes: nodes,
+	}
+	event := &domain.AutomationEvent{
+		ProjectSlug: slug,
+		Data:        data,
+	}
+	return e.ExecuteWorkflow(ctx, wf, event)
 }

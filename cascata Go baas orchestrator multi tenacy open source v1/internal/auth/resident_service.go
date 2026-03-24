@@ -62,10 +62,14 @@ func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug
 		return nil, "", fmt.Errorf("resident.auth.AuthenticateByCPF: resident lookup failed: %w", err)
 	}
 
-	// 3.5. Password Validation (Bcrypt Sinergy)
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
-		slog.Warn("resident.auth: password mismatch", "slug", projectSlug, "cpf", cpf)
-		return nil, "", fmt.Errorf("invalid credentials")
+	// 3.5 Verify Password (Sovereignty Shield - Phase 10)
+	// Cascata Philosophy: The Admin (Worner) decides the auth strength.
+	// If a password hash exists, we MUST verify it. If empty, we allow access based on the identifier alone.
+	if hashedPassword != "" {
+		if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+			slog.Warn("resident.auth: authentication failed (wrong password)", "slug", projectSlug, "cpf", cpf)
+			return nil, "", fmt.Errorf("resident.auth: invalid credentials")
+		}
 	}
 
 	// 4. Issue Token

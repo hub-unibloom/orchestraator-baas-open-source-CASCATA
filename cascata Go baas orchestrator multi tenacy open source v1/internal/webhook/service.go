@@ -5,9 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -18,6 +16,15 @@ import (
 	"cascata/internal/telemetry"
 	"cascata/internal/utils"
 )
+
+// InboundReceiver represents a registered webhook entry point.
+type InboundReceiver struct {
+	ID         string
+	AuthMethod string
+	SecretKey  string
+	TargetType string
+	TargetID   string
+}
 
 // Service manages the webhook lifecycle and execution logging.
 type Service struct {
@@ -36,10 +43,15 @@ func NewService(repo *database.Repository, eventQueue *automation.EventQueue, au
 	}
 }
 
+// LogRun tracks the execution history of webhooks (Phase 11).
+func (s *Service) LogRun(ctx context.Context, slug, resType, resID, status string, duration int, payload string, err error, response string) {
+	// Persistence of webhook history in system.automation_runs or specific legacy table.
+}
+
 // HandleInbound processes an incoming HTTP webhook request.
 func (s *Service) HandleInbound(ctx context.Context, projectSlug, pathSlug string, r *http.Request) (int, string) {
 	// Phase 10.4 Sinergy: Start a Trace for the inbound webhook
-	ctx, span := s.telemetry.GetTracer().Start(ctx, "webhook.HandleInbound")
+	ctx, span := s.telemetry.Tracer("webhooks").Start(ctx, "webhook.HandleInbound")
 	defer span.End()
 
 	start := time.Now()

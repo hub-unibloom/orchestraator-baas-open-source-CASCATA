@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // TelemetryEngine manages the OpenTelemetry lifecycle (Phase 17).
@@ -57,4 +58,9 @@ func NewTelemetryEngine(ctx context.Context, serviceName string) (*TelemetryEngi
 func (e *TelemetryEngine) Shutdown(ctx context.Context) error {
 	slog.Info("telemetry: shutting down tracing mesh")
 	return e.tp.Shutdown(ctx)
+}
+
+// Tracer returns a named tracer for specific service instrumentation.
+func (e *TelemetryEngine) Tracer(name string) trace.Tracer {
+	return e.tp.Tracer(name)
 }

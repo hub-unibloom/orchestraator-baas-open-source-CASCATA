@@ -1,3 +1,5 @@
+log part1 12:45 REAL
+
  => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             79.6s 
 ------                                                                                                                                                                                        
  > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                                                         
@@ -15,3 +17,65 @@
  ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                 120.3s
 failed to execute bake: exit status 1
 ubuntu@ip-172-26-7-197:~$ 
+
+lOG REAL ATUAL
+
+---
+
+
+
+
+-----
+LOG PARTE 2, POSSSIVEL?!
+Isso não ta aconteceno, mas é apenas uma das posssibildaide e futuro caso vc não realize uma correçãoq eu consere o istema como um too em toas ass suas bases poeria ar problema assim:
+ => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             80.0s 
+------                                                                                                                                                                                        
+ > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                                                         
+64.72 # cascata/internal/webhook                                                                                                                                                              
+64.72 internal/webhook/service.go:8:2: "fmt" imported and not used                                                                                                                            
+64.72 internal/webhook/service.go:10:2: "log/slog" imported and not used                                                                                                                      
+64.72 internal/webhook/service.go:42:27: s.telemetry.GetTracer undefined (type *"cascata/internal/telemetry".TelemetryEngine has no field or method GetTracer)                                
+64.72 internal/webhook/service.go:53:11: undefined: InboundReceiver
+64.72 internal/webhook/service.go:102:4: s.LogRun undefined (type *Service has no field or method LogRun)
+79.72 # cascata/internal/cron
+79.72 internal/cron/scheduler.go:6:2: "fmt" imported and not used
+79.72 internal/cron/scheduler.go:8:2: "time" imported and not used
+79.72 internal/cron/scheduler.go:29:24: undefined: automation.Engine
+79.72 internal/cron/scheduler.go:35:55: undefined: automation.Engine
+79.72 internal/cron/scheduler.go:36:19: undefined: asynq.DragonflyClientOpt
+79.72 internal/cron/scheduler.go:99:26: undefined: automation.Node
+79.72 internal/cron/scheduler.go:112:5: undefined: tzStr
+79.72 internal/cron/scheduler.go:151:27: s.telemetry.GetTracer undefined (type *"cascata/internal/telemetry".TelemetryEngine has no field or method GetTracer)
+79.72 internal/cron/scheduler.go:165:25: undefined: automation.Node
+------
+[+] up 0/1
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  93.4s
+Dockerfile.backend:20
+
+--------------------
+
+  18 |     
+
+  19 |     # Fazer o build do orchestrator e do provisionador CLI
+
+  20 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
+
+  21 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
+
+  22 |     
+
+--------------------
+
+failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
+
+ubuntu@ip-172-26-7-197:~$ 
+
+
+
+
+[repito que ese segundo problema nãoa conteceu, oq ue aconteceu foi aprnas o log part1, eu trouxe apenas esse log part2 para te mosstrar que ediçẽos mal feitas com conehcimentossuperficiais  o sistema alojaram mais problemas:
+
+
+]
+
+
