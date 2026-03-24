@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"hash/crc32"
 	"log/slog"
+	"os"
 	"strings"
 	"time"
 
+	"cascata/internal/config"
 	"cascata/internal/database"
 	"cascata/internal/domain"
 	"github.com/jackc/pgx/v5"
@@ -21,15 +23,46 @@ import (
 // MigrationService is the "Structural Orchestrator" of Cascata (Phase 15).
 // It applies schema changes to tenant pools with zero-downtime, collision detection and OTel tracing.
 type MigrationService struct {
+	cfg        *config.Config
 	projectSvc *ProjectService
 	audit      *AuditService
 }
 
-func NewMigrationService(projectSvc *ProjectService, audit *AuditService) *MigrationService {
+func NewMigrationService(cfg *config.Config, projectSvc *ProjectService, audit *AuditService) *MigrationService {
 	return &MigrationService{
+		cfg:        cfg,
 		projectSvc: projectSvc,
 		audit:      audit,
 	}
+}
+
+// BootstrapTenant applies the standard apartment template to a new database (Legacy Sinergy).
+func (s *MigrationService) BootstrapTenant(ctx context.Context, dbName string) error {
+	slog.Info("migration: bootstrapping tenant from template", "dbName", dbName)
+
+	// 1. Establish tenant connection pool.
+	tenantRepo, err := database.NewTenantPool(ctx, s.cfg.DatabaseURL, dbName)
+	if err != nil {
+		return fmt.Errorf("service.Migration.Bootstrap: connect: %w", err)
+	}
+	defer tenantRepo.Close()
+
+	// 2. Read the standard template.
+	templatePath := "internal/templates/tenant_schema.sql"
+	sql, err := os.ReadFile(templatePath)
+	if err != nil {
+		// Fallback for dev environments where the template might be in a different path
+		slog.Warn("migration: template file not found, skipping file-based bootstrap", "path", templatePath)
+		return nil 
+	}
+
+	// 3. Execute the template as a single block.
+	_, err = tenantRepo.Pool.Exec(ctx, string(sql))
+	if err != nil {
+		return fmt.Errorf("service.Migration.Bootstrap: execute: %w", err)
+	}
+
+	return nil
 }
 
 // ApplyMigration executes DDL safely, tracking results in a project's migration table.
@@ -124,11 +157,13 @@ func (s *MigrationService) ApplyMigration(ctx context.Context, slug string, name
 
 		// g. Audit Integration (Sinergy Phase 19/22)
 		entry := &domain.AuditEntry{
-			Project:   slug,
-			Operation: "MIGRATION_APPLIED",
-			Table:     "cascata_migrations",
-			ActorType: "SYSTEM",
-			Payload:   fmt.Sprintf("Migration %s executed in %v", name, time.Since(start)),
+			Project:      slug,
+			Operation:    "MIGRATION_APPLIED",
+			Table:        "cascata_migrations",
+			IdentityID:   "SYSTEM_MIGRATOR",
+			IdentityType: domain.IdentityMember,
+			Payload:      fmt.Sprintf("Migration %s executed in %v", name, time.Since(start)),
+			Timestamp:    time.Now(),
 		}
 		s.audit.WriteEntry(ctx, entry)
 		

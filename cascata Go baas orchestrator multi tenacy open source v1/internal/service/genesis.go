@@ -6,8 +6,11 @@ import (
 	"cascata/internal/repository"
 	"cascata/internal/vault"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"time"
 )
 
 // GenesisService orchestrates the physical creation and initialization of new Tenants.
@@ -18,16 +21,18 @@ type GenesisService struct {
 	tenantRepo   *repository.TenantRepository
 	poolMgr      *database.TenantPoolManager
 	vault        *vault.VaultService
+	transit      *vault.TransitService
 	migrationSvc *MigrationService
 }
 
-func NewGenesisService(repo *database.Repository, projectRepo *repository.ProjectRepository, tenantRepo *repository.TenantRepository, poolMgr *database.TenantPoolManager, vault *vault.VaultService, migrationSvc *MigrationService) *GenesisService {
+func NewGenesisService(repo *database.Repository, projectRepo *repository.ProjectRepository, tenantRepo *repository.TenantRepository, poolMgr *database.TenantPoolManager, vault *vault.VaultService, transit *vault.TransitService, migrationSvc *MigrationService) *GenesisService {
 	return &GenesisService{
 		repo:         repo,
 		projectRepo:  projectRepo,
 		tenantRepo:   tenantRepo,
 		poolMgr:      poolMgr,
 		vault:        vault,
+		transit:      transit,
 		migrationSvc: migrationSvc,
 	}
 }
@@ -58,6 +63,15 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 	// 3. Apply Initial Schema & Hardening (Phase 15 Sinergy)
 	if err := s.initializeSchema(ctx, p.Slug); err != nil {
 		return fmt.Errorf("genesis: schema initialization failed: %w", err)
+	}
+
+	// 3.5. Transit Encryption of Sensitive Metadata (Sovereignty Layer)
+	transitKey := "cascata-master-key"
+	encryptedJWT, err := s.transit.Encrypt(ctx, transitKey, p.JWTSecret)
+	if err != nil {
+		slog.Warn("genesis: vault transit failed, using plain secret", "slug", p.Slug, "err", err)
+	} else {
+		p.JWTSecret = encryptedJWT
 	}
 
 	// 4. System Metadata Registration
@@ -167,4 +181,13 @@ func (s *GenesisService) initializeSchema(ctx context.Context, slug string) erro
 	
 	// Delegate to MigrationService for atomic and auditable schema application
 	return s.migrationSvc.ApplyMigration(ctx, slug, "0001_genesis_foundation", baseDDL)
+}
+
+// generateRandomKey produces high-entropy strings for zero-trust credentials (JWT Secrets, Anon Keys).
+func (s *GenesisService) generateRandomKey(n int) string {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "insecure_fallback_key" // Should never happen with proper CSPRNG
+	}
+	return hex.EncodeToString(b)
 }

@@ -1,92 +1,23 @@
-ℹ Inicializando Orquestração Zero-Trust...
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Identidade Corporativa: Provisionamento do Worner
-  O 'Worner' é o administrador supremo do Condomínio Cascata.
-  Este será o único membro criado fora do Audit Trail visual.
-
-  E-mail do Worner: thl@gg.com
-  Senha Mestre (Mínimo 12 caracteres): 
-  Habilitar OTP / MFA Obrigatório? (s/n): n
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Sincronizando Código Fonte
-ℹ Atualizando repositório local...
-✓ Diretório de operação definido: /root/cascata_root/cascata Go baas orchestrator multi tenacy open source v1
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Validando Runtime (Docker) e Ferramentas
-✓ Docker Engine verificado (v29.x).
-ℹ Cascata Architecture: Zero-Host-Dependency (Go is only used inside Docker Build Stage).
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Aplicando Tuning de Performance Persistente (Sysctl)
-✓ Parâmetros Kernel gravados e persistidos.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Provisão de Identidade Criptográfica (.env)
-⚠ Arquivo .env já existente. Fazendo backup e gerando novo para FRESH INSTALL.
-✓ Arquivo Base Criptográfico (Zero Dev-Mode) concluído.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Iniciando Orquestração do Cluster Base
-ℹ ANICILAÇÃO DE DADOS: Limpando Containers, Redes e VOLUMES Órfãos...
-ℹ Realizando boot isolado da malha Docker...
-WARN[0000] /root/cascata_root/cascata Go baas orchestrator multi tenacy open source v1/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
-[+] pull 4/4
- ✔ cascata-orchestrator                              Skipped No image to be pulled                                                                                                        0.0s
- ✔ Image docker.dragonflydb.io/dragonflydb/dragonfly Pulled                                                                                                                               0.5s
- ✔ Image hashicorp/vault:1.15                        Pulled                                                                                                                               0.3s
- ✔ Image postgres:18-alpine                          Pulled                                                                                                                               0.4s
-WARN[0000] /root/cascata_root/cascata Go baas orchestrator multi tenacy open source v1/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
-[+] Building 91.4s (17/20)                                                                                                                                                                    
- => [internal] load local bake definitions                                                                                                                                               0.0s
- => => reading from stdin 760B                                                                                                                                                           0.0s
- => [internal] load build definition from Dockerfile.backend                                                                                                                             0.0s
- => => transferring dockerfile: 1.05kB                                                                                                                                                   0.0s
- => [internal] load metadata for docker.io/library/alpine:latest                                                                                                                         0.2s
- => [internal] load metadata for docker.io/library/golang:1.26-alpine                                                                                                                    0.2s
- => [internal] load .dockerignore                                                                                                                                                        0.0s
- => => transferring context: 2B                                                                                                                                                          0.0s
- => [builder 1/9] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039                                                      0.0s
- => => resolve docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039                                                              0.0s
- => [internal] load build context                                                                                                                                                        0.0s
- => => transferring context: 32.22kB                                                                                                                                                     0.0s
- => [stage-1 1/5] FROM docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659                                                           0.0s
- => => resolve docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659                                                                   0.0s
- => CACHED [stage-1 2/5] RUN apk add --no-cache ca-certificates tzdata                                                                                                                   0.0s
- => CACHED [stage-1 3/5] WORKDIR /root/                                                                                                                                                  0.0s
- => CACHED [builder 2/9] RUN apk add --no-cache gcc musl-dev                                                                                                                             0.0s
- => CACHED [builder 3/9] WORKDIR /app                                                                                                                                                    0.0s
- => CACHED [builder 4/9] COPY go.mod ./                                                                                                                                                  0.0s
- => [builder 5/9] COPY . .                                                                                                                                                               0.3s
- => [builder 6/9] RUN go mod tidy                                                                                                                                                       10.6s
- => [builder 7/9] RUN go mod download                                                                                                                                                    1.3s 
  => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             78.6s 
 ------                                                                                                                                                                                        
  > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                                                         
-62.49 # cascata/internal/phantom                                                                                                                                                              
-62.49 internal/phantom/service.go:11:2: "cascata/internal/domain" imported and not used                                                                                                       
-62.49 internal/phantom/service.go:90:52: undefined: otel.WithAttributes
+62.78 # cascata/internal/service                                                                                                                                                              
+62.78 internal/service/migration_service.go:23:6: MigrationService redeclared in this block                                                                                                   
+62.78   internal/service/migration.go:14:6: other declaration of MigrationService                                                                                                             
+62.78 internal/service/migration_service.go:28:6: NewMigrationService redeclared in this block                                                                                                
+62.78 	internal/service/migration.go:19:6: other declaration of NewMigrationService
+62.78 internal/service/migration_service.go:30:3: unknown field projectSvc in struct literal of type MigrationService
+62.78 internal/service/migration_service.go:31:3: unknown field audit in struct literal of type MigrationService
+62.78 internal/service/migration_service.go:51:14: s.projectSvc undefined (type *MigrationService has no field or method projectSvc)
+62.78 internal/service/migration_service.go:57:17: s.projectSvc undefined (type *MigrationService has no field or method projectSvc)
+62.78 internal/service/migration_service.go:130:4: unknown field ActorType in struct literal of type domain.AuditEntry
+62.78 internal/service/migration_service.go:133:5: s.audit undefined (type *MigrationService has no field or method audit)
+62.78 internal/service/genesis.go:93:17: undefined: time
+62.78 internal/service/orchestrator.go:80:31: s.vault.TransitEncrypt undefined (type *"cascata/internal/vault".VaultService has no field or method TransitEncrypt)
+62.78 internal/service/orchestrator.go:80:31: too many errors
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  91.5s
-Dockerfile.backend:20
-
---------------------
-
-  18 |     
-
-  19 |     # Fazer o build do orchestrator e do provisionador CLI
-
-  20 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
-
-  21 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
-
-  22 |     
-
---------------------
-
-failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
-
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  97.9s
+failed to execute bake: exit status 1
 ubuntu@ip-172-26-7-197:~$ 
+

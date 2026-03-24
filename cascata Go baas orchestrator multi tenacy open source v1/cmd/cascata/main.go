@@ -125,7 +125,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	
 	// --- 6. Orchestration Engines (Phase 11-15) ---
 	syncService := service.NewSyncService(projectService, auditService)
-	migrationService := service.NewMigrationService(projectService, auditService)
+	migrationService := service.NewMigrationService(cfg, projectService, auditService)
 	
 	realtimeHub := api.NewRealtimeHub(projectService, pEngine)
 	workflowEngine := automation.NewWorkflowEngine(repo, projectService, poolManager, postman, aiEngine, realtimeHub)
@@ -141,7 +141,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	}()
 
 	// --- 7. Provisioning & Storage (Phase 2 & 8) ---
-	genesisSvc := service.NewGenesisService(repo, projectRepo, tenantRepo, poolManager, vaultSvc, migrationService)
+	genesisSvc := service.NewGenesisService(repo, projectRepo, tenantRepo, poolManager, vaultSvc, transitService, migrationService)
 	indexer := storage.NewIndexer(repo)
 	storageSvc := storage.NewService(cfg.StoragePath, dfly, repo, indexer)
 	
