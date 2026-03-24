@@ -1,23 +1,29 @@
- => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             78.6s 
+ => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             78.8s 
 ------                                                                                                                                                                                        
  > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                                                         
-62.78 # cascata/internal/service                                                                                                                                                              
-62.78 internal/service/migration_service.go:23:6: MigrationService redeclared in this block                                                                                                   
-62.78   internal/service/migration.go:14:6: other declaration of MigrationService                                                                                                             
-62.78 internal/service/migration_service.go:28:6: NewMigrationService redeclared in this block                                                                                                
-62.78 	internal/service/migration.go:19:6: other declaration of NewMigrationService
-62.78 internal/service/migration_service.go:30:3: unknown field projectSvc in struct literal of type MigrationService
-62.78 internal/service/migration_service.go:31:3: unknown field audit in struct literal of type MigrationService
-62.78 internal/service/migration_service.go:51:14: s.projectSvc undefined (type *MigrationService has no field or method projectSvc)
-62.78 internal/service/migration_service.go:57:17: s.projectSvc undefined (type *MigrationService has no field or method projectSvc)
-62.78 internal/service/migration_service.go:130:4: unknown field ActorType in struct literal of type domain.AuditEntry
-62.78 internal/service/migration_service.go:133:5: s.audit undefined (type *MigrationService has no field or method audit)
-62.78 internal/service/genesis.go:93:17: undefined: time
-62.78 internal/service/orchestrator.go:80:31: s.vault.TransitEncrypt undefined (type *"cascata/internal/vault".VaultService has no field or method TransitEncrypt)
-62.78 internal/service/orchestrator.go:80:31: too many errors
+62.64 # cascata/internal/service                                                                                                                                                              
+62.64 internal/service/sync_service.go:9:2: "cascata/internal/database" imported and not used                                                                                                 
+62.64 internal/service/sync_service.go:80:4: unknown field ActorType in struct literal of type domain.AuditEntry
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  97.9s
-failed to execute bake: exit status 1
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  91.8s
+Dockerfile.backend:20
+
+--------------------
+
+  18 |     
+
+  19 |     # Fazer o build do orchestrator e do provisionador CLI
+
+  20 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
+
+  21 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
+
+  22 |     
+
+--------------------
+
+failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
+
 ubuntu@ip-172-26-7-197:~$ 
 

@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"time"
 
-	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/repository"
 	"github.com/jackc/pgx/v5"
@@ -74,11 +73,13 @@ func (s *SyncService) MergeBatch(ctx context.Context, payload *domain.SyncPayloa
 		
 		// Audit the entry (Sinergy Phase 19)
 		entry := &domain.AuditEntry{
-			Project:   payload.ProjectSlug,
-			Operation: "SYNC_BATCH_MERGED",
-			Table:     payload.Table,
-			ActorType: "SYSTEM_SYNC",
-			Payload:   fmt.Sprintf("Processed %d operations for table %s", len(payload.Operations), payload.Table),
+			Project:      payload.ProjectSlug,
+			Operation:    "SYNC_BATCH_MERGED",
+			Table:        payload.Table,
+			IdentityID:   "SYSTEM_SYNC",
+			IdentityType: domain.IdentityMember,
+			Payload:      fmt.Sprintf("Processed %d operations for table %s", len(payload.Operations), payload.Table),
+			Timestamp:    time.Now(),
 		}
 		s.audit.WriteEntry(ctx, entry)
 
