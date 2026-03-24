@@ -262,7 +262,7 @@ vault_bootstrap() {
     local v_timer=0
     while : ; do
         set +e
-        docker exec "$VAULT_CONTAINER" vault status -format=json >/dev/null 2>&1
+        docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault status -format=json >/dev/null 2>&1
         local V_STATUS_EXIT=$?
         set -e
         if [[ $V_STATUS_EXIT -eq 0 ]] || [[ $V_STATUS_EXIT -eq 2 ]]; then
@@ -277,7 +277,7 @@ vault_bootstrap() {
     done
 
     local IS_INIT
-    IS_INIT=$(docker exec "$VAULT_CONTAINER" vault status -format=json 2>/dev/null | jq -r '.initialized' || echo "false")
+    IS_INIT=$(docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault status -format=json 2>/dev/null | jq -r '.initialized' || echo "false")
     
     if [[ "$IS_INIT" == "true" ]]; then
         log_info "Vault Previamente Inicializado."
@@ -286,7 +286,7 @@ vault_bootstrap() {
             local EXISTING_KEY
             EXISTING_KEY=$(grep "UNSEAL_KEY=" "$VAULT_KEYS_FILE" | cut -d'=' -f2 || true)
             if [[ -n "$EXISTING_KEY" ]]; then
-                docker exec "$VAULT_CONTAINER" vault operator unseal "$EXISTING_KEY" >/dev/null 2>&1 || true
+                docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault operator unseal "$EXISTING_KEY" >/dev/null 2>&1 || true
                 log_success "Vault reconstituído e Unselado autonomamente."
             fi
         fi
@@ -295,7 +295,7 @@ vault_bootstrap() {
         log_info "As diretrizes Keys-Shares & Thresholds são configuradas como = 1 para provisionamento cloud único."
         
         local INIT_JSON
-        INIT_JSON=$(docker exec "$VAULT_CONTAINER" vault operator init -key-shares=1 -key-threshold=1 -format=json)
+        INIT_JSON=$(docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault operator init -key-shares=1 -key-threshold=1 -format=json)
         
         local UNSEAL_KEY
         UNSEAL_KEY=$(echo "$INIT_JSON" | jq -r '.unseal_keys_b64[0]')
@@ -307,17 +307,17 @@ vault_bootstrap() {
         chmod 700 "$VAULT_KEYS_DIR"
         
         log_info "Executando Unseal atômico no Motor Principal..."
-        docker exec "$VAULT_CONTAINER" vault operator unseal "$UNSEAL_KEY" >/dev/null 2>&1
+        docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault operator unseal "$UNSEAL_KEY" >/dev/null 2>&1
         
         log_info "Autenticando Motor com Root..."
-        docker exec "$VAULT_CONTAINER" vault login "$ROOT_TOKEN" >/dev/null 2>&1
+        docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault login "$ROOT_TOKEN" >/dev/null 2>&1
         
         log_info "Habilitando Engines Base (Transit e Secrets)..."
-        docker exec "$VAULT_CONTAINER" vault secrets enable -path=secret kv-v2 >/dev/null 2>&1 || true
-        docker exec "$VAULT_CONTAINER" vault secrets enable transit >/dev/null 2>&1 || true
+        docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault secrets enable -path=secret kv-v2 >/dev/null 2>&1 || true
+        docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault secrets enable transit >/dev/null 2>&1 || true
         
         log_info "Configurando Soberania: Criando chave Transit 'cascata-pepper'..."
-        docker exec "$VAULT_CONTAINER" vault write -f transit/keys/cascata-pepper >/dev/null 2>&1 || true
+        docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault write -f transit/keys/cascata-pepper >/dev/null 2>&1 || true
         
         log_info "Aplicando Matriz de Acesso Mínimo Privilégio via CP..."
         
@@ -330,13 +330,13 @@ path "sys/health" { capabilities = ["read"] }
 path "auth/token/renew-self" { capabilities = ["update"] }
 EOF
         docker cp "$POLICY_TMP" "$VAULT_CONTAINER":/tmp/cascata_policy.hcl
-        docker exec "$VAULT_CONTAINER" vault policy write cascata-backend /tmp/cascata_policy.hcl >/dev/null
+        docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault policy write cascata-backend /tmp/cascata_policy.hcl >/dev/null
         rm -f "$POLICY_TMP"
         
         # Cria um AppToken com capacidades de auto-renovação, sem o peso limitador do period fixo
         log_info "Gerando AppToken Restrito (Orphan / Auto-Renovável)..."
         local APP_TOKEN_JSON
-        APP_TOKEN_JSON=$(docker exec "$VAULT_CONTAINER" vault token create -policy="cascata-backend" -orphan -no-default-policy -format=json)
+        APP_TOKEN_JSON=$(docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault token create -policy="cascata-backend" -orphan -no-default-policy -format=json)
         local APP_TOKEN
         APP_TOKEN=$(echo "$APP_TOKEN_JSON" | jq -r '.auth.client_token')
         
@@ -345,7 +345,7 @@ EOF
         
         # Fase de Aniquilação Definitiva (Root Auto-Revogado e Escondido)
         log_info "Revogando acesso Global do Root Token da Sessão..."
-        docker exec "$VAULT_CONTAINER" vault token revoke "$ROOT_TOKEN" >/dev/null 2>&1 || true
+        docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault token revoke "$ROOT_TOKEN" >/dev/null 2>&1 || true
         
         # Apenas salva a Unseal Key fora da raiz de repositório
         echo -e "UNSEAL_KEY=${UNSEAL_KEY}" > "$VAULT_KEYS_FILE"
@@ -422,7 +422,7 @@ provision_worner_execution() {
         APP_TOKEN=$(grep '^VAULT_TOKEN=' .env | cut -d '=' -f2)
         
         # O path agora é members/{id}/mfa_secret conforme arquitetura Phase 3
-        docker exec "$VAULT_CONTAINER" sh -c "vault login $APP_TOKEN >/dev/null 2>&1 && vault kv put secret/cascata/members/$WORNER_ID/mfa_secret secret=$MFA_SECRET >/dev/null 2>&1"
+        docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" sh -c "vault login $APP_TOKEN >/dev/null 2>&1 && vault kv put secret/cascata/members/$WORNER_ID/mfa_secret secret=$MFA_SECRET >/dev/null 2>&1"
         log_success "Segredo OTP persistido no Vault: secret/cascata/members/$WORNER_ID/mfa_secret"
         
         MFA_DISPLAY="  ${C_BOLD}OTP_SECRET (Add no Google Auth):${C_RESET} ${MFA_SECRET}"
