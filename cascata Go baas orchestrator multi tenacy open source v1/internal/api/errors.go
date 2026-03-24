@@ -2,7 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Standard Cascata Error Codes (AI semantic parsers)
@@ -30,9 +34,17 @@ func (e *APIError) Error() string {
 
 // WriteError ensures the HTTP response strictly follows the Cascata Protocol,
 // preventing 200 OK statuses on failed operations.
-func WriteError(w http.ResponseWriter, statusCode int, code, message, details string) {
-	// Standard mapping if someone pushes 200 with an error. 
-	// The HTTP spec dictates correct status codes, this reinforces it.
+func WriteError(w http.ResponseWriter, r *http.Request, statusCode int, code, message, details string) {
+	// Record in Telemetry Span if present
+	span := trace.SpanFromContext(r.Context())
+	if span.IsRecording() {
+		span.SetAttributes(
+			attribute.String("error.code", code),
+			attribute.String("error.message", message),
+		)
+		span.RecordError(fmt.Errorf("%s: %s", code, message))
+	}
+
 	if statusCode < 400 {
 		statusCode = http.StatusInternalServerError
 	}
@@ -53,12 +65,19 @@ func WriteError(w http.ResponseWriter, statusCode int, code, message, details st
 // HandlePanic provides a defers-wrapper to catch rogue unhandled runtime errors 
 // and convert them to the expected struct, avoiding raw stacktraces bleeding 
 // out to the AI or end-users.
-func HandlePanic(w http.ResponseWriter, r *http.Request) {
-	if rcv := recover(); rcv != nil {
-		// Log the stacktrace internally to APM/Dragonfly.
-		// log.Printf("[PANIC] %s", rcv)
-		
-		// Respond structurally
-		WriteError(w, http.StatusInternalServerError, ErrCodeInternal, "Critical runtime failure in orchestrator", "Please check system logs or report to admin")
-	}
+func HandlePanic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rcv := recover(); rcv != nil {
+				// Record Panic in OTel
+				span := trace.SpanFromContext(r.Context())
+				span.SetAttributes(attribute.Bool("error.panic", true))
+				span.RecordError(fmt.Errorf("panic: %v", rcv))
+
+				// Respond structurally
+				WriteError(w, r, http.StatusInternalServerError, ErrCodeInternal, "Critical runtime failure in orchestrator", "Check system logs for recovery details")
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }

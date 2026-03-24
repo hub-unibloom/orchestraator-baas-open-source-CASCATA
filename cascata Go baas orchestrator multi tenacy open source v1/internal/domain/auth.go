@@ -11,18 +11,19 @@ const (
 
 // Auth Mode types.
 const (
-	ModeService = "service" // God mode (bypass RLS)
-	ModeAnon    = "anon"    // Public access (RLS restricted)
-	ModeUser    = "user"    // Authenticated user (RLS restricted)
+	ModeService  = "service"  // Manager mode (Member access)
+	ModeAnon     = "anon"     // Guest access
+	ModeResident = "resident" // Resident access (RLS restricted)
 )
 
 // AuthContext carries the identity and mode throughout a request.
 type AuthContext struct {
-	Mode        string
-	Project     *Project
-	ProjectSlug string
-	UserID      string
-	Role        string
+	Mode         string
+	IdentityType string // cascata.member or tenant.user
+	Project      *Project
+	ProjectSlug  string
+	UserID       string
+	Role         string
 	Email       string
 	HasStepUp   bool
 	Claims      map[string]interface{}

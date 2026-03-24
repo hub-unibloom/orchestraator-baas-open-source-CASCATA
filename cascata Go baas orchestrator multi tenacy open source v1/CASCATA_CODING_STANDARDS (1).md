@@ -20,8 +20,13 @@ O nome da função diz o que faz. O comentário — quando necessário — diz p
 **Idioma no código: sempre inglês.**  
 Nomes de variáveis, funções, tipos, pacotes, comentários, mensagens de erro, logs estruturados — tudo em inglês. A interface do dashboard é inglês por padrão. Traduções são arquivos externos carregados em runtime, nunca hardcoded no bundle.
 
-**Fail Fast na borda.**  
-Dado inválido morre no Handler, antes de qualquer lógica. Em sistema multi-tenant, um erro de tipo que vaza para o banco de um tenant é catastrófico. A validação é imediata e agressiva.
+**Fail Fast na borda.**
+Dado inválido morre no Handler, antes de qualquer lógica. Em sistema multi-tenant, um erro de tipo que vaza para o banco de um tenant é catastrófico. A validação é imediata e agressiva via `SendError` (OTel Integrated).
+
+**Terminologia Obrigatória (Phase 10-17 Sinergy):**
+- **KV/Streaming:** Sempre **Dragonfly** (nunca Redis).
+- **Usuários:** Sempre **Resident** (nunca User - ex: `ModeResident`, `IdentityResident`).
+- **Audit:** Sempre **Cascata Audit Ledger**.
 
 **Nenhum componente confia no anterior.**  
 Go não confia que o Nginx validou. O Postgres não confia que o Go aplicou RLS. Cada camada valida por conta própria. (Ver Filosofia de Segurança no Master Plan.)
@@ -42,7 +47,7 @@ Nunca `password`, `key`, `token` puros em variáveis. Sempre o estado do dado no
 
 ### 2.2 Arquitetura em Camadas (obrigatória)
 ```
-Handler     → decodifica request, valida na borda, codifica response. Zero lógica de negócio.
+Handler     → decodifica request, valida na borda, codifica response via `SendJSON/SendError`. Zero lógica de negócio.
 Service     → lógica de negócio, orquestração, validações complexas. Zero acesso direto a dados.
 Repository  → acesso a dados puro (Postgres, Dragonfly, Vault). Zero lógica de negócio.
 ```
@@ -60,6 +65,9 @@ if err != nil {
     return fmt.Errorf("vault.DecryptKey: %w", err)
 }
 
+// CORRETO — Saída de API com Rastro OTel
+SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, "Identity verification failed")
+
 // PROIBIDO — sem contexto
 if err != nil {
     return err
@@ -68,8 +76,8 @@ if err != nil {
 // PROIBIDO — erro silenciado
 _ = riskyOperation()
 ```
-- `panic` é proibido fora de `main()` em inicializações onde o sistema não pode operar sem o recurso
-- `context.Context` é o primeiro parâmetro de toda função de I/O (DB, Dragonfly, Vault, FS, HTTP)
+- `panic` é rigorosamente proibido fora de `main()`. Em runtime, use o middleware de resiliência `HandlePanic` no `server.go` para capturar falhas e transformá-las em Spans de erro no OTel.
+- `context.Context` é o primeiro parâmetro de toda função de I/O (DB, Dragonfly, Vault, FS, HTTP) e DEVE carregar o rastro OTel para propagação transversal.
 
 ### 2.5 Logging
 - **Proibido:** `fmt.Println`, `log.Print`, qualquer print não estruturado
@@ -80,7 +88,8 @@ _ = riskyOperation()
 ### 2.6 Segurança no Código
 - Funções de criptografia e Vault isoladas em pacotes próprios e auditáveis
 - Chaves nunca passadas como `string` pura entre funções — use tipos opacos ou structs dedicadas
-- RLS Fail-Closed: se a injeção de contexto falhar, `ROLLBACK` forçado — nunca executa query sem contexto de segurança estabelecido
+- RLS Fail-Closed: se a injeção de contexto falhar, `ROLLBACK` forçado — nunca executa query sem contexto de segurança estabelecido.
+- **Database Sinergy (Phase 22):** O padrão `WithRLS` deve implementar loop de **Retry para erros transientes** (conn reset) e injeção atômica em um único RTT SQL.
 
 ### 2.7 Concorrência
 - Todo canal tem `select` com `case ctx.Done()` — sem goroutine que bloqueia indefinidamente
@@ -157,7 +166,7 @@ Quando um algoritmo pode ser expresso matematicamente de forma mais eficiente, e
 Funções que executam milhares de vezes por segundo não alocam. Usam `sync.Pool` para reutilizar buffers. Usam `[]byte` em vez de `string` onde a conversão seria desnecessária. Usam structs pré-alocadas em vez de maps. O GC do Go é excelente — mas o melhor GC é o que não tem nada para coletar.
 
 **I/O nunca bloqueia o worker principal.**
-Toda operação de I/O — banco, Dragonfly, Vault, storage, HTTP externo — ocorre em goroutine própria com timeout explícito via context. O orquestrador nunca para para esperar.
+Toda operação de I/O — banco, Dragonfly, Vault, storage, HTTP externo — ocorre em goroutine própria ou com timeout explícito via context. O orquestrador nunca para para esperar. Cada operação de I/O deve abrir um sub-span no OTel.
 
 ### 7.2 Escala Horizontal como Objetivo de Design
 
@@ -203,6 +212,7 @@ Exemplos de decisões corretas que devem ser padrão:
 - **Exponential backoff com jitter** em retries — evita thundering herd quando múltiplos agentes falham simultaneamente
 - **Sliding window** para rate limiting — mais justo e mais preciso que fixed window
 - **Bloom filter** antes de queries de existência ao banco — elimina round trips para casos negativos
+- **OTel Trace Context Propagation** — Todo evento assíncrono (XADD no Dragonfly) leva o TraceID/SpanID para o worker de automação.
 
 ---
 

@@ -30,7 +30,12 @@ func NewVaultService(addr, token string) (*VaultService, error) {
 	}
 
 	slog.Info("vault connection established", "addr", addr)
-	return &VaultService{client: client}, nil
+	return &VaultService{client: client}
+}
+
+// GetClient returns the underlying vault client for specialized engine access (e.g. Transit).
+func (s *VaultService) GetClient() *vault.Client {
+	return s.client
 }
 
 // TransitEncrypt uses the Transit engine to encrypt sensitive data (Resident sovereignity).
@@ -85,4 +90,24 @@ func (s *VaultService) ReadSecret(ctx context.Context, path string) (map[string]
 		return nil, fmt.Errorf("vault.ReadSecret [%s]: %w", path, err)
 	}
 	return resp.Data.Data, nil
+}
+
+// ProvisionTenantVault creates the isolated secret infrastructure for a new project (Phase 23).
+func (s *VaultService) ProvisionTenantVault(ctx context.Context, slug string) error {
+	slog.Info("vault: provisioning isolated path for tenant", "slug", slug)
+	
+	path := fmt.Sprintf("cascata/tenants/%s", slug)
+	
+	// Create a default placeholder config
+	data := map[string]any{
+		"initialized_at": time.Now().Format(time.RFC3339),
+		"status":         "active",
+	}
+
+	err := s.WriteSecret(ctx, path+"/config", data)
+	if err != nil {
+		return fmt.Errorf("vault.ProvisionTenantVault: %w", err)
+	}
+
+	return nil
 }

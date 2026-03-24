@@ -13,6 +13,7 @@ require (
 	github.com/tetratelabs/wazero v1.5.0
 	github.com/redis/go-redis/v9 v9.3.0
 	github.com/go-chi/chi/v5 v5.0.12
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	golang.org/x/crypto v0.21.0
 	golang.org/x/net v0.22.0
 )

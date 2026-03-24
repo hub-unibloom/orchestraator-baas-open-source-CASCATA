@@ -10,51 +10,38 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
-	"io"
 
+	"cascata/internal/automation"
 	"cascata/internal/database"
+	"cascata/internal/domain"
+	"cascata/internal/service"
+	"cascata/internal/telemetry"
 	"cascata/internal/utils"
 )
 
-// InboundReceiver represents a configured webhook endpoint.
-type InboundReceiver struct {
-	ID          string `json:"id"`
-	ProjectSlug string `json:"project_slug"`
-	Name        string `json:"name"`
-	PathSlug    string `json:"path_slug"`
-	AuthMethod  string `json:"auth_method"`
-	SecretKey   string `json:"secret_key"`
-	TargetType  string `json:"target_type"`
-	TargetID    string `json:"target_id"`
-}
-
 // Service manages the webhook lifecycle and execution logging.
 type Service struct {
-	repo *database.Repository
+	repo       *database.Repository
+	eventQueue *automation.EventQueue
+	auditSvc   *service.AuditService
+	telemetry  *telemetry.TelemetryEngine
 }
 
-func NewService(repo *database.Repository) *Service {
-	return &Service{repo: repo}
-}
-
-// LogRun saves the execution metadata to system.automation_runs.
-func (s *Service) LogRun(ctx context.Context, projectSlug, triggerType, triggerID, status string, duration int, input, output interface{}, errMsg string) {
-	// Fire-and-forget: we use a background context and swallow errors.
-	go func() {
-		sql := `
-			INSERT INTO system.automation_runs 
-			(project_slug, trigger_type, trigger_id, status, execution_time_ms, input_payload, output_result, error_message)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		`
-		_, err := s.repo.Pool.Exec(context.Background(), sql, projectSlug, triggerType, triggerID, status, duration, input, output, errMsg)
-		if err != nil {
-			slog.Warn("webhook: failed to log run", "error", err)
-		}
-	}()
+func NewService(repo *database.Repository, eventQueue *automation.EventQueue, audit *service.AuditService, tele *telemetry.TelemetryEngine) *Service {
+	return &Service{
+		repo:       repo,
+		eventQueue: eventQueue,
+		auditSvc:   audit,
+		telemetry:  tele,
+	}
 }
 
 // HandleInbound processes an incoming HTTP webhook request.
 func (s *Service) HandleInbound(ctx context.Context, projectSlug, pathSlug string, r *http.Request) (int, string) {
+	// Phase 10.4 Sinergy: Start a Trace for the inbound webhook
+	ctx, span := s.telemetry.GetTracer().Start(ctx, "webhook.HandleInbound")
+	defer span.End()
+
 	start := time.Now()
 	
 	// 1. Resolve receiver configuration
@@ -93,8 +80,24 @@ func (s *Service) HandleInbound(ctx context.Context, projectSlug, pathSlug strin
 		}
 	}
 
-	// 4. Dispatch (Mocking dispatch for now as Automations are Phase 10)
-	// In Go, we'll use a channel or a worker pool for 'dispatchAsyncTrigger'.
+	// 4. Real Dispatch to Automation Engine (Phase 10.4)
+	go func() {
+		event := &domain.AutomationEvent{
+			ProjectSlug: projectSlug,
+			Table:       "webhooks",
+			Operation:   "INBOUND",
+			Data:        map[string]interface{}{"payload": string(body), "path": pathSlug, "id": recv.ID},
+		}
+		
+		// Phase 24 Sinergy: Log to Audit Ledger
+		_ = s.auditSvc.Log(context.Background(), projectSlug, "webhook_inbound", "SYSTEM", "TRIGGER", map[string]interface{}{
+			"receiver_id": recv.ID,
+			"path":        pathSlug,
+		})
+
+		_ = s.eventQueue.Publish(context.Background(), event)
+	}()
+
 	duration := int(time.Since(start).Milliseconds())
 	s.LogRun(ctx, projectSlug, "WEBHOOK", recv.ID, "success", duration, string(body), nil, "")
 

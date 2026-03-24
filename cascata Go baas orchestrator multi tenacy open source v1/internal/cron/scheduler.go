@@ -9,6 +9,8 @@ import (
 
 	"cascata/internal/automation"
 	"cascata/internal/database"
+	"cascata/internal/service"
+	"cascata/internal/telemetry"
 
 	"github.com/hibiken/asynq"
 )
@@ -26,24 +28,27 @@ type Scheduler struct {
 	server    *asynq.Server
 	engine    *automation.Engine
 	repo      *database.Repository
+	auditSvc  *service.AuditService
+	telemetry *telemetry.TelemetryEngine
 }
 
-func NewScheduler(redisAddr string, engine *automation.Engine, repo *database.Repository) *Scheduler {
-	redisOpt := asynq.RedisClientOpt{Addr: redisAddr}
+func NewScheduler(dflyAddr string, engine *automation.Engine, repo *database.Repository, audit *service.AuditService, tele *telemetry.TelemetryEngine) *Scheduler {
+	dflyOpt := asynq.DragonflyClientOpt{Addr: dflyAddr}
 	
 	return &Scheduler{
-		client:    asynq.NewClient(redisOpt),
-		scheduler: asynq.NewScheduler(redisOpt, nil),
-		server:    asynq.NewServer(redisOpt, asynq.Config{
+		client:    asynq.NewClient(dflyOpt),
+		scheduler: asynq.NewScheduler(dflyOpt, nil),
+		server:    asynq.NewServer(dflyOpt, asynq.Config{
 			Concurrency: 10,
 			Queues: map[string]int{
 				"critical": 6,
 				"default":  3,
-				"low":      1,
 			},
 		}),
-		engine: engine,
-		repo:   repo,
+		engine:    engine,
+		repo:      repo,
+		auditSvc:  audit,
+		telemetry: tele,
 	}
 }
 
@@ -142,7 +147,17 @@ func (s *Scheduler) HandleAutomationTask(ctx context.Context, t *asynq.Task) err
 	id := p["automation_id"]
 	slug := p["project_slug"]
 
-	// 1. Fetch nodes (AOT concept: we could have pre-compiled these)
+	// Phase 24 Sinergy: Start a Trace for the background task
+	ctx, span := s.telemetry.GetTracer().Start(ctx, "cron.HandleAutomationTask")
+	defer span.End()
+
+	slog.Info("cron: executing automation task", "automation_id", id, "project", slug)
+	
+	// Phase 24 Sinergy: Log to Audit Ledger
+	_ = s.auditSvc.Log(ctx, slug, "cron_trigger", "SYSTEM", "TRIGGER", map[string]interface{}{
+		"automation_id": id,
+		"task_type":     TaskRunAutomation,
+	})
 	var nodesRaw []byte
 	err := s.repo.Pool.QueryRow(ctx, "SELECT nodes FROM system.automations WHERE id = $1", id).Scan(&nodesRaw)
 	if err != nil { return err }

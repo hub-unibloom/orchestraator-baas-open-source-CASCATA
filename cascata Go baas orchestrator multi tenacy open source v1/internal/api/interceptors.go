@@ -2,47 +2,191 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strings"
+	"log/slog"
+	"net/http"
 	"time"
 
+	"cascata/internal/automation"
 	"cascata/internal/database"
+	"cascata/internal/domain"
+	"cascata/internal/phantom"
+	"cascata/internal/repository"
+	"cascata/internal/service"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
-// Interceptor manages the synchronous request/response hooks.
 type Interceptor struct {
-	repo *database.Repository
+	repo       *database.Repository
+	projRepo   *repository.ProjectRepository
+	phantomSvc *phantom.PhantomService
+	automation *automation.EventQueue
+	wfEngine   *automation.WorkflowEngine
+	auditSvc   *service.AuditService
 }
 
-func NewInterceptor(repo *database.Repository) *Interceptor {
-	return &Interceptor{repo: repo}
+func NewInterceptor(repo *database.Repository, projRepo *repository.ProjectRepository, phantom *phantom.PhantomService, automation *automation.EventQueue, wfEngine *automation.WorkflowEngine, audit *service.AuditService) *Interceptor {
+	return &Interceptor{
+		repo:       repo,
+		projRepo:   projRepo,
+		phantomSvc: phantom,
+		automation: automation,
+		wfEngine:   wfEngine,
+		auditSvc:   audit,
+	}
 }
 
-// ForbiddenPatterns contains SQL fragments used for privilege escalation or info leak.
-var ForbiddenPatterns = []string{
-	"COPY ", "PG_READ_FILE", "PG_LS_DIR", "DO $$", "CAST(", "SLEEP(", "TERMINATE",
+// EmmitEvent asynchronously pushes a database change to the automation engine (Phase 10).
+func (i *Interceptor) EmitEvent(ctx context.Context, slug, table, operation string, data map[string]interface{}) {
+	event := &domain.AutomationEvent{
+		ProjectSlug: slug,
+		Table:       table,
+		Operation:   operation,
+		Data:        data,
+		Timestamp:   time.Now(),
+	}
+
+	if err := i.automation.Publish(ctx, event); err != nil {
+		slog.Error("interceptor: event emission failed", "slug", slug, "table", table, "error", err)
+	}
+
+	// 2. Audit Critical Events (Phase 19)
+	if operation == "DELETE" || operation == "UPDATE" || operation == "TRUNCATE" {
+		// Resolve actor from context (Phase 22 Sinergy)
+		actorID := "system"
+		actorType := domain.IdentityCascataAgent
+		if auth, ok := domain.FromContext(ctx); ok {
+			actorID = auth.UserID
+			if actorID == "" { actorID = auth.ProjectSlug }
+			actorType = auth.IdentityType
+		}
+
+		go func() {
+			entry := &domain.AuditEntry{
+				Project:   slug,
+				Table:     table,
+				Operation: operation,
+				Payload:   fmt.Sprintf("%v", data), // Audit doesn't mask secrets, it's the Ledger of Truth
+				ActorID:   actorID,
+				ActorType: actorType,
+				Timestamp: time.Now(),
+			}
+			_ = i.auditSvc.WriteEntry(context.Background(), entry)
+		}()
+	}
 }
 
-// ValidateQuery prevents malicious SQL patterns before execution.
-func (i *Interceptor) ValidateQuery(sql string) error {
-	upper := strings.ToUpper(sql)
-	for _, p := range ForbiddenPatterns {
-		if strings.Contains(upper, p) {
-			return fmt.Errorf("Security Block: SQL Pattern '%s' is forbidden", p)
+// ProcessResponse executes synchronous logic hijacking before the client receives the data (Phase 9 Bridge).
+// It searches for "API_INTERCEPT" trigger-type workflows associated with the table/operation.
+func (i *Interceptor) ProcessResponse(ctx context.Context, slug, table, operation string, data map[string]interface{}) (map[string]interface{}, error) {
+	// 1. Resolve Workflows for this project marked as Interceptors (Phase 10 Metadata)
+	// In production, we'd cache these lookups.
+	wfs, err := i.projRepo.GetWorkflows(ctx, slug)
+	if err != nil {
+		return data, nil // Fail open for safety, but log it
+	}
+
+	for _, wf := range wfs {
+		// Only run if it's an interceptor and matches the context
+		if wf.Type != "API_INTERCEPT" || wf.Config["table"] != table || wf.Config["operation"] != operation {
+			continue
+		}
+
+		slog.Debug("interceptor: hijacking response", "wf_id", wf.ID, "slug", slug, "table", table)
+
+		// 2. Wrap current data in an AutomationEvent context
+		event := &domain.AutomationEvent{
+			ProjectSlug: slug,
+			Table:       table,
+			Operation:   operation,
+			Data:        data,
+		}
+
+		// 3. Execute synchronously (Antifragility Loop)
+		res, err := i.wfEngine.ExecuteWorkflow(ctx, &wf, event)
+		if err != nil {
+			slog.Error("interceptor: hijacking failed", "wf_id", wf.ID, "error", err)
+			return data, err
+		}
+
+		// Use the $last result from workflow execution as the new data
+		if resMap, ok := res.(map[string]interface{}); ok {
+			data = resMap
 		}
 	}
-	return nil
+
+	return data, nil
 }
 
-// InterceptResponse allows applying logic to the JSON before it is sent to the client.
-// Each tenant can have a list of interceptors (Tipo B).
-func (i *Interceptor) InterceptResponse(ctx context.Context, projectSlug string, data interface{}) (interface{}, error) {
-	// 1. Check for active interceptors in metadata
-	// Logic similar to Privacy Engine but for broader transformations.
+// ValidateQuery prevents malicious SQL patterns before execution (Phase 8 - Blindagem Adaptativa).
+func (i *Interceptor) ValidateQuery(ctx context.Context, projectSlug, sql string) (string, error) {
+	verdict, err := i.phantomSvc.AnalyzeIntent(ctx, projectSlug, sql)
+	if err != nil {
+		return "", fmt.Errorf("interceptor: brain failure: %w", err)
+	}
+
+	if !verdict.Allow {
+		slog.Warn("interceptor: block by phantom AI", "slug", projectSlug, "reason", verdict.Reason)
+		return "", fmt.Errorf("Security Block: %s", verdict.Reason)
+	}
+
+	return verdict.ModifiedQuery, nil
+}
+
+// statusWriter is a wrapper for http.ResponseWriter to capture the status code.
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *statusWriter) WriteHeader(status int) {
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+// TelemetryMiddleware provides precision tracking and observability for every request (Phase 17 OTel).
+func (i *Interceptor) TelemetryMiddleware(next http.Handler) http.Handler {
+	tracer := otel.Tracer("cascata-api")
 	
-	// TODO: Phase 10 - Execute Automation Nodes for síncrono Interceptor.
-	// For Phase 9, we establish the middleware interface.
-	
-	return data, nil
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		
+		// 1. Context Propagation (W3C TraceContext)
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		
+		// 2. Start Span
+		ctx, span := tracer.Start(ctx, fmt.Sprintf("%s %s", r.Method, r.URL.Path), 
+			trace.WithAttributes(
+				attribute.String("http.method", r.Method),
+				attribute.String("http.url", r.URL.String()),
+				attribute.String("http.user_agent", r.UserAgent()),
+			),
+		)
+		defer span.End()
+
+		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
+		
+		// Serve next with traced context
+		next.ServeHTTP(sw, r.WithContext(ctx))
+		
+		latency := time.Since(start)
+		
+		// Set Span status
+		span.SetAttributes(attribute.Int("http.status_code", sw.status))
+		if sw.status >= 400 {
+			span.RecordError(fmt.Errorf("request_failed_with_status_%d", sw.status))
+		}
+
+		slog.Info("api.request", 
+			"trace_id", span.SpanContext().TraceID().String(),
+			"method", r.Method, 
+			"path", r.URL.Path, 
+			"status", sw.status,
+			"latency_ms", latency.Milliseconds(),
+			"remote_ip", r.RemoteAddr,
+		)
+	})
 }

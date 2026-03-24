@@ -10,7 +10,28 @@ import (
 	"cascata/internal/auth"
 	"cascata/internal/domain"
 	"cascata/internal/ratelimit"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+// CORSMiddleware provides high-security cross-origin resource sharing headers.
+// It is the gateway for Dashboard and Developer-mode toolkits (Phase 16 Sinergy).
+func CORSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*") // Default: Universal access (Phase 24: Configurable)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, PUT, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, apikey, X-Project-Slug, X-Client-Version")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
 
 // RateLimitMiddleware handles early-rejection of banned IPs and quota enforcement.
 type RateLimitMiddleware struct {
@@ -36,20 +57,32 @@ func (m *MemberAuthMiddleware) EnforceMemberSession(next http.Handler) http.Hand
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			http.Error(w, `{"error": "AUTHENTICATION_REQUIRED"}`, http.StatusUnauthorized)
+			SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, "AUTHENTICATION_REQUIRED")
 			return
 		}
 
 		token := strings.TrimPrefix(authHeader, "Bearer ")
-		authCtx, err := m.sessionSvc.ValidateSession(token)
+		authCtx, err := m.sessionSvc.ValidateSession(r.Context(), token)
 		if err != nil {
 			slog.Warn("member.auth: session validation failed", "error", err)
-			http.Error(w, `{"error": "SESSION_EXPIRED_OR_INVALID"}`, http.StatusUnauthorized)
+			SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, string(domain.IdentityCascataMember), "SESSION_EXPIRED_OR_INVALID")
 			return
 		}
 
-		// Inject AuthContext into Go context for system handlers.
+		// 3. Inject AuthContext into Go context for system handlers.
 		ctx := context.WithValue(r.Context(), domain.AuthKey, authCtx)
+		
+		// 4. Enrich Active Span (Member Sinergy)
+		span := trace.SpanFromContext(r.Context())
+		if span.IsRecording() {
+			span.SetAttributes(
+				attribute.String("cascata.project", "system_orchestrator"),
+				attribute.String("cascata.mode", string(authCtx.Mode)),
+				attribute.String("cascata.identity", string(authCtx.IdentityType)),
+				attribute.String("cascata.member_id", authCtx.UserID),
+			)
+		}
+
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -65,7 +98,7 @@ func (m *RateLimitMiddleware) EnforceRateLimit(next http.Handler) http.Handler {
 		// 1. IP Ban Check
 		if banned, ttl := m.engine.IsIPBanned(r.Context(), ip); banned {
 			slog.Warn("ratelimit: rejecting banned IP", "ip", ip, "ttl", ttl)
-			http.Error(w, `{"error": "IP_BANNED_SECURITY_VIOLATION"}`, http.StatusForbidden)
+			SendError(w, r, http.StatusForbidden, ErrRateLimit, "IP_BANNED_SECURITY_VIOLATION", "TTL: "+ttl.String())
 			return
 		}
 
@@ -118,8 +151,7 @@ func (m *AuthMiddleware) EnforceTripleMode(next http.Handler) http.Handler {
 
 		if identifier == "" {
 			slog.Warn("auth: tenant resolution failed - no identifier found")
-			slog.Debug("request details", "host", r.Host, "path", r.URL.Path)
-			http.Error(w, `{"error": "Tenant Resolution Failed: Specify X-Project-Slug or use a Registered Domain"}`, http.StatusBadRequest)
+			SendError(w, r, http.StatusBadRequest, ErrInvalidRequest, "Tenant Resolution Failed: Specify X-Project-Slug or use a Registered Domain")
 			return
 		}
 
@@ -136,7 +168,7 @@ func (m *AuthMiddleware) EnforceTripleMode(next http.Handler) http.Handler {
 		allowed, err := m.ratelimit.Check(r.Context(), identifier, ip, r.Method, quotaCfg, false)
 		if err != nil || !allowed {
 			slog.Warn("ratelimit: quota exceeded or system check failed", "id", identifier, "ip", ip)
-			http.Error(w, `{"error": "Too Many Requests: Quota Exceeded"}`, http.StatusTooManyRequests)
+			SendError(w, r, http.StatusTooManyRequests, ErrRateLimit, "Too Many Requests: Quota Exceeded")
 			return
 		}
 
@@ -152,15 +184,55 @@ func (m *AuthMiddleware) EnforceTripleMode(next http.Handler) http.Handler {
 			// Record a security strike for invalid keys (IP Strikes)
 			_ = m.ratelimit.ReportIPStrike(r.Context(), ip)
 			
-			http.Error(w, `{"error": "Unauthorized: Project not found or invalid key"}`, http.StatusUnauthorized)
+			SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, "Unauthorized: Project not found or invalid key")
 			return
 		}
 
 		// 5. Inject into Context for downstream handlers (Realtime, Storage, SQL)
 		ctx := context.WithValue(r.Context(), domain.AuthKey, authCtx)
 		
+		// 6. Enrich Active Span (Telemetry Sinergy)
+		span := trace.SpanFromContext(r.Context())
+		if span.IsRecording() {
+			span.SetAttributes(
+				attribute.String("cascata.project", authCtx.ProjectSlug),
+				attribute.String("cascata.mode", string(authCtx.Mode)),
+				attribute.String("cascata.identity", string(authCtx.IdentityType)),
+				attribute.String("cascata.user_id", authCtx.UserID),
+			)
+		}
+
 		slog.Debug("auth: project bound", "slug", authCtx.ProjectSlug, "mode", authCtx.Mode)
 		
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// StepUpMiddleware enforces that the user has verified their identity recently (Phase 13).
+func (m *AuthMiddleware) StepUpMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authCtx, ok := domain.FromContext(r.Context())
+		if !ok || authCtx.Mode != domain.ModeResident {
+			SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, "STEP_UP_REQUIRED", "Authenticated resident context required")
+			return
+		}
+
+		amr, ok := authCtx.Claims["amr"].([]interface{})
+		hasMFA := false
+		if ok {
+			for _, v := range amr {
+				if v == "mfa" {
+					hasMFA = true
+					break
+				}
+			}
+		}
+
+		if !hasMFA {
+			SendError(w, r, http.StatusForbidden, ErrForbidden, "STEP_UP_REQUIRED", "High-security operation requires MFA verification")
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }

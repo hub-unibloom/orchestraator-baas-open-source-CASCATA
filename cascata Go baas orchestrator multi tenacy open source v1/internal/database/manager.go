@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"cascata/internal/service"
+	"cascata/internal/telemetry"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -17,20 +19,27 @@ type TenantPoolManager struct {
 	pools        map[string]*tenantPoolEntry
 	masterURL    string
 	globalMax    int
+	telemetry    *telemetry.TelemetryEngine
+	auditSvc     *service.AuditService
 }
 
 type tenantPoolEntry struct {
 	repo       *Repository
 	lastUsed   time.Time
 	maxConns   int
+	isHealthy  bool      // Phase 21: Health tracking
+	lastError  string    // Error log for diagnostics
+	failCount  int       // Sequential failure tracker
 }
 
 // NewTenantPoolManager initializes the physical pool orchestrator.
-func NewTenantPoolManager(masterURL string, globalMax int) *TenantPoolManager {
+func NewTenantPoolManager(masterURL string, globalMax int, tele *telemetry.TelemetryEngine, audit *service.AuditService) *TenantPoolManager {
 	return &TenantPoolManager{
 		pools:     make(map[string]*tenantPoolEntry),
 		masterURL: masterURL,
 		globalMax: globalMax,
+		telemetry: tele,
+		auditSvc:  audit,
 	}
 }
 
@@ -74,9 +83,10 @@ func (m *TenantPoolManager) GetPool(ctx context.Context, slug, dbName string, te
 	}
 
 	m.pools[slug] = &tenantPoolEntry{
-		repo:     repo,
-		lastUsed: time.Now(),
-		maxConns: tenantMax,
+		repo:      repo,
+		lastUsed:  time.Now(),
+		maxConns:  tenantMax,
+		isHealthy: true,
 	}
 
 	return repo, nil
@@ -107,6 +117,48 @@ func NewTenantPoolWithLimit(ctx context.Context, masterURL, dbName string, maxCo
 	}
 
 	return &Repository{Pool: pool}, nil
+}
+
+// CheckPoolHealth periodically pings all active pools (Phase 21 High-Availability).
+func (m *TenantPoolManager) CheckPoolHealth(ctx context.Context) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			m.mu.Lock()
+			for slug, entry := range m.pools {
+				err := entry.repo.Pool.Ping(ctx)
+				if err != nil {
+					entry.isHealthy = false
+					entry.failCount++
+					entry.lastError = err.Error()
+					slog.Error("pool_manager: tenant pool unhealthy", "slug", slug, "fail_count", entry.failCount, "error", err)
+					
+					// If it fails more than 5 times, we destroy it to trigger fresh reconnect next time
+					if entry.failCount >= 5 {
+						slog.Warn("pool_manager: destroying terminal pool", "slug", slug)
+						
+						// Phase 21 Sinergy: Log Incident to Audit
+						_ = m.auditSvc.Log(ctx, slug, "database_pool_failure", "SYSTEM", "INCIDENT", map[string]interface{}{
+							"db":     entry.repo.Pool.Config().ConnConfig.Database,
+							"errors": entry.failCount,
+						})
+
+						entry.repo.Close()
+						delete(m.pools, slug)
+					}
+				} else {
+					entry.isHealthy = true
+					entry.failCount = 0
+				}
+			}
+			m.mu.Unlock()
+		}
+	}
 }
 
 // CleanupTask handles destruction of pools after a period of inactivity.

@@ -9,7 +9,7 @@ import (
 type Config struct {
 	Port         string
 	DatabaseURL  string
-	RedisURL     string
+	DflyURL      string
 	Environment  string
 	McpEnabled   bool
 	LogLevel     string
@@ -17,6 +17,12 @@ type Config struct {
 	VaultAddr       string
 	VaultToken      string
 	SystemJWTSecret string
+	SMTPHost        string
+	SMTPPort        string
+	SMTPUser        string
+	SMTPPass        string
+	SMTPFrom        string
+	StoragePath     string
 }
 
 // Load fetches configurations from environment variables and returns a Config object.
@@ -24,7 +30,7 @@ func Load() *Config {
 	cfg := &Config{
 		Port:        getEnv("PORT", "8080"),
 		DatabaseURL: os.Getenv("DB_URL"),
-		RedisURL:    os.Getenv("REDIS_URL"),
+		DflyURL:    os.Getenv("DFLY_URL"),
 		Environment: getEnv("GO_ENV", "development"),
 		McpEnabled:  getEnv("MCP_ENABLED", "true") == "true",
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
@@ -32,6 +38,12 @@ func Load() *Config {
 		VaultAddr:       getEnv("VAULT_ADDR", "http://cascata-vault:8200"),
 		VaultToken:      getEnv("VAULT_TOKEN", "cascata_root_token"),
 		SystemJWTSecret: getEnv("SYSTEM_JWT_SECRET", "cascata_system_default_secret_32_chars"),
+		SMTPHost:        getEnv("SMTP_HOST", "localhost"),
+		SMTPPort:        getEnv("SMTP_PORT", "1025"),
+		SMTPUser:        getEnv("SMTP_USER", ""),
+		SMTPPass:        getEnv("SMTP_PASS", ""),
+		SMTPFrom:        getEnv("SMTP_FROM", "cascata@example.com"),
+		StoragePath:     getEnv("STORAGE_PATH", "/tmp/cascata_storage"),
 	}
 
 	// Fail-fast validation

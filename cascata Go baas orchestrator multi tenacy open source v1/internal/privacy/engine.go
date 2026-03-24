@@ -3,13 +3,16 @@ package privacy
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
-	"cascata/internal/auth"
+	"cascata/internal/domain"
 	"cascata/internal/vault"
 )
 
-// Engine handles data transformation according to the privacy policy.
+// Engine handles data transformation according to the privacy policy (Phase 9 - Vault Transit).
+// It acts as the "Blindagem de Dados" (Shielding), ensuring sensitive information is encrypted in DB
+// and only revealed to authorized identities on-the-fly.
 type Engine struct {
 	transit *vault.TransitService
 }
@@ -18,63 +21,74 @@ func NewEngine(t *vault.TransitService) *Engine {
 	return &Engine{transit: t}
 }
 
-// ApplyMasking processes search results to obfuscate sensitive data.
-func (e *Engine) ApplyMasking(ctx context.Context, authCtx auth.AuthContext, cfg ProjectPrivacyConfig, tableName string, rows []map[string]interface{}) ([]map[string]interface{}, error) {
-	if cfg.MaskedColumns == nil {
+// Regex patterns for PII detection (Phase 24)
+var (
+	emailRegex = regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
+	cpfRegex   = regexp.MustCompile(`\d{3}\.\d{3}\.\d{3}-\d{2}`)
+)
+
+// ApplyMasking processes search results to obfuscate or reveal sensitive data.
+// It uses the Transit Engine to decrypt values if the user has the 'service_role' (Admin) permission.
+func (e *Engine) ApplyMasking(ctx context.Context, authCtx *domain.AuthContext, cfg ProjectPrivacyConfig, tableName string, rows []map[string]interface{}) ([]map[string]interface{}, error) {
+	if len(rows) == 0 {
 		return rows, nil
 	}
 
-	tableMasks, ok := cfg.MaskedColumns[tableName]
-	if !ok {
+	tableMasks, hasMasks := cfg.MaskedColumns[tableName]
+	if !hasMasks {
 		return rows, nil
 	}
 
+	// In Cascata, 'service_role' is the only role allowed to transparently see decrypted data (Zero-Trust).
 	isAdmin := authCtx.Role == "service_role"
 
 	for i := range rows {
 		for col, val := range rows[i] {
-			mask, ok := tableMasks[col]
-			if !ok {
+			mask, isMasked := tableMasks[col]
+			if !isMasked {
+				// Auto-Detection of PII (Phase 24)
+				if s, ok := val.(string); ok && !isAdmin {
+					if emailRegex.MatchString(s) || cpfRegex.MatchString(s) {
+						rows[i][col] = "[PII_DETECTED]"
+					}
+				}
 				continue
 			}
 
-			// 1. Admin Bypass & Decryption (Project specific key)
+			// 1. Admin/Service Bypass & Transparent Decryption
 			if isAdmin {
-				// We only use decryprion on HybridEnc columns.
-				if mask == HybridEnc && val != nil {
-					// We'll decrypted on demand.
-					if s, ok := val.(string); ok && strings.HasPrefix(s, "vault:") {
+				if (mask == HybridEnc || mask == HyperEnc) && val != nil {
+					if s, ok := val.(string); ok && strings.HasPrefix(s, VaultFormatPrefix) {
+						// On-demand decryption via Transit Engine
 						dec, err := e.transit.Decrypt(ctx, authCtx.ProjectSlug, s)
 						if err == nil {
 							rows[i][col] = dec
+						} else {
+							// If decryption fails, we leave it as [ENCRYPTED] to avoid data leak.
+							rows[i][col] = "[DECRYPT_FAILED]"
 						}
 					}
 				}
 				continue
 			}
 
-			// 2. Privacy Enforcement for Non-Admins
-			if val == nil {
-				continue
-			}
+			// 2. Privacy Enforcement for Non-Admins (Residents)
+			if val == nil { continue }
 
 			switch mask {
 			case Hide:
-				delete(rows[i], col)
+				rows[i][col] = nil // Completely hidden
 			case Mask:
 				rows[i][col] = "********"
 			case SemiMask:
 				s := fmt.Sprintf("%v", val)
-				visibleLen := len(s) / 4
-				if visibleLen == 0 { visibleLen = 1 }
-				rows[i][col] = s[:visibleLen] + strings.Repeat("*", max(3, len(s)-visibleLen))
-			case Blur:
-				s := fmt.Sprintf("%v", val)
-				if len(s) > 5 {
-					rows[i][col] = s[:3] + "..." + s[len(s)-2:]
+				if len(s) > 4 {
+					rows[i][col] = s[:4] + "****"
 				} else {
-					rows[i][col] = "***"
+					rows[i][col] = "****"
 				}
+			case Blur:
+				rows[i][col] = "[HIDDEN_DATA]"
 			case HybridEnc, HyperEnc:
 				rows[i][col] = "[ENCRYPTED]"
 			}
@@ -84,59 +98,53 @@ func (e *Engine) ApplyMasking(ctx context.Context, authCtx auth.AuthContext, cfg
 	return rows, nil
 }
 
-// SanitizeWrite strips fields based on column locks for INSERT/UPDATE.
-func (e *Engine) SanitizeWrite(authCtx auth.AuthContext, cfg ProjectPrivacyConfig, tableName string, data map[string]interface{}, isUpdate bool) (map[string]interface{}, error) {
-	if cfg.LockedColumns == nil {
-		return data, nil
-	}
-
-	tableLocks, ok := cfg.LockedColumns[tableName]
-	if !ok {
-		return data, nil
-	}
-
+// SanitizeWrite strips fields based on column locks or performs transparent encryption.
+// Used in POST/PATCH operations to protect PII before it touches the physical disk.
+func (e *Engine) SanitizeWrite(ctx context.Context, authCtx *domain.AuthContext, cfg ProjectPrivacyConfig, tableName string, data map[string]interface{}, isUpdate bool) (map[string]interface{}, error) {
 	isAdmin := authCtx.Role == "service_role"
-
-	for col, lock := range tableLocks {
-		val, exists := data[col]
-		if !exists {
-			continue
-		}
-
-		// Security Locks
-		switch lock {
-		case Immutable:
-			delete(data, col) // Never writable via API
-		case InsertOnly:
-			if isUpdate {
-				delete(data, col) // Only writable on insert
+	
+	// 1. Column Locking (Immutable, Write-once, System-only)
+	if tableLocks, ok := cfg.LockedColumns[tableName]; ok {
+		for col, lock := range tableLocks {
+			if _, exists := data[col]; !exists {
+				continue
 			}
-		case SystemPut:
-			if !isAdmin {
-				delete(data, col) // Only orchestrator can write
-			}
-		case OtpProtected:
-			// TODO: Phase 12 - Step-up Authentication
-			// For now, if no step-up claim, block write.
-			if !authCtx.HasStepUp {
-				delete(data, col)
+
+			switch lock {
+			case Immutable:
+				delete(data, col) // Never writable via API
+			case InsertOnly:
+				if isUpdate { delete(data, col) }
+			case SystemPut:
+				if !isAdmin { delete(data, col) }
 			}
 		}
+	}
 
-		// Also perform transparent encryption if it's a HybridEnc column.
-		if mask, ok := cfg.MaskedColumns[tableName][col]; ok && mask == HybridEnc && val != nil && !isAdmin {
-			// Transparently encrypt before storage.
-			enc, err := e.transit.Encrypt(context.Background(), authCtx.ProjectSlug, fmt.Sprintf("%v", val))
-			if err == nil {
-				data[col] = "vault:" + enc
+	// 2. Project-Wide Transparent Encryption (Phase 9 Bridge)
+	// Any column marked as HybridEnc or HyperEnc is automatically encrypted before storage.
+	if tableMasks, ok := cfg.MaskedColumns[tableName]; ok {
+		for col, mask := range tableMasks {
+			val, exists := data[col]
+			if !exists || val == nil {
+				continue
+			}
+
+			if mask == HybridEnc || mask == HyperEnc {
+				// We don't re-encrypt if it already looks like a vault ciphertext.
+				if s, ok := val.(string); ok && strings.HasPrefix(s, VaultFormatPrefix) {
+					continue
+				}
+
+				// Encrypt via Vault Transit using the project-specific key.
+				enc, err := e.transit.Encrypt(ctx, authCtx.ProjectSlug, fmt.Sprintf("%v", val))
+				if err != nil {
+					return nil, fmt.Errorf("privacy: failed to encrypt sensitive column %s: %w", col, err)
+				}
+				data[col] = VaultFormatPrefix + enc
 			}
 		}
 	}
 
 	return data, nil
-}
-
-func max(a, b int) int {
-	if a > b { return a }
-	return b
 }

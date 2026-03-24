@@ -17,9 +17,13 @@ type Project struct {
 	JWTSecret           string                 `json:"-"`
 	AnonKey             string                 `json:"anon_key"`
 	ServiceKey          string                 `json:"service_key"`
+	PreviousServiceKey  string                 `json:"-"` // Role-over safety key (Phase 25)
+	RolloverAt          *time.Time             `json:"rollover_at,omitempty"`
 	Blocklist           []string               `json:"blocklist"`
 	Metadata            map[string]interface{} `json:"metadata"`
 	LogRetentionDays    int                    `json:"log_retention_days"`
+	BackupRetentionDays int                    `json:"backup_retention_days"` // Phase 32
+	LastBackupAt        *time.Time             `json:"last_backup_at,omitempty"`
 	CreatedAt           time.Time              `json:"created_at"`
 	UpdatedAt           time.Time              `json:"updated_at"`
 }

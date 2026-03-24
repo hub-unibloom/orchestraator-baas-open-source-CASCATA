@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"sync"
 	"time"
 
 	"cascata/internal/database"
@@ -14,8 +15,9 @@ import (
 // AdaptiveEngine manages hierarchical quotas and CPU-aware limits via DragonflyDB.
 // Support for Phase 3 - Security & Resilience.
 type AdaptiveEngine struct {
-	redis      *redis.Client
+	dfly       *redis.Client
 	systemPool *database.Repository
+	localBans  sync.Map // L1 Cache for ultra-fast security check (Phase 26)
 }
 
 // Config maps the limits for a specific tier/group.
@@ -25,8 +27,21 @@ type Config struct {
 	SpeedPctOnNerf int
 }
 
-func NewAdaptiveEngine(rdb *redis.Client, systemPool *database.Repository) *AdaptiveEngine {
-	return &AdaptiveEngine{redis: rdb, systemPool: systemPool}
+func NewAdaptiveEngine(dfly *redis.Client, systemPool *database.Repository) *AdaptiveEngine {
+	e := &AdaptiveEngine{dfly: dfly, systemPool: systemPool}
+	go e.listenForGlobalBans(context.Background())
+	return e
+}
+
+func (e *AdaptiveEngine) listenForGlobalBans(ctx context.Context) {
+	pubsub := e.dfly.Subscribe(ctx, "cascata:security:bans")
+	defer pubsub.Close()
+
+	ch := pubsub.Channel()
+	for msg := range ch {
+		slog.Debug("security: global ban received", "ip", msg.Payload)
+		e.localBans.Store(msg.Payload, time.Now().Add(24*time.Hour))
+	}
 }
 
 // Check verifies if the requested operation can proceed under current quotas and load.
@@ -76,7 +91,7 @@ func (e *AdaptiveEngine) Check(ctx context.Context, slug, ip, method string, cfg
 // RecordLoginFailure tracks failed login attempts to trigger 30min locks.
 func (e *AdaptiveEngine) RecordLoginFailure(ctx context.Context, identifier string) error {
 	key := fmt.Sprintf("auth:fails:%s", identifier)
-	pipe := e.redis.TxPipeline()
+	pipe := e.dfly.TxPipeline()
 	pipe.Incr(ctx, key)
 	pipe.Expire(ctx, key, 15*time.Minute)
 	res, err := pipe.Exec(ctx)
@@ -86,7 +101,7 @@ func (e *AdaptiveEngine) RecordLoginFailure(ctx context.Context, identifier stri
 	if count >= 5 {
 		// Lock for 30 minutes
 		lockKey := fmt.Sprintf("auth:locked:%s", identifier)
-		e.redis.Set(ctx, lockKey, "1", 30*time.Minute)
+		e.dfly.Set(ctx, lockKey, "1", 30*time.Minute)
 		slog.Warn("SECURITY: brute-force attack blocked", "identifier", identifier, "attempts", count)
 	}
 	return nil
@@ -95,14 +110,14 @@ func (e *AdaptiveEngine) RecordLoginFailure(ctx context.Context, identifier stri
 // IsLoginLocked checks if a specific member/user is currently under lock.
 func (e *AdaptiveEngine) IsLoginLocked(ctx context.Context, identifier string) (bool, time.Duration) {
 	key := fmt.Sprintf("auth:locked:%s", identifier)
-	ttl, _ := e.redis.TTL(ctx, key).Result()
+	ttl, _ := e.dfly.TTL(ctx, key).Result()
 	return ttl > 0, ttl
 }
 
 // ReportIPStrike increments the strike counter for an IP.
 func (e *AdaptiveEngine) ReportIPStrike(ctx context.Context, ip string) error {
 	key := fmt.Sprintf("ip:strikes:%s", ip)
-	pipe := e.redis.TxPipeline()
+	pipe := e.dfly.TxPipeline()
 	pipe.Incr(ctx, key)
 	pipe.Expire(ctx, key, 1*time.Hour)
 	res, err := pipe.Exec(ctx)
@@ -112,22 +127,42 @@ func (e *AdaptiveEngine) ReportIPStrike(ctx context.Context, ip string) error {
 	if strikes >= 10 {
 		// Ban for 24 hours
 		banKey := fmt.Sprintf("ip:banned:%s", ip)
-		e.redis.Set(ctx, banKey, "1", 24*time.Hour)
-		slog.Error("SECURITY_ALARM: IP auto-banned for 24h", "ip", ip, "strikes", strikes)
+		e.dfly.Set(ctx, banKey, "1", 24*time.Hour)
+		
+		// Propagate to all workers (Phase 26)
+		e.dfly.Publish(ctx, "cascata:security:bans", ip)
+		
+		slog.Error("SECURITY_ALARM: IP auto-banned and propagated", "ip", ip, "strikes", strikes)
 	}
 	return nil
 }
 
-// IsIPBanned verifies if a request source is forbidden.
+// IsIPBanned verifies if a request source is forbidden (Phase 26: L1 + L2 Check).
 func (e *AdaptiveEngine) IsIPBanned(ctx context.Context, ip string) (bool, time.Duration) {
+	// 1. Check L1 Cache (Local Map)
+	if expiry, ok := e.localBans.Load(ip); ok {
+		if time.Now().Before(expiry.(time.Time)) {
+			return true, time.Until(expiry.(time.Time))
+		}
+		e.localBans.Delete(ip)
+	}
+
+	// 2. Fallback to L2 Cache (Dragonfly)
 	key := fmt.Sprintf("ip:banned:%s", ip)
-	ttl, _ := e.redis.TTL(ctx, key).Result()
-	return ttl > 0, ttl
+	ttl, _ := e.dfly.TTL(ctx, key).Result()
+	
+	if ttl > 0 {
+		// Sync back to L1
+		e.localBans.Store(ip, time.Now().Add(ttl))
+		return true, ttl
+	}
+
+	return false, 0
 }
 
-// deductTokens uses Redis INCR + EXPIRE tracking to subtract multi-weight tokens
+// deductTokens uses Dragonfly INCR + EXPIRE tracking to subtract multi-weight tokens
 func (e *AdaptiveEngine) deductTokens(ctx context.Context, key string, limit, window, weight int) (bool, error) {
-	pipe := e.redis.TxPipeline()
+	pipe := e.dfly.TxPipeline()
 	_ = pipe.IncrBy(ctx, key, int64(weight))
 	pipe.Expire(ctx, key, time.Duration(window)*time.Second)
 	res, err := pipe.Exec(ctx)
@@ -139,7 +174,7 @@ func (e *AdaptiveEngine) deductTokens(ctx context.Context, key string, limit, wi
 }
 
 func (e *AdaptiveEngine) getCPUMultiplier(ctx context.Context) float64 {
-	val, err := e.redis.Get(ctx, "sys:health:cpu_load").Result()
+	val, err := e.dfly.Get(ctx, "sys:health:cpu_load").Result()
 	if err != nil { return 1.0 }
 
 	f, _ := strconv.ParseFloat(val, 64)

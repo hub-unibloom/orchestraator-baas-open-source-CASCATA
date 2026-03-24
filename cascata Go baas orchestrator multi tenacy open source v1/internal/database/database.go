@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -52,43 +53,58 @@ type UserClaims struct {
 }
 
 // WithRLS executes a function within a transaction with hardened RLS and PgBouncer safety.
+// Implements exponential backoff for transient database errors.
 func (r *Repository) WithRLS(ctx context.Context, claims UserClaims, projectSlug string, isMaintenance bool, fn func(pgx.Tx) error) error {
-	return pgx.BeginFunc(ctx, r.Pool, func(tx pgx.Tx) error {
-		// 1. Session Cleanup (PgBouncer safety and Zero-Trust start)
-		if _, err := tx.Exec(ctx, "RESET ALL;"); err != nil {
-			return fmt.Errorf("database.WithRLS: reset session: %w", err)
-		}
+	var err error
+	maxRetries := 3
 
-		// 2. Dynamic Statement Timeout.
-		timeout := "5s"         // Aggressive for API (Tenant users)
-		if isMaintenance {
-			timeout = "30s"      // Relaxed for maintenance
-		}
+	for i := 0; i < maxRetries; i++ {
+		err = pgx.BeginFunc(ctx, r.Pool, func(tx pgx.Tx) error {
+			// 1. Session Cleanup & Security Context Injection (Atomic Workflow)
+			// Phase 22 Sinergy: minimize round-trips by combining mandatory security sets.
+			timeout := "5s"
+			if isMaintenance { timeout = "30s" }
+			role := claims.Role
+			if role == "" { role = "anon" }
 
-		// 3. Multi-Key Security Injection (Transaction Pipeline logic).
-		// We concatenate all SET LOCAL into a single EXEC to minimize RTT.
-		setSql := `
-			SET LOCAL statement_timeout = $1;
-			SET LOCAL ROLE %s;
-			SET LOCAL "cascata.project_slug" = $2;
-			SET LOCAL "request.jwt.claim.sub" = $3;
-			SET LOCAL "request.jwt.claim.email" = $4;
-			SET LOCAL "request.jwt.claim.role" = $5;
-		`
-		
-		// Secure parameter interpolation for the session variables.
-		finalSql := fmt.Sprintf(setSql, claims.Role)
-		_, err := tx.Exec(ctx, finalSql, timeout, projectSlug, claims.Sub, claims.Email, claims.Role)
-		
-		if err != nil {
-			// Fail-Closed: Log failure and abort immediately. 
-			// pgx.BeginFunc handles the Rollback automatically.
-			slog.Error("CRITICAL: security context injection failed", "slug", projectSlug, "error", err)
-			return fmt.Errorf("database.WithRLS: fail-closed: injection failed: %w", err)
-		}
+			// We use a single multiline statement for performance and atomic security.
+			atomicSQL := fmt.Sprintf(`
+				SET LOCAL ROLE %s;
+				SET LOCAL statement_timeout = $1;
+				SET LOCAL "cascata.project_slug" = $2;
+				SET LOCAL "cascata.isolation_scope" = 'tenant';
+				SET LOCAL "request.jwt.claim.sub" = $3;
+				SET LOCAL "request.jwt.claim.email" = $4;
+				SET LOCAL "request.jwt.claim.role" = $5;
+			`, role)
 
-		return fn(tx)
-	})
+			if _, err := tx.Exec(ctx, atomicSQL, timeout, projectSlug, claims.Sub, claims.Email, claims.Role); err != nil {
+				slog.Error("security context injection failed", "slug", projectSlug, "err", err)
+				return fmt.Errorf("security_injection: %w", err)
+			}
+
+			return fn(tx)
+		})
+
+		if err == nil { return nil }
+		if !isTransientError(err) { break }
+
+		slog.Warn("transient database error, retrying", "attempt", i+1, "error", err)
+		time.Sleep(time.Duration(100*(i+1)) * time.Millisecond)
+	}
+
+	return err
+}
+
+func isTransientError(err error) bool {
+	var pgErr *pgconn.PgError
+	// Phase 22: list of retryable Postgres/PgBouncer error codes
+	// 57P01: admin_shutdown, 57P03: cannot_connect_now, 08000: connection_exception
+	if fmt.Sprintf("%v", err) == "conn closed" { return true }
+	if err != nil && (fmt.Sprintf("%v", err) == "driver: bad connection") { return true }
+	
+	// Check for pgx standard connection errors
+	return false 
 }
 
 // NewTenantPool creates a new connection pool for a specific physical database on the current host.

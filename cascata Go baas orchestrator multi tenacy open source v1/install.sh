@@ -203,7 +203,7 @@ DB_PASS=${DB_PASS}
 DB_NAME=cascata_meta
 DB_PORT=5432
 
-# Dragonfly Redis
+# Dragonfly DB Engine
 DRAGONFLY_PORT=6379
 
 # Security Infrastructure (Vault)

@@ -12,25 +12,67 @@ import (
 	"cascata/internal/config"
 	"cascata/internal/database"
 	"github.com/go-chi/chi/v5"
+	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
+// Server represents the API server instance.
+// It is the primary orchestrator that binds the physical pools to the HTTP protocol.
 type Server struct {
 	Cfg          *config.Config
 	Repo         *database.Repository
 	AuthMiddle   *AuthMiddleware
 	MemberMiddle *MemberAuthMiddleware
+	Interceptor  *Interceptor
 	SystemH      *SystemHandler
+	DataH        *DataHandler
+	AuthH        *AuthHandler
+	GraphQLH     *GraphQLHandler
+	StorageH     *StorageHandler
+	RealtimeH    *RealtimeHub
+	WebhookH     *WebhookHandler
+	SyncH        *SyncHandler
+	LogicH       *LogicHandler
+	MigrationH   *MigrationHandler
+	AIH          *AIHandler
 	http         *http.Server
 }
 
 // NewServer creates a new API server with the given dependencies.
-func NewServer(cfg *config.Config, repo *database.Repository, authM *AuthMiddleware, memberM *MemberAuthMiddleware, systemH *SystemHandler) *Server {
+func NewServer(
+	cfg *config.Config,
+	repo *database.Repository,
+	authM *AuthMiddleware,
+	memberM *MemberAuthMiddleware,
+	interceptor *Interceptor,
+	systemH *SystemHandler,
+	dataH *DataHandler,
+	authH *AuthHandler,
+	graphH *GraphQLHandler,
+	storageH *StorageHandler,
+	realtimeH *RealtimeHub,
+	webhookH *WebhookHandler,
+	syncH *SyncHandler,
+	logicH *LogicHandler,
+	migrationH *MigrationHandler,
+	aiH *AIHandler,
+) *Server {
 	return &Server{
 		Cfg:          cfg,
 		Repo:         repo,
 		AuthMiddle:   authM,
 		MemberMiddle: memberM,
+		Interceptor:  interceptor,
 		SystemH:      systemH,
+		DataH:        dataH,
+		AuthH:        authH,
+		GraphQLH:     graphH,
+		StorageH:     storageH,
+		RealtimeH:    realtimeH,
+		WebhookH:     webhookH,
+		SyncH:        syncH,
+		LogicH:       logicH,
+		MigrationH:   migrationH,
+		AIH:          aiH,
 	}
 }
 
@@ -38,17 +80,26 @@ func NewServer(cfg *config.Config, repo *database.Repository, authM *AuthMiddlew
 func (s *Server) Start(ctx context.Context, id int) error {
 	router := chi.NewRouter()
 	
+	// Global Middlewares (Sinergy & Observability)
+	router.Use(CORSMiddleware)
+	router.Use(chiMiddleware.RealIP)
+	router.Use(HandlePanic)
+	router.Use(s.Interceptor.TelemetryMiddleware)
+	
 	// Routes
 	// 1. PUBLIC ROUTES
 	router.Get("/health", s.handleHealth)
-	router.Post("/system/auth/login", s.SystemH.HandleLogin) // Public
+	router.Post("/system/auth/login", s.SystemH.HandleLogin) // Public Dashboard Front-door
 	
 	// 2. PROTECTED SYSTEM ROUTES (Dashboard/Members)
 	router.Group(func(r chi.Router) {
 		r.Use(s.MemberMiddle.EnforceMemberSession)
 		
-		r.Get("/system/projects", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(`{"message": "List of projects (Mocked)"}`))
+		r.Route("/system/projects", func(r chi.Router) {
+			r.Get("/", s.SystemH.HandleListProjects)
+			r.Post("/", s.SystemH.HandleCreateProject)
+			r.Delete("/{slug}", s.SystemH.HandleDeleteProject)
+			r.Get("/export", s.SystemH.HandleExportCAF)
 		})
 	})
 
@@ -59,14 +110,52 @@ func (s *Server) Start(ctx context.Context, id int) error {
 		
 		// Map v1 tenant operations
 		r.Route("/v1/{project}", func(r chi.Router) {
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				w.Write([]byte(`{"message": "Welcome to Tenant API"}`))
-			})
+			r.Get("/openapi", s.DataH.HandleOpenAPI)
 			
-			// Table access (consumed by DataHandler)
-			r.Get("/{table}", func(w http.ResponseWriter, r *http.Request) {
-				w.Write([]byte(`{"message": "Table route"}`))
+			// Identity Gateway (Phase 10.1 & 13)
+			r.Post("/auth/signup", s.AuthH.HandleSignup)
+			r.Post("/auth/login", s.AuthH.HandleLogin)
+			r.Post("/auth/verify", s.AuthH.HandleVerifyOTP)
+			r.Post("/auth/challenge", s.AuthH.HandleStepUpChallenge)
+			r.Post("/auth/verify-step-up", s.AuthH.HandleVerifyStepUp)
+			r.Get("/auth/authorize", s.AuthH.HandleAuthorize)
+			r.Get("/auth/callback", s.AuthH.HandleCallback)
+
+			// Schema Migrations (Phase 15: Structural Evolution Engine)
+			r.Post("/migrations", s.MigrationH.ServeMigration)
+			r.Get("/migrations/history", s.MigrationH.GetMigrationHistory)
+
+			// Intelligence Layer (Phase 28: Phantom AI)
+			r.Post("/ai/ask", s.AIH.ServeAsk)
+
+			// RESTful Table access (Dynamic Data Mesh)
+			r.Route("/{table}", func(r chi.Router) {
+				r.Get("/", s.DataH.ServeGet)
+				r.Get("/search", s.DataH.ServeVectorSearch)
+				r.Post("/seed", s.DataH.ServeSeed)
+				r.Post("/", s.DataH.ServePost)
+				r.Patch("/", s.DataH.ServePatch)
+				r.Delete("/", s.DataH.ServeDelete)
+				r.Post("/sync", s.SyncH.HandleSync)
 			})
+
+			// Storage Hub
+			r.Post("/storage/upload", s.StorageH.Upload)
+			r.Get("/storage/download", s.StorageH.Download)
+
+			// Logic Edge Nodes (Phase 14: Phantom Functions)
+			r.Post("/functions", s.LogicH.ServeHTTP)
+			r.Post("/functions/{name}", s.LogicH.HandleInvoke)
+
+			// Real-time Hub (SSE)
+			r.Get("/realtime", s.RealtimeH.HandleSSE)
+
+			// Webhook Identity/Gateway (Phase 10.4)
+			r.Post("/webhooks/{path}", s.WebhookH.ServeHTTP)
+
+			// GraphQL Hub (Phase 4 & 21)
+			r.Post("/graphql", s.GraphQLH.ServeHTTP)
+			r.Get("/graphql/ws", s.GraphQLH.ServeWebSocket)
 		})
 	})
 

@@ -6,145 +6,117 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
-	"cascata/internal/utils"
+	"cascata/internal/database"
+	"cascata/internal/domain"
+	"github.com/jackc/pgx/v5"
 )
 
-// ProcessNode decodes the configuration and executes the specific node type logic.
-func (e *Engine) ProcessNode(ctx context.Context, execCtx *Context, node *Node) (interface{}, error) {
+// ProcessNode decodes the configuration and executes the specific node type logic for Phase 10.
+func (e *WorkflowEngine) ProcessNode(ctx context.Context, execCtx *ExecutionContext, node *domain.WorkflowNode) (interface{}, error) {
 	if node.Config == nil {
 		return nil, nil
 	}
 
 	switch node.Type {
-	case "transform":
-		transformed := ResolveObject(node.Config["template"], execCtx.Vars)
-		execCtx.Vars["$output"] = transformed
-		return transformed, nil
-
-	case "query":
-		return e.executeSecureSql(ctx, execCtx, node)
-
-	case "http":
+	case domain.NodeHTTP:
 		return e.executeHttp(ctx, execCtx, node)
 
-	case "conditional":
-		return e.evaluateLogic(node, execCtx), nil
+	case domain.NodeDB:
+		return e.executeSql(ctx, execCtx, node)
 
-	case "response":
-		return ResolveObject(node.Config["body"], execCtx.Vars), nil
-
-	case "edge_function":
-		return e.executeEdge(ctx, execCtx, node)
+	case domain.NodeScript:
+		// Edge Logic (Phantom JS - TODO: Phase 23 integration with a JS runtime like otto)
+		source, _ := node.Config["source"].(string)
+		slog.Debug("automation: edge script script", "source", source)
+		return map[string]string{"status": "script executed (simulated for Phase 10)"}, nil
 
 	default:
 		return nil, fmt.Errorf("unknown node type: %s", node.Type)
 	}
 }
 
-// executeEdge runs either a Go-native script or a WASM module.
-func (e *Engine) executeEdge(ctx context.Context, execCtx *Context, node *Node) (interface{}, error) {
-	runtimeType, _ := node.Config["runtime"].(string) // "go" or "wasm"
-	source, _ := node.Config["source"].(string)
-
-	if runtimeType == "wasm" {
-		// WASM implementation: we'd pull the binary and call executeWASM
-		return nil, fmt.Errorf("engine: wasm activation pending for critical mode")
-	}
-
-	// Native Go (via Yaegi)
-	// For Phase 12, we demonstrate the Go path.
-	// In the real system, this source would have been translated/transpiled.
-	return nil, nil
-}
-
-// executeSecureSql runs a SQL query with RLS and pattern safety.
-func (e *Engine) executeSecureSql(ctx context.Context, execCtx *Context, node *Node) (interface{}, error) {
+// executeSql runs a tenant-specific SQL operation with RLS context (Phase 10 Enterprise).
+func (e *WorkflowEngine) executeSql(ctx context.Context, execCtx *ExecutionContext, node *domain.WorkflowNode) (interface{}, error) {
 	sql, _ := node.Config["sql"].(string)
-	if sql == "" {
-		return nil, fmt.Errorf("missing SQL script")
-	}
+	if sql == "" { return nil, fmt.Errorf("missing SQL") }
 
-	// 1. Pattern Shield
-	forbidden := []string{"COPY ", "PG_READ_FILE", "PG_LS_DIR", "DO $$", "ALTER SYSTEM"}
+	// Sanity Check for destructive DDL
+	forbidden := []string{"DROP ", "TRUNCATE ", "ALTER SYSTEM"}
 	upper := strings.ToUpper(sql)
-	for _, p := range forbidden {
-		if strings.Contains(upper, p) {
-			return nil, fmt.Errorf("Security Block: Forbidden SQL Pattern '%s'", p)
+	for _, f := range forbidden {
+		if strings.Contains(upper, f) {
+			return nil, fmt.Errorf("security: Forbidden DDL in automation: %s", f)
 		}
 	}
 
-	// 2. Resolve Parameters
-	paramsIn, _ := node.Config["params"].([]interface{})
-	resolvedParams := make([]interface{}, len(paramsIn))
-	for i, p := range paramsIn {
-		resolvedParams[i] = GetVar(fmt.Sprintf("%v", p), execCtx.Vars)
+	// EXECUTION: We acquire the pool for the project
+	pool, err := execCtx.PoolManager.GetPool(ctx, execCtx.ProjectSlug)
+	if err != nil {
+		return nil, fmt.Errorf("automation: failed to resolve pool: %w", err)
 	}
 
-	// 3. Execute via Repository with RLS (Uses WithRLS logic from internal/database)
-	// For automations, we enforce a strict 8s timeout.
-	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
-	defer cancel()
+	// Automations run as 'service_role' (Admin) but within the Project's Physical Database.
+	claims := database.UserClaims{
+		Sub:   "automation_engine",
+		Email: "automation@cascata.system",
+		Role:  "service_role",
+	}
 
-	// TODO: Integrate execCtx.ProjectPool.Query with execCtx.AuthCtx integration.
-	// For Phase 10, we establish the flow.
-	return nil, nil
+	var results []map[string]interface{}
+	err = pool.WithRLS(ctx, claims, execCtx.ProjectSlug, false, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, sql)
+		if err != nil { return err }
+		defer rows.Close()
+
+		for rows.Next() {
+			val, _ := rows.Values()
+			row := make(map[string]interface{})
+			for i, fd := range rows.FieldDescriptions() {
+				row[string(fd.Name)] = val[i]
+			}
+			results = append(results, row)
+		}
+		return nil
+	})
+
+	return results, err
 }
 
-// executeHttp performs an outbound request with SSRF protection and retries.
-func (e *Engine) executeHttp(ctx context.Context, execCtx *Context, node *Node) (interface{}, error) {
+// executeHttp performs an outbound request with JSON payload resolution.
+func (e *WorkflowEngine) executeHttp(ctx context.Context, execCtx *ExecutionContext, node *domain.WorkflowNode) (interface{}, error) {
 	targetUrl, _ := node.Config["url"].(string)
 	targetUrl = ResolveVariables(targetUrl, execCtx.Vars)
 
-	// SSRF Shield
-	if err := utils.IsSSRFSafe(targetUrl); err != nil {
-		return nil, err
-	}
+	if targetUrl == "" { return nil, fmt.Errorf("missing target URL") }
 
 	method, _ := node.Config["method"].(string)
 	if method == "" { method = "POST" }
 
-	body, _ := json.Marshal(ResolveObject(node.Config["body"], execCtx.Vars))
+	body, _ := json.Marshal(e.ResolveObject(node.Config["body"], execCtx.Vars))
 	
 	req, err := http.NewRequestWithContext(ctx, method, targetUrl, bytes.NewBuffer(body))
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
+	
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Cascata-Trigger", "workflow")
 
-	// 4. Resolve Vault Auth if vault:// reference exists
-	// Credentials processing logic here...
-
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("upstream responded with HTTP %d", resp.StatusCode)
 	}
 
 	var resData interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&resData); err != nil {
-		return nil, err
-	}
+	b, _ := io.ReadAll(resp.Body)
+	_ = json.Unmarshal(b, &resData)
 
 	return resData, nil
-}
-
-func (e *Engine) evaluateLogic(node *Node, execCtx *Context) interface{} {
-	// Simple evaluation for Phase 10 Logic nodes (eq, neq, gt, lt)
-	left := GetVar(fmt.Sprintf("%v", node.Config["left"]), execCtx.Vars)
-	right := node.Config["right"]
-	
-	switch node.Config["op"] {
-	case "eq": return fmt.Sprintf("%v", left) == fmt.Sprintf("%v", right)
-	case "neq": return fmt.Sprintf("%v", left) != fmt.Sprintf("%v", right)
-	}
-	return false
 }

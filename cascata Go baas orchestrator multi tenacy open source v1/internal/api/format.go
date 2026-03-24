@@ -17,10 +17,15 @@ import (
 // ProtocolFormat handles serializing and deserializing of different payloads.
 type ProtocolFormat struct{}
 
-// Decode parses the incoming byte slice into the requested map/structure based on content type.
-func (f *ProtocolFormat) Decode(data []byte, contentType string) (interface{}, error) {
+// Decode parses the incoming reader byte stream into the requested map/structure based on content type.
+func (f *ProtocolFormat) Decode(r io.Reader, contentType string) (interface{}, error) {
 	// 1. Decrypt AES-GCM if Encrypted Header? (Handled at edge middleware)
 	// 2. Decompress ZSTD if Content-Encoding is zstd? (Handled at edge middleware)
+
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("format: failed to read payload: %w", err)
+	}
 
 	switch contentType {
 	case "application/xml", "text/xml":
@@ -76,10 +81,16 @@ func encodeTOON(data interface{}) ([]byte, error) {
 func encodeXML(data interface{}) ([]byte, string, error) {
 	var buf bytes.Buffer
 	buf.WriteString("<response>")
-	
+
 	// Convert array to XML nodes iteratively
 	switch v := data.(type) {
 	case []interface{}:
+		for _, item := range v {
+			buf.WriteString("<item>")
+			encodeXMLNode(&buf, item)
+			buf.WriteString("</item>")
+		}
+	case []map[string]interface{}:
 		for _, item := range v {
 			buf.WriteString("<item>")
 			encodeXMLNode(&buf, item)
@@ -89,7 +100,7 @@ func encodeXML(data interface{}) ([]byte, string, error) {
 		encodeXMLNode(&buf, v)
 	}
 	buf.WriteString("</response>")
-	
+
 	return buf.Bytes(), "application/xml", nil
 }
 

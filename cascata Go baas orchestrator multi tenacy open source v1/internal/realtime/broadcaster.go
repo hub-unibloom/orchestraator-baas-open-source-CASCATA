@@ -11,14 +11,14 @@ import (
 
 // Broadcaster syncs events across multiple orchestrator instances.
 type Broadcaster struct {
-	redis     *redis.Client
+	dfly      *redis.Client
 	manager   *Manager
 	batcher   *Batcher
 }
 
-func NewBroadcaster(redis *redis.Client, manager *Manager, batcher *Batcher) *Broadcaster {
+func NewBroadcaster(dfly *redis.Client, manager *Manager, batcher *Batcher) *Broadcaster {
 	return &Broadcaster{
-		redis:   redis,
+		dfly:    dfly,
 		manager: manager,
 		batcher: batcher,
 	}
@@ -32,13 +32,13 @@ func (b *Broadcaster) Publish(ctx context.Context, slug string, event interface{
 	}
 	
 	channel := fmt.Sprintf("cascata:realtime:%s", slug)
-	return b.redis.Publish(ctx, channel, msg).Err()
+	return b.dfly.Publish(ctx, channel, msg).Err()
 }
 
 // RunBackgroundListener subscribes to Dragonfly to broadcast to local consumers.
 func (b *Broadcaster) RunBackgroundListener(ctx context.Context) {
 	// Pattern subscribe to all project channels
-	pubsub := b.redis.PSubscribe(ctx, "cascata:realtime:*")
+	pubsub := b.dfly.PSubscribe(ctx, "cascata:realtime:*")
 	defer pubsub.Close()
 
 	ch := pubsub.Channel()

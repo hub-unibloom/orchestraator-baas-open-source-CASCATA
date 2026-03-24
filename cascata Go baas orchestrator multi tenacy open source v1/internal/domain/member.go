@@ -29,9 +29,10 @@ type Member struct {
 	PasswordHash string     `json:"-"` // Never exposed in JSON
 	Role         MemberRole `json:"role"`
 	Type         MemberType `json:"type"`
-	MFAEnabled   bool       `json:"mfa_enabled"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	MFAEnabled     bool       `json:"mfa_enabled"`
+	MfaCredentials []byte     `json:"-"` // Binary blob for WebAuthn/FIDO2 keys (Phase 27)
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 // AuditLog represents an immutable record of a management action.
