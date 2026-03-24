@@ -55,15 +55,5 @@ func (r *MemberRepository) Create(ctx context.Context, m *domain.Member) error {
 	return nil
 }
 
-// LogActivity records a management action in the immutable audit trail.
-func (r *MemberRepository) LogActivity(ctx context.Context, log *domain.AuditLog) error {
-	query := `INSERT INTO system.audit_logs (member_id, member_type, action, entity_type, entity_id, tenant_slug, metadata)
-	          VALUES ($1, $2, $3, $4, $5, $6, $7)`
-
-	_, err := r.db.Pool.Exec(ctx, query, log.MemberID, log.MemberType, log.Action, log.EntityType, log.EntityID, log.TenantSlug, log.Metadata)
-	if err != nil {
-		return fmt.Errorf("repo.Member: log activity: %w", err)
-	}
-
-	return nil
-}
+// Audit logs are now handled via the central AuditService (domain.Auditor).
+// The repository focuses exclusively on Member CRUD.

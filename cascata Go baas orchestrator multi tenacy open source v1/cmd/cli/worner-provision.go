@@ -9,6 +9,7 @@ import (
 	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/repository"
+	"cascata/internal/service"
 )
 
 // One-off CLI helper to hash passwords and provision the Worner
@@ -62,14 +63,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initial Audit Entry
-	_ = repo.LogActivity(context.Background(), &domain.AuditLog{
-		MemberID:   member.ID,
-		MemberType: domain.TypeHuman,
-		Action:     "GENESIS_PROVISION_WORNER",
-		EntityType: "system.members",
-		EntityID:   member.ID,
-		Metadata:   map[string]interface{}{"email": email, "source": "install.sh_go_helper"},
+	// 4. Initial Audit Entry via Unified Ledger
+	audit := service.NewAuditService(db)
+	_ = audit.Log(context.Background(), "", "GENESIS_PROVISION_WORNER", member.ID, string(domain.IdentityMember), map[string]interface{}{
+		"email": email,
+		"source": "install.sh_go_helper",
 	})
 
 	fmt.Printf("SUCCESS_ID:%s\n", member.ID)

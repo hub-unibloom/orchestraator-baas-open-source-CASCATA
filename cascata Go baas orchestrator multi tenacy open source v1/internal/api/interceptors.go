@@ -25,10 +25,10 @@ type Interceptor struct {
 	phantomSvc *phantom.PhantomService
 	automation *automation.EventQueue
 	wfEngine   *automation.WorkflowEngine
-	auditSvc   *service.AuditService
+	auditSvc   domain.Auditor
 }
 
-func NewInterceptor(repo *database.Repository, projRepo *repository.ProjectRepository, phantom *phantom.PhantomService, automation *automation.EventQueue, wfEngine *automation.WorkflowEngine, audit *service.AuditService) *Interceptor {
+func NewInterceptor(repo *database.Repository, projRepo *repository.ProjectRepository, phantom *phantom.PhantomService, automation *automation.EventQueue, wfEngine *automation.WorkflowEngine, audit domain.Auditor) *Interceptor {
 	return &Interceptor{
 		repo:       repo,
 		projRepo:   projRepo,
@@ -55,24 +55,24 @@ func (i *Interceptor) EmitEvent(ctx context.Context, slug, table, operation stri
 
 	// 2. Audit Critical Events (Phase 19)
 	if operation == "DELETE" || operation == "UPDATE" || operation == "TRUNCATE" {
-		// Resolve actor from context (Phase 22 Sinergy)
-		actorID := "system"
-		actorType := domain.IdentityCascataAgent
+		// Resolve identity from context (Phase 22 Sinergy)
+		id := "ADMIN"
+		idType := domain.IdentityAgent
 		if auth, ok := domain.FromContext(ctx); ok {
-			actorID = auth.UserID
-			if actorID == "" { actorID = auth.ProjectSlug }
-			actorType = auth.IdentityType
+			id = auth.UserID
+			if id == "" { id = auth.ProjectSlug }
+			idType = auth.IdentityType
 		}
 
 		go func() {
 			entry := &domain.AuditEntry{
-				Project:   slug,
-				Table:     table,
-				Operation: operation,
-				Payload:   fmt.Sprintf("%v", data), // Audit doesn't mask secrets, it's the Ledger of Truth
-				ActorID:   actorID,
-				ActorType: actorType,
-				Timestamp: time.Now(),
+				Project:      slug,
+				Table:        table,
+				Operation:    operation,
+				Payload:      fmt.Sprintf("%v", data), // Audit doesn't mask secrets, it's the Ledger of Truth
+				IdentityID:   id,
+				IdentityType: idType,
+				Timestamp:    time.Now(),
 			}
 			_ = i.auditSvc.WriteEntry(context.Background(), entry)
 		}()

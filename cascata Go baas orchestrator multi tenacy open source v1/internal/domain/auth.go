@@ -2,31 +2,24 @@ package domain
 
 import "context"
 
-// Identity types for Cascata.
+// Auth Mode types for Cascata (RLS & Access Context).
 const (
-	IdentityTenantUser     = "tenant.user"    // Resident of the apartment
-	IdentityCascataMember  = "cascata.member" // Manager of the building
-	IdentityCascataAgent   = "cascata.agent"  // Programmatic AI/Automation agent
-)
-
-// Auth Mode types.
-const (
-	ModeService  = "service"  // Manager mode (Member access)
-	ModeAnon     = "anon"     // Guest access
-	ModeResident = "resident" // Resident access (RLS restricted)
+	ModeService  = "SERVICE"   // Dashboard/Management mode
+	ModeAnon     = "ANON"      // Public/Guest access
+	ModeResident = "RESIDENT"  // Tenant end-user access (RLS)
 )
 
 // AuthContext carries the identity and mode throughout a request.
 type AuthContext struct {
 	Mode         string
-	IdentityType string // cascata.member or tenant.user
+	IdentityType IdentityType // MEMBER, RESIDENT, AGENT
 	Project      *Project
 	ProjectSlug  string
 	UserID       string
 	Role         string
-	Email       string
-	HasStepUp   bool
-	Claims      map[string]interface{}
+	Email        string
+	HasStepUp    bool
+	Claims       map[string]interface{}
 }
 
 // ContextKey is the type for context keys to avoid collisions.

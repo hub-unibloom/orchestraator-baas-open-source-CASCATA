@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -46,14 +47,14 @@ func (s *AuditService) WriteEntry(ctx context.Context, entry *domain.AuditEntry)
 	entry.PrevHash = s.lastHash
 
 	// 2. Calculate this entry's hash
-	content := fmt.Sprintf("%s:%s:%s:%s:%s:%s", entry.PrevHash, entry.Project, entry.Operation, entry.Table, entry.ActorID, entry.Payload)
+	content := fmt.Sprintf("%s:%s:%s:%s:%s:%s", entry.PrevHash, entry.Project, entry.Operation, entry.Table, entry.IdentityID, entry.Payload)
 	h := sha256.Sum256([]byte(content))
 	entry.EntryHash = hex.EncodeToString(h[:])
 
 	// 3. Persist (Blockchain-style immutable append)
 	_, err := s.repo.Pool.Exec(ctx, 
-		"INSERT INTO system.audit_ledger (project_slug, operation, actor_id, actor_type, table_name, payload, prev_hash, entry_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-		entry.Project, entry.Operation, entry.ActorID, entry.ActorType, entry.Table, entry.Payload, entry.PrevHash, entry.EntryHash,
+		"INSERT INTO system.audit_ledger (project_slug, operation, identity_id, identity_type, table_name, payload, prev_hash, entry_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+		entry.Project, entry.Operation, entry.IdentityID, entry.IdentityType, entry.Table, entry.Payload, entry.PrevHash, entry.EntryHash,
 	)
 	if err != nil {
 		return fmt.Errorf("audit.ledger: failed to write entry: %w", err)
@@ -64,4 +65,17 @@ func (s *AuditService) WriteEntry(ctx context.Context, entry *domain.AuditEntry)
 	slog.Info("audit.ledger: entry added", "slug", entry.Project, "hash", entry.EntryHash)
 	
 	return nil
+}
+
+// Log is a high-level helper for quick auditing of any system event.
+func (s *AuditService) Log(ctx context.Context, projectSlug, op, id, idType string, payload any) error {
+	pJson, _ := json.Marshal(payload)
+	entry := &domain.AuditEntry{
+		Project: projectSlug,
+		Operation: op,
+		IdentityID: id,
+		IdentityType: domain.IdentityType(idType),
+		Payload: string(pJson),
+	}
+	return s.WriteEntry(ctx, entry)
 }

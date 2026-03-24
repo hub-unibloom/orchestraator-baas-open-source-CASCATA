@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"cascata/internal/service"
+	"cascata/internal/domain"
 	"cascata/internal/telemetry"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -20,7 +20,7 @@ type TenantPoolManager struct {
 	masterURL    string
 	globalMax    int
 	telemetry    *telemetry.TelemetryEngine
-	auditSvc     *service.AuditService
+	auditSvc     domain.Auditor
 }
 
 type tenantPoolEntry struct {
@@ -33,7 +33,7 @@ type tenantPoolEntry struct {
 }
 
 // NewTenantPoolManager initializes the physical pool orchestrator.
-func NewTenantPoolManager(masterURL string, globalMax int, tele *telemetry.TelemetryEngine, audit *service.AuditService) *TenantPoolManager {
+func NewTenantPoolManager(masterURL string, globalMax int, tele *telemetry.TelemetryEngine, audit domain.Auditor) *TenantPoolManager {
 	return &TenantPoolManager{
 		pools:     make(map[string]*tenantPoolEntry),
 		masterURL: masterURL,

@@ -156,18 +156,21 @@ CREATE TABLE IF NOT EXISTS system.members (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Central Audit Trail (Immutable Log for Dashboard/Management actions)
-CREATE TABLE IF NOT EXISTS system.audit_logs (
+-- Central Audit Ledger (Blockchain-style Immutable Log for Dashboard/Management actions - Phase 19)
+CREATE TABLE IF NOT EXISTS system.audit_ledger (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    member_id UUID NOT NULL, -- Who did it (Member or Agent)
-    member_type system.member_type NOT NULL, -- Distinguishes Human vs AI Agent immediately
-    action TEXT NOT NULL, -- e.g., 'CREATE_TENANT', 'UPDATE_SCHEMA'
-    entity_type TEXT NOT NULL,
-    entity_id TEXT,
-    tenant_slug TEXT, -- NULL if it's a global action
-    metadata JSONB DEFAULT '{}', -- E.g., JSON diff of changes
+    project_slug TEXT, -- NULL if global
+    operation TEXT NOT NULL, -- e.g., 'CREATE_PROJECT', 'DELETE_USER'
+    identity_id TEXT NOT NULL, -- Who did it (MemberID, ResidentID, AgentID)
+    identity_type TEXT NOT NULL, -- MEMBER, RESIDENT, AGENT
+    table_name TEXT, -- Optional contextual table
+    payload JSONB DEFAULT '{}', -- Diff or metadata
+    prev_hash TEXT, -- Chain pointer
+    entry_hash TEXT NOT NULL UNIQUE, -- Cryptographic signature of this record
+    signature TEXT, -- Optional Vault Transit signature (Phase 24)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_audit_logs_member ON system.audit_logs (member_id);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant ON system.audit_logs (tenant_slug);
+CREATE INDEX IF NOT EXISTS idx_audit_project_slug ON system.audit_ledger (project_slug);
+CREATE INDEX IF NOT EXISTS idx_audit_identity ON system.audit_ledger (identity_id, identity_type);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON system.audit_ledger (created_at DESC);

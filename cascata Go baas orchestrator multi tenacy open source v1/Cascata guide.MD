@@ -24,21 +24,38 @@ Organização e ambientação do novo ambiente Go. O objetivo desta fase é esta
 ---
 
 ## Padrão de Engenharia
-
-Todo o trabalho aqui é produzido no nível que um engenheiro sênior de sistemas distribuídos defenderia em code review bancário.
+Todo o trabalho aqui é produzido no nível que um engenheiro sênior de sistemas distribuídos defenderia em code review bancário. Implementamos uma **Visão Holística**, onde Segurança, Performance, Escalabilidade e Harmonia Arquitetural têm o mesmo peso. Focar apenas em um colapsa o sistema; o Cascata é uma nação que protege sua fronteira, mas que também garante saúde e infraestrutura interna impecáveis.
 
 **Cada arquivo entregue deve:**
 - Ser sinérgico com o restante do sistema — uma alteração considera todos os pontos de contato.
+- Honrar a arquitetura nativa da linguagem (Go 1.26+) — não force padrões de outras linguagens.
+- Contribuir para a manutenção de um Grafo Acíclico Dirigido (DAG).
 - Conter comentários precisos e valores justificados.
 - Ter estrutura coesa e padronização consistente em todo o codebase.
 
 **A abordagem correta para qualquer implementação:**
 1. Ler o código relevante antes de agir.
 2. Identificar todos os pontos de impacto da mudança.
-3. Implementar a solução real e completa — não aproximações.
-4. Entregar cada arquivo em estado melhor do que estava.
+3. Respeitar o fluxo de dependências — **Proibido criar ciclos de importação.** Utilize o pacote `internal/domain` para contratos neutros.
+4. Implementar a solução real e completa — não aproximações.
+5. Entregar cada arquivo em estado melhor do que estava.
 
-Se falta um bloco, crie-o completo. Se há um conflito, resolva o conflito na raiz. O caminho é sempre a implementação correta, nunca o atalho.
+Se falta um bloco, crie-o completo. Se há um conflito, resolva o conflito na raiz. O caminho é sempre a implementação correta, nunca o atalho ou a "burla" tecnológica.
+
+---
+
+## Léxico de Sinergia (Dicionário Inegociável)
+
+Para garantir a perfeição real e a consistência absoluta em todo o código, estas são as únicas nomenclaturas permitidas:
+
+1.  **Identity (Identidade):** Termo genérico para qualquer entidade que realiza uma ação.
+2.  **Member (Membro):** Operador do Dashboard/Orquestrador (Worner, Manager, Dev). Tabela: `system.members`.
+3.  **Resident (Residente):** Usuário final de um inquilino/tenant. Tabela: `auth.users` (do tenant).
+4.  **Agent (Agente):** Entidade programática (AI ou Automação Phantom).
+5.  **IdentityContext (Contexto de Identidade):** Estrutura que carrega `IdentityID` e `IdentityType`.
+6.  **Audit Ledger (Livro de Auditoria):** O registro imutável e chained de todas as operações críticas.
+
+**Proibido o uso de variantes como:** Actor, Scribe, User (genérico), Sindicante, Morador (em pt-br no código), ou qualquer termo poético fora deste léxico.
 
 ---
 

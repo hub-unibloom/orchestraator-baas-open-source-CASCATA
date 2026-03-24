@@ -8,8 +8,8 @@
 
 ## 1. PRINCÍPIOS TRANSVERSAIS
 
-**Security First.**  
-Toda função que toca dados sensíveis documenta os riscos e as proteções aplicadas. Sem exceção.
+**Universal Synergy First (Holistic Excellence).**  
+Segurança não é um anexo; é um componente de uma sinergia maior. Tratamos **Segurança, Performance, Escalabilidade e Harmonia Arquitetural** como pilares inseparáveis e de igual prioridade. Focar apenas em um (ex: segurança) em detrimento de outro (ex: arquitetura correta) colapsa o sistema a longo prazo. Um código Cascata deve ser seguro porque é bem estruturado, e performático porque é inteligentee t rabalha corretamente com a arquritetura e versẽos das stacks como go, react, dragonfly, postgres, vault, opentelemetry, sdk's e etc.
 
 **Zero Mock.**  
 Não existem funções placeholder. A implementação é real ou retorna erro explícito de "não implementado". Nunca silenciar, nunca fingir.
@@ -44,6 +44,12 @@ Nunca `password`, `key`, `token` puros em variáveis. Sempre o estado do dado no
 - **Proibido:** `utils`, `helpers`, `common`, `misc`
 - Funções e tipos exportados: `PascalCase`
 - Erros exportados: prefixo `Err` — `ErrProjectNotFound`, `ErrVaultSealed`, `ErrTenantIsolation`
+
+**Go DAG Alignment (Acyclic Structure):**
+- A arquitetura do Cascata **DEVE** ser um Grafo Acíclico Dirigido (DAG).
+- **Ciclos de Importação são terminantemente proibidos.** Se o Pacote A precisa do Pacote B e vice-versa, a abstração está errada.
+- **Solução Obrigatória:** Use interfaces definidas no pacote `internal/domain` para quebrar ciclos. Componentes dependem de contratos neutros, não de implementações concretas uns dos outros.
+- **Zero Reinvenção:** Não tente criar um "pneu novo" para uma roda que já existe. Utilize o melhor que o Go 1.26 oferece (Interfaces, Generics, Context, Slog) em vez de forçar padrões de outras linguagens. Respeite a performance nativa e a filosofia da linguagem.
 
 ### 2.2 Arquitetura em Camadas (obrigatória)
 ```

@@ -6,18 +6,18 @@ import (
 	"log/slog"
 
 	"cascata/internal/database"
-	"cascata/internal/service"
+	"cascata/internal/domain"
 )
 
 // Engine is the "Brain" of the Cascata AI BaaS (Phase 28).
 // It coordinates context injection and LLM orchestration for tenant-defined intents.
 type Engine struct {
 	extractor  *ContextExtractor
-	projectSvc *service.ProjectService
+	projectSvc domain.ProjectResolver
 	poolMgr    *database.TenantPoolManager
 }
 
-func NewEngine(repo *database.Repository, projectSvc *service.ProjectService, poolMgr *database.TenantPoolManager) *Engine {
+func NewEngine(repo *database.Repository, projectSvc domain.ProjectResolver, poolMgr *database.TenantPoolManager) *Engine {
 	return &Engine{
 		extractor:  NewContextExtractor(repo),
 		projectSvc: projectSvc,

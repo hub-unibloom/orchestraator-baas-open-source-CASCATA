@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -52,7 +53,7 @@ func main() {
 }
 
 func runPrimary(ctx context.Context, cfg *config.Config) {
-	slog.Info("Cascata v1.0.0.0 Primary: Starting Engine", "env", cfg.Environment)
+	slog.Info("Cascata v1.0.0.0 Primary: Starting Engine (Synergy Hub)", "env", cfg.Environment)
 	
 	const defaultWorkers = 2 
 	orch := cluster.NewOrchestrator(defaultWorkers)
@@ -67,15 +68,14 @@ func runPrimary(ctx context.Context, cfg *config.Config) {
 func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	slog.Info("Cascata v1.0.0.0 Worker: Initializing", "id", id)
 
-	// 0. Observability Mesh (Phase 17)
+	// --- 1. Infrastructure Layer ---
 	otelEngine, err := telemetry.NewTelemetryEngine(ctx, "cascata-orchestrator")
 	if err != nil {
-		slog.Warn("telemetry: failed to initialize, continuing without distributed tracing", "error", err)
+		slog.Warn("telemetry: failed to initialize", "error", err)
 	} else {
 		defer otelEngine.Shutdown(context.Background())
 	}
 
-	// 1. Core Persistence & Cache (Dragonfly)
 	repo, err := database.Connect(ctx, cfg.DatabaseURL)
 	if err != nil {
 		slog.Error("worker: database bootstrap failed", "id", id, "error", err)
@@ -88,44 +88,43 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	})
 	defer dfly.Close()
 
-	// 2. Fundamental Services (Audit, Pool, Vault)
+	vaultSvc, err := vault.NewVaultService(cfg.VaultAddr, cfg.VaultToken)
+	if err != nil { slog.Warn("worker: vault unreachable", "error", err) }
+	
+	// --- 2. Security & Strategy (Base Services) ---
 	auditService := service.NewAuditService(repo)
 	poolManager := database.NewTenantPoolManager(cfg.DatabaseURL, 5000, otelEngine, auditService)
 	go poolManager.CleanupTask(ctx, 5*time.Minute)
 	go poolManager.CheckPoolHealth(ctx)
 
-	vaultSvc, err := vault.NewVaultService(cfg.VaultAddr, cfg.VaultToken)
-	if err != nil { slog.Warn("worker: vault unreachable", "error", err) }
-	
 	transitSvc := vault.NewTransitService(vaultSvc.GetClient())
 	pEngine := privacy.NewEngine(transitSvc)
-
-	// 3. Repository Layer
+	sessionSvc := auth.NewSessionManager(cfg.SystemJWTSecret)
+	
+	// --- 3. Repository Layer ---
 	projectRepo := repository.NewProjectRepository(repo)
 	memberRepo := repository.NewMemberRepository(repo)
 	resRepo := repository.NewResidentRepository()
 
-	// 4. Intelligence & Business Logic (AI, Project, Phantom)
+	// --- 4. Core Business Logic (Service Mesh) ---
 	projectService := service.NewProjectService(projectRepo, poolManager)
 	aiEngine := ai.NewEngine(repo, projectService, poolManager)
-	
-	// Unied Phantom Service (Phase 14 Logic & Security)
 	phantomSvc := phantom.NewPhantomService(ctx, repo, pEngine, aiEngine)
 
-	// 5. Orchestration & Communication
+	// --- 5. Communication & Identity ---
 	rlEngine := ratelimit.NewAdaptiveEngine(dfly, repo)
 	otpMgr := auth.NewOTPManager(dfly)
 	cacheMgr := database.NewCacheManager(dfly)
 	postman := communication.NewTrinityPostman(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom)
 
-	// 6. Tenant-Facing Services
 	residentAuthSvc := auth.NewResidentAuthService(projectService, resRepo, sessionSvc, otpMgr, postman)
 	externalAuthSvc := auth.NewExternalAuthService(projectService, resRepo, residentAuthSvc)
+	systemAuth := auth.NewSystemAuthService(memberRepo)
 	
-	syncService := service.NewSyncService(poolManager, auditService) // Phase 11 Enriched
-	migrationService := service.NewMigrationService(poolManager, auditService) // Phase 15 Enriched
+	// --- 6. Orchestration Engines (Phase 11-15) ---
+	syncService := service.NewSyncService(poolManager, auditService)
+	migrationService := service.NewMigrationService(poolManager, auditService)
 	
-	// 7. Automation & Real-time Hub (Sinergy Phase 13/14)
 	realtimeHub := api.NewRealtimeHub(projectService, pEngine)
 	workflowEngine := automation.NewWorkflowEngine(repo, poolManager, postman, aiEngine, realtimeHub)
 	eventQueue := automation.NewEventQueue(dfly)
@@ -139,16 +138,14 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 		if err := scheduler.Start(); err != nil { slog.Error("worker: scheduler failure", "err", err) }
 	}()
 
-	// 8. Provisioning & Storage (Phase 2 & 8)
+	// --- 7. Provisioning & Storage (Phase 2 & 8) ---
 	genesisSvc := service.NewGenesisService(repo, projectRepo, poolManager, vaultSvc, migrationService)
 	indexer := storage.NewIndexer(repo)
 	storageSvc := storage.NewService(cfg.StoragePath, dfly, repo, indexer)
 	
 	authService := auth.NewAuthService(projectService)
-	systemAuth := auth.NewSystemAuthService(memberRepo)
-	sessionSvc := auth.NewSessionManager(cfg.SystemJWTSecret)
 
-	// 9. API Handlers Initialization (Sinergy Wiring)
+	// --- 8. API Layer Dispatch (The Gateway) ---
 	interceptor := api.NewInterceptor(repo, projectRepo, phantomSvc, eventQueue, workflowEngine, auditService)
 	
 	srv := api.NewServer(
@@ -162,7 +159,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 		api.NewAuthHandler(residentAuthSvc, externalAuthSvc, projectService),
 		api.NewGraphQLHandler(projectService),
 		api.NewStorageHandler(storageSvc, storage.NewMediaOptimizer()),
-		api.NewRealtimeHub(projectService, pEngine),
+		realtimeHub,
 		api.NewWebhookHandler(webhookService),
 		api.NewSyncHandler(syncService),
 		api.NewLogicHandler(phantomSvc),
@@ -171,8 +168,8 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	)
 	
 	if err := srv.Start(ctx, id); err != nil {
-		slog.Error("worker: server lifecycle failure", "id", id, "error", err)
+		slog.Error("worker: fatal crash during execution", "id", id, "error", err)
 	}
 
-	slog.Info("Cascata Worker: clean exit", "id", id)
+	slog.Info("Cascata Worker: healthy shutdown", "id", id)
 }
