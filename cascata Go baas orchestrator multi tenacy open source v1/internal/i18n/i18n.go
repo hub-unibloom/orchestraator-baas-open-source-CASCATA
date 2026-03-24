@@ -15,9 +15,14 @@ func Init() {
 	bundle = i18n.NewBundle(language.Portuguese)
 	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
 	
-	// Files will be loaded from the 'languages' directory
-	_, _ = bundle.LoadMessageFile("languages/pt-BR.json")
-	_, _ = bundle.LoadMessageFile("languages/en-US.json")
+	// Explicit loading to avoid any assignment mismatch on different i18n versions
+	msgFilePT, errPT := bundle.LoadMessageFile("languages/pt-BR.json")
+	_ = msgFilePT
+	_ = errPT
+
+	msgFileEN, errEN := bundle.LoadMessageFile("languages/en-US.json")
+	_ = msgFileEN
+	_ = errEN
 }
 
 // GetLocalizer returns a localizer based on the Accept-Language header.
