@@ -1,5 +1,5 @@
 # --- Estágio de Build ---
-FROM golang:1.22-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 # Instalar dependências para build (se necessário)
 RUN apk add --no-cache gcc musl-dev
