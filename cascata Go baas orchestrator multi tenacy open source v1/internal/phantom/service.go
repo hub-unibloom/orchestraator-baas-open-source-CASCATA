@@ -19,13 +19,13 @@ import (
 // and the execution of Phantom Functions (Edge Nodes).
 type PhantomService struct {
 	repo     *database.Repository
-	privacy  *privacy.PrivacyEngine
+	privacy  *privacy.Engine
 	injector *Injector
 	aiEngine *ai.Engine
 	runtime  *WasmRuntime
 }
 
-func NewPhantomService(ctx context.Context, repo *database.Repository, pEng *privacy.PrivacyEngine, aiEngine *ai.Engine) *PhantomService {
+func NewPhantomService(ctx context.Context, repo *database.Repository, pEng *privacy.Engine, aiEngine *ai.Engine) *PhantomService {
 	return &PhantomService{
 		repo:     repo,
 		privacy:  pEng,

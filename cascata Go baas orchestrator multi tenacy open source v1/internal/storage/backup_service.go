@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"cascata/internal/database"
+	"cascata/internal/service"
 )
 
 // Manifest represents the structural metadata of a .caf archive.

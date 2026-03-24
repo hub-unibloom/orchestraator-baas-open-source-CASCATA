@@ -145,7 +145,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	indexer := storage.NewIndexer(repo)
 	storageSvc := storage.NewService(cfg.StoragePath, dfly, repo, indexer)
 	
-	authService := auth.NewAuthService(projectService)
+	authService := auth.NewAuthService(projectService, sessionSvc)
 
 	// --- 8. API Layer Dispatch (The Gateway) ---
 	interceptor := api.NewInterceptor(repo, projectRepo, phantomSvc, eventQueue, workflowEngine, auditService)

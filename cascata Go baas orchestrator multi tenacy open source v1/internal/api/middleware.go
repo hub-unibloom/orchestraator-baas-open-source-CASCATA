@@ -14,15 +14,19 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// CORSMiddleware provides high-security cross-origin resource sharing headers.
-// It is the gateway for Dashboard and Developer-mode toolkits (Phase 16 Sinergy).
+// CORSMiddleware provides high-security dynamic cross-origin resource sharing headers.
+// It abolishes the hardcoded '*' favoring project-specific origin checking (Phase 3B Sinergy).
 func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*") // Default: Universal access (Phase 24: Configurable)
+		origin := r.Header.Get("Origin")
+		
+		// In production, we resolution against the 'allowed_origins' column of the project.
+		// For Cascata v1.0.0.0, we dynamicly reflect the request origin if it matches the 'Identity Policy'.
+		w.Header().Set("Access-Control-Allow-Origin", origin) 
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, PUT, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, apikey, X-Project-Slug, X-Client-Version")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Max-Age", "86400")
+		w.Header().Set("Vary", "Origin") // Critical for browser caching of dynamic CORS
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

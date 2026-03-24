@@ -13,12 +13,14 @@ import (
 // AuthService handles key and token validation.
 type AuthService struct {
 	projectService *service.ProjectService
+	sessionManager *SessionManager
 }
 
-// NewAuthService creates a new auth manager.
-func NewAuthService(projectService *service.ProjectService) *AuthService {
+// NewAuthService creates a new auth manager with system session awareness.
+func NewAuthService(projectService *service.ProjectService, sessionManager *SessionManager) *AuthService {
 	return &AuthService{
 		projectService: projectService,
+		sessionManager: sessionManager,
 	}
 }
 
@@ -48,7 +50,7 @@ func (s *AuthService) AuthenticateRequest(ctx context.Context, identifier, apiKe
 		}, nil
 	}
 
-	// Mode B: Anon Key (Public restricted)
+	// Mode B: Anon Key (Public restricted) + JWT Check
 	if apiKey == p.AnonKey {
 		// If there is no Authorization Bearer JWT, we are in Anon mode.
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -63,30 +65,46 @@ func (s *AuthService) AuthenticateRequest(ctx context.Context, identifier, apiKe
 
 		// Mode C: JWT (User Context)
 		token := strings.TrimPrefix(authHeader, "Bearer ")
+		
+		// 1. Try Project-specific Resident JWT logic.
 		claims, err := s.verifyJWT(token, p.JWTSecret)
-		if err != nil {
-			return nil, fmt.Errorf("auth.Authenticate: invalid token: %w", err)
+		if err == nil {
+			// Phase 10.1 Hardening: Cross-Tenant Protection
+			if claims["tenant"] != p.Slug {
+				return nil, fmt.Errorf("auth.Authenticate: cross-tenant token violation: token for %v used on %s", claims["tenant"], p.Slug)
+			}
+
+			return &domain.AuthContext{
+				Mode:         domain.ModeResident,
+				IdentityType: domain.IdentityResident,
+				Project:      p,
+				ProjectSlug:  p.Slug,
+				UserID:       fmt.Sprintf("%v", claims["sub"]),
+				Role:         fmt.Sprintf("%v", claims["role"]),
+				Email:        fmt.Sprintf("%v", claims["email"]),
+				HasStepUp:    claims["type"] == "otp_stepup",
+				Claims:       claims,
+			}, nil
 		}
 
-		// Phase 10.1 Hardening: Cross-Tenant Protection
-		if claims["tenant"] != p.Slug {
-			return nil, fmt.Errorf("auth.Authenticate: cross-tenant token violation: token for %v used on %s", claims["tenant"], p.Slug)
+		// 2. Try System-level Membership logic (Passe Livre - Phase 3).
+		// If project JWT fails, we check if it's a valid System Member (Worner) token.
+		sysCtx, err := s.sessionManager.ValidateSession(ctx, token)
+		if err == nil && sysCtx.Role == domain.RoleWorner {
+			// Worner has 'God Mode' over any project.
+			return &domain.AuthContext{
+				Mode:         domain.ModeService,
+				IdentityType: domain.IdentityMember,
+				Project:      p,
+				ProjectSlug:  p.Slug,
+				UserID:       sysCtx.UserID,
+				Role:         "service_role", // Injected as admin
+				Email:        sysCtx.Email,
+			}, nil
 		}
-
-		return &domain.AuthContext{
-			Mode:         domain.ModeResident,
-			IdentityType: domain.IdentityResident,
-			Project:      p,
-			ProjectSlug:  p.Slug,
-			UserID:       fmt.Sprintf("%v", claims["sub"]),
-			Role:         fmt.Sprintf("%v", claims["role"]),
-			Email:        fmt.Sprintf("%v", claims["email"]),
-			HasStepUp:    claims["type"] == "otp_stepup",
-			Claims:       claims,
-		}, nil
 	}
 
-	return nil, fmt.Errorf("auth.Authenticate: invalid apikey for project %s", identifier)
+	return nil, fmt.Errorf("auth.Authenticate: invalid apikey or unauthorized session for project %s", identifier)
 }
 
 // verifyJWT validates a JWT using the project-specific secret.
@@ -99,7 +117,7 @@ func (s *AuthService) verifyJWT(tokenString, secret string) (map[string]interfac
 	})
 
 	if err != nil || !token.Valid {
-		return nil, fmt.Errorf("invalid or expired resident token")
+		return nil, fmt.Errorf("invalid or expired resident token: %w", err)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)

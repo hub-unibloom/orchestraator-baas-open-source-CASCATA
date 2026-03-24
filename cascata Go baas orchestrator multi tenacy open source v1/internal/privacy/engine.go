@@ -117,6 +117,12 @@ func (e *Engine) SanitizeWrite(ctx context.Context, authCtx *domain.AuthContext,
 				if isUpdate { delete(data, col) }
 			case SystemPut:
 				if !isAdmin { delete(data, col) }
+			case OtpProtected:
+				// Phase 7: Requires active Step-Up session for sensitive field mutation.
+				if !isAdmin && !authCtx.HasStepUp {
+					slog.Warn("privacy: otp_protected write blocked - no step-up session", "slug", authCtx.ProjectSlug, "col", col)
+					delete(data, col)
+				}
 			}
 		}
 	}

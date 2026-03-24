@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 )
@@ -36,6 +37,13 @@ func (g *SyntheticGenerator) GenerateRecords(ctx context.Context, slug, table st
 	slog.Debug("ai.synthetic: records generated via LLM", "response_len", len(raw))
 
 	// In Phase 32, we assume LLM returns valid JSON array.
-	// We'll mock the parsing to return an empty slice for architectural demonstration.
-	return []map[string]interface{}{}, nil
+	var records []map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &records); err != nil {
+		// Log error but don't fail, maybe the engine returned raw text.
+		// For Cascata v1.0.0.0 we enforce strict JSON structure.
+		slog.Warn("ai.synthetic: LLM response did not contain valid JSON array", "error", err)
+		return nil, fmt.Errorf("ai: engine returned invalid data structure: %w", err)
+	}
+
+	return records, nil
 }

@@ -27,7 +27,13 @@ func (s *TransitService) Encrypt(ctx context.Context, keyName string, data strin
 		return "", fmt.Errorf("vault.TransitEncrypt [%s]: %w", keyName, err)
 	}
 
-	return resp.Data.Ciphertext, nil
+	// In vault-client-go v0.4.0, Data is a map[string]interface{}.
+	ct, ok := resp.Data["ciphertext"].(string)
+	if !ok {
+		return "", fmt.Errorf("vault.TransitEncrypt: response missing ciphertext")
+	}
+
+	return ct, nil
 }
 
 // Decrypt wraps the Vault Transit 'decrypt' operation.
@@ -39,7 +45,12 @@ func (s *TransitService) Decrypt(ctx context.Context, keyName string, ciphertext
 		return "", fmt.Errorf("vault.TransitDecrypt [%s]: %w", keyName, err)
 	}
 
-	decoded, err := base64.StdEncoding.DecodeString(resp.Data.Plaintext)
+	pt, ok := resp.Data["plaintext"].(string)
+	if !ok {
+		return "", fmt.Errorf("vault.TransitDecrypt: response missing plaintext")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(pt)
 	if err != nil {
 		return "", fmt.Errorf("vault.TransitDecrypt.Decode [%s]: %w", keyName, err)
 	}

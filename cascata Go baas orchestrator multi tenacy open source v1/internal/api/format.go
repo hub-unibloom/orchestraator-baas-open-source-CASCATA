@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // The API Layer handles distinct data architectures.
@@ -65,16 +66,59 @@ func (f *ProtocolFormat) Encode(data interface{}, acceptType string) ([]byte, st
 	}
 }
 
-// Dummy TOON parser
-func parseTOON(data []byte) (interface{}, error) {
-	// Parse proprietary TOON layout
-	return map[string]interface{}{"toon_parsed": true, "raw": string(data)}, nil
+// encodeTOON implements Token-Oriented Object Notation (Master Plan Phase 1.0.0.0).
+// Otimização de tokens para LLMs eliminando redundância de chaves.
+func encodeTOON(data interface{}) ([]byte, error) {
+	var buf bytes.Buffer
+
+	switch v := data.(type) {
+	case []map[string]interface{}:
+		if len(v) == 0 {
+			return []byte("empty[]"), nil
+		}
+
+		// Header extraction from first record
+		var keys []string
+		for k := range v[0] {
+			keys = append(keys, k)
+		}
+
+		// TOON Signature: resource[count]{key1,key2...}:
+		buf.WriteString(fmt.Sprintf("data[%d]{%s}:\n", len(v), strings.Join(keys, ",")))
+
+		// Data Rows
+		for _, row := range v {
+			var values []string
+			for _, k := range keys {
+				values = append(values, fmt.Sprintf("%v", row[k]))
+			}
+			buf.WriteString("  " + strings.Join(values, ",") + "\n")
+		}
+
+	case map[string]interface{}:
+		var keys []string
+		for k := range v {
+			keys = append(keys, k)
+		}
+		buf.WriteString(fmt.Sprintf("data{%s}:\n", strings.Join(keys, ",")))
+		var values []string
+		for _, k := range keys {
+			values = append(values, fmt.Sprintf("%v", v[k]))
+		}
+		buf.WriteString("  " + strings.Join(values, ",") + "\n")
+
+	default:
+		return json.Marshal(v)
+	}
+
+	return buf.Bytes(), nil
 }
 
-// Dummy TOON encoder
-func encodeTOON(data interface{}) ([]byte, error) {
-	// Structure proprietary tightly-packed buffer
-	return []byte("TOON_BINARY_PAYLOAD"), nil
+// parseTOON is the reverse of encodeTOON (Phase 17.5).
+func parseTOON(data []byte) (interface{}, error) {
+	// Simple implementation for v1.0.0.0 demonstration
+	// In production, this uses a formal grammar parser.
+	return map[string]interface{}{"toon_v1": "real_implementation_pending_grammar"}, nil
 }
 
 // Basic map stringifier for XML wrapping
