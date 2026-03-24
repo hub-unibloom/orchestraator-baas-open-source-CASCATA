@@ -69,7 +69,6 @@ services:
       - IPC_LOCK
     networks:
       - cascata-net
-    command: server -config=/vault/config/cascata-vault.hcl
     volumes:
       - ./deployments/vault-config.hcl:/vault/config/cascata-vault.hcl:ro
       - cascata-vault-data:/vault/file
