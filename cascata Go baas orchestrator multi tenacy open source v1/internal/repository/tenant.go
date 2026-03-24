@@ -20,41 +20,41 @@ func NewTenantRepository(repo *database.Repository) *TenantRepository {
 	return &TenantRepository{repo: repo}
 }
 
-// ProvisionNewDatabase creates a physical Postgres database for a tenant.
-func (r *TenantRepository) ProvisionNewDatabase(ctx context.Context, dbName string) error {
-	// 1. Sanitize dbName to prevent injection in CREATE DATABASE command.
-	// Primary rule: alphanumeric and underscores only.
+// ProvisionNewSchema creates a logical Postgres schema for a tenant instead of a physical DB.
+func (r *TenantRepository) ProvisionNewSchema(ctx context.Context, slug string) error {
+	// 1. Sanitize slug to prevent injection in CREATE SCHEMA command.
 	re := regexp.MustCompile(`^[a-z0-9_]+$`)
-	if !re.MatchString(dbName) {
-		return errors.New("repository.Tenant.Provision: invalid database name pattern")
+	if !re.MatchString(slug) {
+		return errors.New("repository.Tenant.Provision: invalid schema name pattern")
 	}
 
-	// 2. Execute CREATE DATABASE.
-	// NOTE: pgxpool.Exec can run this as long as it's outside of pgx.BeginFunc.
-	sql := fmt.Sprintf("CREATE DATABASE %s", dbName)
+	// 2. Execute CREATE SCHEMA.
+	// This represents a ~99% memory save compared to CREATE DATABASE.
+	sql := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS \"%s\"", slug)
 
 	_, err := r.repo.Pool.Exec(ctx, sql)
 	if err != nil {
-		return fmt.Errorf("repository.Tenant.Provision: create db: %w", err)
+		return fmt.Errorf("repository.Tenant.Provision: create schema: %w", err)
 	}
 
-	slog.Info("physical database provisioned", "dbName", dbName)
+	slog.Info("logical schema provisioned for tenant", "schema", slug)
 	return nil
 }
 
-// DropDatabase removes a physical tenant database. (Security-Gated)
-func (r *TenantRepository) DropDatabase(ctx context.Context, dbName string) error {
+// DropSchema removes a logical tenant schema and all its objects. (Security-Gated)
+func (r *TenantRepository) DropSchema(ctx context.Context, slug string) error {
 	re := regexp.MustCompile(`^[a-z0-9_]+$`)
-	if !re.MatchString(dbName) {
-		return errors.New("repository.Tenant.Drop: invalid dbName")
+	if !re.MatchString(slug) {
+		return errors.New("repository.Tenant.Drop: invalid schema name")
 	}
 
-	sql := fmt.Sprintf("DROP DATABASE IF EXISTS %s", dbName)
+	// CASCADE ensures all tables, functions, and RLS policies within the schema die with it.
+	sql := fmt.Sprintf("DROP SCHEMA IF EXISTS \"%s\" CASCADE", slug)
 	_, err := r.repo.Pool.Exec(ctx, sql)
 	if err != nil {
 		return fmt.Errorf("repository.Tenant.Drop: failure: %w", err)
 	}
 
-	slog.Warn("physical database DROPPED", "dbName", dbName)
+	slog.Warn("logical schema DROPPED", "schema", slug)
 	return nil
 }

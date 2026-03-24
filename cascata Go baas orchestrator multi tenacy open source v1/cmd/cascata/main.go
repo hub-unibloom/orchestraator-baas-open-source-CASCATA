@@ -93,7 +93,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	
 	// --- 2. Security & Strategy (Base Services) ---
 	auditService := service.NewAuditService(repo)
-	poolManager := database.NewTenantPoolManager(cfg.DatabaseURL, 5000, otelEngine, auditService)
+	poolManager := database.NewTenantPoolManager(repo, otelEngine, auditService)
 	go poolManager.CleanupTask(ctx, 5*time.Minute)
 	go poolManager.CheckPoolHealth(ctx)
 
@@ -127,7 +127,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	syncService := service.NewSyncService(projectService, auditService)
 	migrationService := service.NewMigrationService(cfg, projectService, auditService)
 	
-	realtimeHub := api.NewRealtimeHub(projectService, pEngine)
+	realtimeHub := api.NewRealtimeHub(projectService, pEngine, repo)
 	workflowEngine := automation.NewWorkflowEngine(repo, projectService, poolManager, postman, aiEngine, realtimeHub, phantomSvc)
 	eventQueue := automation.NewEventQueue(dfly)
 	webhookService := webhook.NewService(repo, eventQueue, auditService, otelEngine)

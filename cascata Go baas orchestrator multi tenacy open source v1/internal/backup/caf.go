@@ -66,19 +66,20 @@ func (g *CAFGenerator) StreamCAF(ctx context.Context, w io.Writer, project Proje
 	}
 
 	// 3. SCHEMA DUMP (pg_dump)
-	if err := g.streamPgDump(ctx, zWriter, project.DBName, "schema/structure.sql", true); err != nil {
+	// We dump only the tenant's logical schema.
+	if err := g.streamPgDump(ctx, zWriter, project.Slug, "schema/structure.sql", true); err != nil {
 		return err
 	}
 
 	// 4. DATA DUMP (COPY TO STDOUT via psql)
-	tables, err := g.listPublicTables(ctx, project.Slug)
+	tables, err := g.listTenantTables(ctx, project.Slug)
 	if err != nil {
 		return err
 	}
 	
 	for _, table := range tables {
-		filename := fmt.Sprintf("data/public.%s.csv", table)
-		if err := g.streamTableCSV(ctx, zWriter, project.DBName, table, filename); err != nil {
+		filename := fmt.Sprintf("data/%s.%s.csv", project.Slug, table)
+		if err := g.streamTableCSV(ctx, zWriter, project.Slug, table, filename); err != nil {
 			return err
 		}
 	}
@@ -101,41 +102,38 @@ func (g *CAFGenerator) addJSONFile(zWriter *zip.Writer, name string, content int
 	return err
 }
 
-// streamPgDump execs pg_dump globally mapped from the container.
-func (g *CAFGenerator) streamPgDump(ctx context.Context, zWriter *zip.Writer, dbName, filename string, schemaOnly bool) error {
+// streamPgDump execs pg_dump globally mapped from the container targeting a specific schema.
+func (g *CAFGenerator) streamPgDump(ctx context.Context, zWriter *zip.Writer, slug, filename string, schemaOnly bool) error {
 	w, err := zWriter.Create(filename)
 	if err != nil { return err }
 
-	args := []string{"-h", "db", "-U", "cascata_admin", "-d", dbName, "-n", "public", "-n", "auth"}
+	// -n [slug] ensures we only dump the logical tenant's enclave.
+	args := []string{"-h", "cascata-db", "-U", "cascata_admin", "-d", "cascata_meta", "-n", slug}
 	if schemaOnly {
 		args = append(args, "--schema-only")
 	}
 
 	cmd := exec.CommandContext(ctx, "pg_dump", args...)
-	// Uses trust/pgpass natively in the cluster.
 	cmd.Stdout = w
 	return cmd.Run()
 }
 
-// streamTableCSV directly pipes Postgres output to the zip layer.
-func (g *CAFGenerator) streamTableCSV(ctx context.Context, zWriter *zip.Writer, dbName, table, filename string) error {
+// streamTableCSV directly pipes Postgres output to the zip layer using schema-qualified names.
+func (g *CAFGenerator) streamTableCSV(ctx context.Context, zWriter *zip.Writer, slug, table, filename string) error {
 	w, err := zWriter.Create(filename)
 	if err != nil { return err }
 
-	query := fmt.Sprintf(`COPY (SELECT * FROM public.%q) TO STDOUT WITH CSV HEADER`, table)
-	cmd := exec.CommandContext(ctx, "psql", "-h", "db", "-U", "cascata_admin", "-d", dbName, "-c", query)
+	query := fmt.Sprintf(`COPY "%s".%q TO STDOUT WITH CSV HEADER`, slug, table)
+	cmd := exec.CommandContext(ctx, "psql", "-h", "cascata-db", "-U", "cascata_admin", "-d", "cascata_meta", "-c", query)
 	cmd.Stdout = w
 	return cmd.Run()
 }
 
-func (g *CAFGenerator) listPublicTables(ctx context.Context, slug string) ([]string, error) {
-	pool, err := g.repo.GetProjectPool(slug)
-	if err != nil { return nil, err }
-
-	rows, err := pool.Query(ctx, `
+func (g *CAFGenerator) listTenantTables(ctx context.Context, slug string) ([]string, error) {
+	rows, err := g.repo.Pool.Query(ctx, `
 		SELECT table_name FROM information_schema.tables 
-		WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-	`)
+		WHERE table_schema = $1 AND table_type = 'BASE TABLE'
+	`, slug)
 	if err != nil { return nil, err }
 	defer rows.Close()
 

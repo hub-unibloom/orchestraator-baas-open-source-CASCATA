@@ -454,7 +454,8 @@ show_final() {
     echo -e "  ${C_BOLD}Worner E-mail:${C_RESET} ${WORNER_EMAIL}"
     echo -e "$MFA_DISPLAY\n"
     
-    echo -e "  ${C_BOLD}DB_ADMIN:${C_RESET} cascata_admin"
+    local DB_EXT=$(grep '^DB_USER=' .env | cut -d '=' -f2)
+    echo -e "  ${C_BOLD}DB_ADMIN:${C_RESET} ${DB_EXT}"
     echo -e "  ${C_BOLD}JWT_MASTER:${C_RESET} ${JWT_EXT:0:20}...${JWT_EXT: -5}"
     echo -e "  ${C_BOLD}VAULT_APP_TOKEN:${C_RESET} ${APP_EXT:0:15}...\n"
     

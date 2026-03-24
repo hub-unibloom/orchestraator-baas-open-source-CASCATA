@@ -21,68 +21,62 @@ type RealtimeHub struct {
 	privacyEngine *privacy.Engine
 	mu            sync.RWMutex
 	listeners     map[string]*tenantBroadcaster
+	
+	// Unified Global Listener (Phase 22: High Density)
+	masterRepo    *database.Repository
+	stopOnce      sync.Once
 }
 
-func NewRealtimeHub(projectSvc *service.ProjectService, pEng *privacy.Engine) *RealtimeHub {
-	return &RealtimeHub{
+func NewRealtimeHub(projectSvc *service.ProjectService, pEng *privacy.Engine, masterRepo *database.Repository) *RealtimeHub {
+	h := &RealtimeHub{
 		projectSvc:    projectSvc,
 		privacyEngine: pEng,
 		listeners:     make(map[string]*tenantBroadcaster),
+		masterRepo:    masterRepo,
 	}
+	
+	// Start the single global listener loop for the entire database heart.
+	go h.globalListenLoop()
+	
+	return h
 }
 
-// tenantBroadcaster manages listeners for a specific physical database pool.
+// tenantBroadcaster manages SSE clients for a specific tenant.
 type tenantBroadcaster struct {
 	slug    string
-	ctx     context.Context
-	cancel  context.CancelFunc
 	clients map[chan []byte]*domain.AuthContext
 	mu      sync.RWMutex
 }
 
 // HandleSSE establishes a persistent high-frequency connection for a project.
-// GET /v1/{project}/realtime
 func (h *RealtimeHub) HandleSSE(w http.ResponseWriter, r *http.Request) {
-	// 1. Authenticate and resolve identity
 	authCtx, ok := domain.FromContext(r.Context())
 	if !ok {
-		SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, "Authentication required for real-time stream")
+		SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, "Authentication required")
 		return
 	}
 
-	// 2. Prepare SSE Headers
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	// 3. Obtain or spawn a Broadcaster for this tenant
-	b, err := h.getBroadcaster(r.Context(), authCtx.Project)
-	if err != nil {
-		SendError(w, r, http.StatusInternalServerError, ErrInternalError, "REALTIME_ORCHESTRATION_FAILED", err.Error())
-		return
-	}
+	b := h.getOrCreateBroadcaster(authCtx.ProjectSlug)
 
-	// 4. Register client channel with AuthContext for role-based privacy masking (Phase 13 Sinergy)
 	clientChan := make(chan []byte, 100)
 	b.mu.Lock()
 	b.clients[clientChan] = authCtx
 	b.mu.Unlock()
 
-	// 5. Cleanup on disconnect
 	defer func() {
 		b.mu.Lock()
 		delete(b.clients, clientChan)
 		b.mu.Unlock()
 		close(clientChan)
-		slog.Debug("realtime: client disconnected", "slug", b.slug)
 	}()
 
-	// 6. Signal Stream Initialization
 	fmt.Fprintf(w, "event: system\ndata: {\"status\": \"bound\", \"slug\": %q}\n\n", b.slug)
 	w.(http.Flusher).Flush()
 
-	// 7. Pulse Handling Loop
 	for {
 		select {
 		case <-r.Context().Done():
@@ -91,72 +85,77 @@ func (h *RealtimeHub) HandleSSE(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "data: %s\n\n", string(msg))
 			w.(http.Flusher).Flush()
 		case <-time.After(30 * time.Second):
-			// Keep-alive heartbeat
 			fmt.Fprintf(w, ": heartbeat\n\n")
 			w.(http.Flusher).Flush()
 		}
 	}
 }
 
-func (h *RealtimeHub) getBroadcaster(ctx context.Context, p *domain.Project) (*tenantBroadcaster, error) {
+func (h *RealtimeHub) getOrCreateBroadcaster(slug string) *tenantBroadcaster {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if b, ok := h.listeners[p.Slug]; ok {
-		return b, nil
+	if b, ok := h.listeners[slug]; ok {
+		return b
 	}
 
-	// Spawn new listener for this tenant
-	slog.Info("realtime: spawning broadcaster for tenant", "slug", p.Slug)
-	
-	poolRepo, err := h.projectSvc.GetPool(ctx, p)
-	if err != nil {
-		return nil, err
-	}
-
-	bCtx, cancel := context.WithCancel(context.Background())
 	b := &tenantBroadcaster{
-		slug:    p.Slug,
-		ctx:     bCtx,
-		cancel:  cancel,
+		slug:    slug,
 		clients: make(map[chan []byte]*domain.AuthContext),
 	}
-
-	go h.listenLoop(b, poolRepo.Pool)
-	
-	h.listeners[p.Slug] = b
-	return b, nil
+	h.listeners[slug] = b
+	return b
 }
 
-// listenLoop sits on the Postgres LISTEN queue for a specific tenant DB.
-func (h *RealtimeHub) listenLoop(b *tenantBroadcaster, pool *pgxpool.Pool) {
-	slog.Info("realtime: listener loop started", "slug", b.slug)
+// globalListenLoop sits on a single Postgres connection and routes all notifications.
+func (h *RealtimeHub) globalListenLoop() {
+	ctx := context.Background()
+	slog.Info("realtime: starting unified global listener")
 	
-	// We need a dedicated connection for LISTEN/NOTIFY.
-	conn, err := pool.Acquire(b.ctx)
-	if err != nil {
-		slog.Error("realtime: failed to acquire listener connection", "slug", b.slug, "err", err)
-		return
-	}
-	defer conn.Release()
-
-	// Command the database to alert the orchestrator of any change in the 'public' schema or custom triggers.
-	_, err = conn.Exec(b.ctx, "LISTEN cascata_realtime")
-	if err != nil {
-		slog.Error("realtime: failed to listen on channel", "slug", b.slug, "err", err)
-		return
-	}
-
 	for {
-		notification, err := conn.Conn().WaitForNotification(b.ctx)
+		conn, err := h.masterRepo.Pool.Acquire(ctx)
 		if err != nil {
-			if b.ctx.Err() == nil {
-				slog.Error("realtime: notification wait error", "slug", b.slug, "err", err)
-			}
-			return
+			slog.Error("realtime: global acquire failed, retrying", "err", err)
+			time.Sleep(5 * time.Second)
+			continue
 		}
 
-		// Broadcast to all active SSE clients (Phase 13: Delta aware)
+		_, err = conn.Exec(ctx, "LISTEN cascata_realtime")
+		if err != nil {
+			conn.Release()
+			slog.Error("realtime: global listen failed, retrying", "err", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		for {
+			notification, err := conn.Conn().WaitForNotification(ctx)
+			if err != nil {
+				conn.Release()
+				slog.Error("realtime: global wait failed, reconnecting", "err", err)
+				break
+			}
+
+			// Route notification to the correct broadcaster based on 'schema' (tenant slug)
+			h.routeNotification(notification)
+		}
+	}
+}
+
+func (h *RealtimeHub) routeNotification(notification *pgconn.Notification) {
+	var payload struct {
+		Schema string `json:"schema"`
+	}
+	if err := json.Unmarshal([]byte(notification.Payload), &payload); err != nil {
+		slog.Warn("realtime: invalid payload received", "err", err)
+		return
+	}
+
+	h.mu.RLock()
+	b, ok := h.listeners[payload.Schema]
+	h.mu.RUnlock()
+
+	if ok {
 		h.broadcast(b, notification)
 	}
 }

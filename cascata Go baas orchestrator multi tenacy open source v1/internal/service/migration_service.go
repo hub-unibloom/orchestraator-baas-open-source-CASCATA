@@ -36,33 +36,20 @@ func NewMigrationService(cfg *config.Config, projectSvc *ProjectService, audit *
 	}
 }
 
-// BootstrapTenant applies the standard apartment template to a new database (Legacy Sinergy).
-func (s *MigrationService) BootstrapTenant(ctx context.Context, dbName string) error {
-	slog.Info("migration: bootstrapping tenant from template", "dbName", dbName)
+// BootstrapTenant applies the standard apartment template to a new logical schema (Legacy Sinergy).
+func (s *MigrationService) BootstrapTenant(ctx context.Context, slug string) error {
+	slog.Info("migration: bootstrapping tenant from template", "schema", slug)
 
-	// 1. Establish tenant connection pool.
-	tenantRepo, err := database.NewTenantPool(ctx, s.cfg.DatabaseURL, dbName)
-	if err != nil {
-		return fmt.Errorf("service.Migration.Bootstrap: connect: %w", err)
-	}
-	defer tenantRepo.Close()
-
-	// 2. Read the standard template.
+	// Since we are using Logical Isolation, we don't open NewTenantPool anymore.
+	// We delegate directly to ApplyMigration which is now Schema-Aware.
 	templatePath := "internal/templates/tenant_schema.sql"
-	sql, err := os.ReadFile(templatePath)
+	sqlData, err := os.ReadFile(templatePath)
 	if err != nil {
-		// Fallback for dev environments where the template might be in a different path
 		slog.Warn("migration: template file not found, skipping file-based bootstrap", "path", templatePath)
 		return nil 
 	}
 
-	// 3. Execute the template as a single block.
-	_, err = tenantRepo.Pool.Exec(ctx, string(sql))
-	if err != nil {
-		return fmt.Errorf("service.Migration.Bootstrap: execute: %w", err)
-	}
-
-	return nil
+	return s.ApplyMigration(ctx, slug, "0000_bootstrap_template", string(sqlData))
 }
 
 // ApplyMigration executes DDL safely, tracking results in a project's migration table.
@@ -106,13 +93,19 @@ func (s *MigrationService) ApplyMigration(ctx context.Context, slug string, name
 
 	// 5. Execution Workflow
 	err = pgx.BeginFunc(ctx, pool.Pool, func(tx pgx.Tx) error {
-		// a. Acquire Advisory Lock to prevent concurrent orchestrators (Phase 15)
+		// a. Enforce Schema Isolation precisely for this transaction
+		// This forces all unqualified DDLs (e.g. CREATE TABLE users) into the tenant's schema.
+		if _, err := tx.Exec(ctx, fmt.Sprintf(`SET LOCAL search_path TO "%s", public;`, slug)); err != nil {
+			return fmt.Errorf("migration: failed to inject search_path: %w", err)
+		}
+
+		// b. Acquire Advisory Lock to prevent concurrent orchestrators (Phase 15)
 		lockID := int64(crc32.ChecksumIEEE([]byte(name)))
 		if err := repo.AcquireLock(ctx, tx, lockID); err != nil {
 			return err
 		}
 
-		// b. Idempotency Check
+		// c. Idempotency Check
 		var existingChecksum, status string
 		err = tx.QueryRow(ctx, "SELECT checksum, status FROM cascata_migrations WHERE name = $1", name).Scan(&existingChecksum, &status)
 		if err == nil {
@@ -125,7 +118,7 @@ func (s *MigrationService) ApplyMigration(ctx context.Context, slug string, name
 			}
 		}
 
-		// c. Pre-Execution Record (Audit Fidelity)
+		// d. Pre-Execution Record (Audit Fidelity)
 		m := &domain.Migration{
 			Slug:     slug,
 			Name:     name,
@@ -135,12 +128,12 @@ func (s *MigrationService) ApplyMigration(ctx context.Context, slug string, name
 		}
 		repo.RecordStep(ctx, tx, m)
 
-		// d. Handle Concurrent Operations (Non-Transactional DDL)
+		// e. Handle Concurrent Operations (Non-Transactional DDL)
 		if isConcurrent {
 			return fmt.Errorf("migration: CONCURRENTLY operations not supported in automated batch (Manual migration required)")
 		}
 
-		// e. Execute DDL
+		// f. Execute DDL
 		start := time.Now()
 		if _, err := tx.Exec(ctx, ddl); err != nil {
 			m.Status = domain.MigrationFailed

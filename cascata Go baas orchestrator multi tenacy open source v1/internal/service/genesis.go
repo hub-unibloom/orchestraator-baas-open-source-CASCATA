@@ -41,17 +41,17 @@ func NewGenesisService(repo *database.Repository, projectRepo *repository.Projec
 func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) error {
 	slog.Info("genesis: starting project creation", "slug", p.Slug, "db", p.DBName)
 
-	// 1. Physical Database Creation (Sanitized via Repository)
-	if err := s.tenantRepo.ProvisionNewDatabase(ctx, p.DBName); err != nil {
-		return fmt.Errorf("genesis: create db failed: %w", err)
+	// 1. Logical Schema Creation (Sanitized via Repository)
+	if err := s.tenantRepo.ProvisionNewSchema(ctx, p.Slug); err != nil {
+		return fmt.Errorf("genesis: create schema failed: %w", err)
 	}
 
-	// Atomic Cleanup: If any step below fails, we must drop the DB
+	// Atomic Cleanup: If any step below fails, we must drop the Schema
 	success := false
 	defer func() {
 		if !success {
-			slog.Warn("genesis: rolling back project creation (dropping db)", "slug", p.Slug, "db", p.DBName)
-			_ = s.tenantRepo.DropDatabase(context.Background(), p.DBName)
+			slog.Warn("genesis: rolling back project creation (dropping schema)", "slug", p.Slug)
+			_ = s.tenantRepo.DropSchema(context.Background(), p.Slug)
 		}
 	}()
 
@@ -95,11 +95,11 @@ func (s *GenesisService) DeleteProject(ctx context.Context, slug string) error {
 		return fmt.Errorf("genesis: cannot resolve project for deletion: %w", err)
 	}
 
-	slog.Info("genesis: starting project deletion", "slug", slug, "db", p.DBName)
+	slog.Info("genesis: starting project deletion", "slug", slug)
 
-	// 1. Termination: Drop Database (Antifragile)
-	if err := s.tenantRepo.DropDatabase(ctx, p.DBName); err != nil {
-		slog.Warn("genesis: drop db failed during deletion (might already be gone)", "db", p.DBName, "err", err)
+	// 1. Termination: Drop Logical Schema (Antifragile)
+	if err := s.tenantRepo.DropSchema(ctx, p.Slug); err != nil {
+		slog.Warn("genesis: drop schema failed during deletion (might already be gone)", "schema", p.Slug, "err", err)
 	}
 
 	// 2. Vault Tombstoning (Historical record of destruction)
@@ -118,18 +118,17 @@ func (s *GenesisService) DeleteProject(ctx context.Context, slug string) error {
 func (s *GenesisService) initializeSchema(ctx context.Context, slug string) error {
 	const baseDDL = `
 		-- Ensure clean auth namespace
-		CREATE SCHEMA IF NOT EXISTS auth;
-		
 		-- Cascata System Functions for RLS context
 		CREATE OR REPLACE FUNCTION current_project_slug() RETURNS text AS $$
 			SELECT current_setting('cascata.project_slug', true);
 		$$ LANGUAGE sql STABLE;
 
-		CREATE OR REPLACE FUNCTION auth.uid() RETURNS text AS $$
+		-- Auth Helpers (Phase 10.1: Context Aware)
+		CREATE OR REPLACE FUNCTION uid() RETURNS text AS $$
 			SELECT current_setting('request.jwt.claim.sub', true);
 		$$ LANGUAGE sql STABLE;
 
-		CREATE OR REPLACE FUNCTION auth.role() RETURNS text AS $$
+		CREATE OR REPLACE FUNCTION role() RETURNS text AS $$
 			SELECT current_setting('request.jwt.claim.role', true);
 		$$ LANGUAGE sql STABLE;
 
@@ -159,10 +158,9 @@ func (s *GenesisService) initializeSchema(ctx context.Context, slug string) erro
 
 		-- Basic Extensions
 		CREATE EXTENSION IF NOT EXISTS pgcrypto;
-		CREATE EXTENSION IF NOT EXISTS pg_graphql;
 
 		-- Resident Auth Table (Phase 11 Sync Foundation + Phase 10.1 Lexicon)
-		CREATE TABLE IF NOT EXISTS auth.users (
+		CREATE TABLE IF NOT EXISTS users (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			email TEXT UNIQUE,
 			cpf TEXT UNIQUE,
@@ -176,7 +174,13 @@ func (s *GenesisService) initializeSchema(ctx context.Context, slug string) erro
 			created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
 			updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 		);
-		ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
+
+		-- Apply Real-time Trigger to Users
+		CREATE TRIGGER users_realtime_notify
+		AFTER INSERT OR UPDATE OR DELETE ON users
+		FOR EACH ROW EXECUTE FUNCTION cascata_notify_realtime();
+
+		ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 	`
 	
 	// Delegate to MigrationService for atomic and auditable schema application

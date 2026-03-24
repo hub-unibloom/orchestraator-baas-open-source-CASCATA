@@ -73,12 +73,13 @@ func (r *Repository) WithRLS(ctx context.Context, claims UserClaims, projectSlug
 			atomicSQL := fmt.Sprintf(`
 				SET LOCAL ROLE %%q;
 				SET LOCAL statement_timeout = $1;
+				SET LOCAL search_path TO "%%s", public;
 				SET LOCAL "cascata.project_slug" = $2;
 				SET LOCAL "cascata.isolation_scope" = 'tenant';
 				SET LOCAL "request.jwt.claim.sub" = $3;
 				SET LOCAL "request.jwt.claim.email" = $4;
 				SET LOCAL "request.jwt.claim.role" = $5;
-			`, role)
+			`, role, projectSlug)
 
 			if _, err := tx.Exec(ctx, atomicSQL, timeout, projectSlug, claims.Sub, claims.Email, claims.Role); err != nil {
 				slog.Error("security context injection failed", "slug", projectSlug, "err", err, "role", role)
@@ -113,34 +114,4 @@ func isTransientError(err error) bool {
 	
 	// Check for pgx standard connection errors
 	return false 
-}
-
-// NewTenantPool creates a new connection pool for a specific physical database on the current host.
-func NewTenantPool(ctx context.Context, masterURL, dbName string) (*Repository, error) {
-	// 1. Identify current host and port from master URL.
-	// pgx.ParseConfig helps extract components.
-	cfg, err := pgxpool.ParseConfig(masterURL)
-	if err != nil {
-		return nil, fmt.Errorf("database.NewTenantPool: parse: %w", err)
-	}
-
-	// 2. Swapping Database name to the tenant-specific one.
-	cfg.ConnConfig.Database = dbName
-
-	// 3. Tuning the tenant pool: more restrictive than the metadata pool.
-	cfg.MaxConns = 10
-	cfg.MinConns = 1
-	cfg.MaxConnLifetime = 15 * time.Minute
-
-	pool, err := pgxpool.NewWithConfig(ctx, cfg)
-	if err != nil {
-		return nil, fmt.Errorf("database.NewTenantPool: create pool [%s]: %w", dbName, err)
-	}
-
-	if err := pool.Ping(ctx); err != nil {
-		return nil, fmt.Errorf("database.NewTenantPool: ping [%s]: %w", dbName, err)
-	}
-
-	slog.Info("tenant database pool established", "dbName", dbName)
-	return &Repository{Pool: pool}, nil
 }

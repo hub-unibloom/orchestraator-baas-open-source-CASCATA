@@ -60,10 +60,19 @@ func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug
 		return nil, "", fmt.Errorf("resident.auth.AuthenticateByCPF: pool resolution failed: %w", err)
 	}
 
-	// 3. Lookup Resident
-	res, hashedPassword, err := s.resRepo.FindByIdentifier(ctx, pool, cpf)
+	// 3. Lookup Resident securely within Tenant Context
+	var res *domain.Resident
+	var hashedPassword string
+	claims := database.UserClaims{Role: "anon"} // Initial lookup is always anonymous
+
+	err = pool.WithRLS(ctx, claims, projectSlug, false, func(tx pgx.Tx) error {
+		var findErr error
+		res, hashedPassword, findErr = s.resRepo.FindByIdentifier(ctx, tx, cpf)
+		return findErr
+	})
+
 	if err != nil {
-		return nil, "", fmt.Errorf("resident.auth.AuthenticateByCPF: resident lookup failed: %w", err)
+		return nil, "", fmt.Errorf("resident.auth.AuthenticateByCPF: lookup failure: %w", err)
 	}
 
 	// 3.5 Verify Password (Sovereignty Shield - Phase 10: Argon2id + Vault Pepper)
@@ -101,10 +110,13 @@ func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug
 func (s *ResidentAuthService) IssueStepUpOTP(ctx context.Context, slug, resID string) error {
 	p, err := s.projectSvc.Resolve(ctx, slug)
 	if err != nil { return err }
-	pool, err := s.projectSvc.GetPool(ctx, p)
-	if err != nil { return err }
-	
-	r, _, err := s.resRepo.FindByIdentifier(ctx, pool, resID)
+	var r *domain.Resident
+	claims := database.UserClaims{Role: "anon"}
+	err = pool.WithRLS(ctx, claims, slug, false, func(tx pgx.Tx) error {
+		var findErr error
+		r, _, findErr = s.resRepo.FindByIdentifier(ctx, tx, resID)
+		return findErr
+	})
 	if err != nil { return err }
 
 	slog.Info("resident.auth: issuing step-up challenge", "slug", slug, "resident_id", resID)
@@ -129,9 +141,13 @@ func (s *ResidentAuthService) IssueStepUpOTP(ctx context.Context, slug, resID st
 func (s *ResidentAuthService) VerifyStepUp(ctx context.Context, slug, residentID, code string) (string, error) {
 	p, err := s.projectSvc.Resolve(ctx, slug)
 	if err != nil { return "", err }
-	pool, err := s.projectSvc.GetPool(ctx, p)
-	if err != nil { return "", err }
-	r, _, _ := s.resRepo.FindByIdentifier(ctx, pool, residentID)
+	var r *domain.Resident
+	claims := database.UserClaims{Role: "anon"}
+	err = pool.WithRLS(ctx, claims, slug, false, func(tx pgx.Tx) error {
+		var findErr error
+		r, _, findErr = s.resRepo.FindByIdentifier(ctx, tx, residentID)
+		return findErr
+	})
 	
 	identifier := r.Email
 	if identifier == "" { identifier = r.WhatsApp }
@@ -228,8 +244,14 @@ func (s *ResidentAuthService) VerifyOTP(ctx context.Context, projectSlug, identi
 		return nil, "", err
 	}
 
-	// 3. Resolve Resident
-	res, _, err := s.resRepo.FindByIdentifier(ctx, pool, identifier)
+	// 3. Resolve Resident within Tenant Context
+	var res *domain.Resident
+	claims := database.UserClaims{Role: "anon"}
+	err = pool.WithRLS(ctx, claims, projectSlug, false, func(tx pgx.Tx) error {
+		var findErr error
+		res, _, findErr = s.resRepo.FindByIdentifier(ctx, tx, identifier)
+		return findErr
+	})
 	if err != nil {
 		return nil, "", fmt.Errorf("resident.auth.VerifyOTP: resident resolution failed: %w", err)
 	}
@@ -242,7 +264,9 @@ func (s *ResidentAuthService) VerifyOTP(ctx context.Context, projectSlug, identi
 
 	// 5. Update Audit Trail (Async)
 	go func() {
-		_ = s.resRepo.UpdateLastLogin(context.Background(), pool, res.ID)
+		_ = pool.WithRLS(context.Background(), claims, projectSlug, false, func(tx pgx.Tx) error {
+			return s.resRepo.UpdateLastLogin(context.Background(), tx, res.ID)
+		})
 		_ = s.auditSvc.Log(context.Background(), projectSlug, "RESIDENT_LOGIN_OTP", res.ID, string(domain.IdentityResident), map[string]interface{}{"identifier": identifier})
 	}()
 
@@ -281,8 +305,12 @@ func (s *ResidentAuthService) SignupResident(ctx context.Context, projectSlug st
 		hashedPassword = hash
 	}
 
-	// 3. Persist via Repository (Phase 10.2 schema)
-	if err := s.resRepo.Create(ctx, pool, r, hashedPassword); err != nil {
+	// 3. Persist via Repository (Phase 10.2 schema) securely
+	claims := database.UserClaims{Role: "anon"}
+	err = pool.WithRLS(ctx, claims, projectSlug, false, func(tx pgx.Tx) error {
+		return s.resRepo.Create(ctx, tx, r, hashedPassword)
+	})
+	if err != nil {
 		return fmt.Errorf("resident.auth.SignupResident: resident creation failed: %w", err)
 	}
 
