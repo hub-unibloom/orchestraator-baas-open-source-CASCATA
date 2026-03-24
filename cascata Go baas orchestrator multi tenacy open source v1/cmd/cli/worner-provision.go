@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"cascata/internal/auth"
+	"cascata/internal/crypto"
 	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/repository"
@@ -25,8 +25,8 @@ func main() {
 	password := os.Args[2]
 	mfaEnabled := os.Args[3] == "true"
 
-	// 1. Generate secure Bcrypt Hash Cost 12
-	hash, err := auth.HashPassword(password)
+	// 1. Generate secure Argon2id Hash (Phase 10 Hardening)
+	hash, err := crypto.HashPassword(password)
 	if err != nil {
 		fmt.Printf("FAIL_HASH: %v\n", err)
 		os.Exit(1)
@@ -53,7 +53,7 @@ func main() {
 		Email:        email,
 		PasswordHash: hash,
 		Role:         domain.RoleWorner,
-		Type:         domain.TypeHuman,
+		Type:         domain.IdentityMember,
 		MFAEnabled:   mfaEnabled,
 	}
 

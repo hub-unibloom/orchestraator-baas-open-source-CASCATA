@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 
+	"cascata/internal/crypto"
 	"cascata/internal/domain"
 	"cascata/internal/repository"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // SystemAuthService handles management login for Cascata Members.
@@ -33,8 +33,13 @@ func (s *SystemAuthService) AuthenticateMember(ctx context.Context, email, passw
 		return nil, fmt.Errorf("system.auth: member not found")
 	}
 
-	// 2. Validate Password via Bcrypt (Matches Cost 12+ configured at DB)
-	if err := bcrypt.CompareHashAndPassword([]byte(member.PasswordHash), []byte(password)); err != nil {
+	// 2. Validate Password via Argon2id (Standardized Phase 10)
+	isValid, err := crypto.ComparePassword(password, member.PasswordHash)
+	if err != nil {
+		return nil, fmt.Errorf("system.auth: internal error: %w", err)
+	}
+	
+	if !isValid {
 		slog.Warn("system.auth: invalid password for member", "email", email)
 		return nil, fmt.Errorf("system.auth: invalid credentials")
 	}
@@ -43,15 +48,4 @@ func (s *SystemAuthService) AuthenticateMember(ctx context.Context, email, passw
 	_ = s.auditSvc.Log(ctx, "", "MEMBER_LOGIN", member.ID, string(member.Type), map[string]interface{}{"email": email})
 
 	return member, nil
-}
-
-// HashPassword generates a secure Bcrypt hash from a plaintext string.
-// Used for member creation during install.sh via local Go binary.
-func HashPassword(password string) (string, error) {
-	// Cost 12 is the minimum production standard for managing infra.
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
-	if err != nil {
-		return "", fmt.Errorf("auth.Hash: calculation failed: %w", err)
-	}
-	return string(hash), nil
 }
