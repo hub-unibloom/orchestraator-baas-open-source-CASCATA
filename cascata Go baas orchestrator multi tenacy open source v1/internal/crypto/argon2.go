@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
