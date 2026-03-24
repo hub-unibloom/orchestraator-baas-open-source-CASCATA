@@ -12,9 +12,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Pool is an alias for pgxpool.Pool to maintain compatibility across the orchestrator.
+type Pool = pgxpool.Pool
+
 // Repository manages database interactions for metadata.
 type Repository struct {
-	Pool *pgxpool.Pool
+	Pool *Pool
 }
 
 // Connect establishes the metadata database connection pool.

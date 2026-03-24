@@ -13,7 +13,6 @@ import (
 	"cascata/internal/privacy"
 	"cascata/internal/service"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type RealtimeHub struct {

@@ -6,6 +6,7 @@ import (
 
 	"cascata/internal/database"
 	"cascata/internal/domain"
+	"github.com/jackc/pgx/v5"
 )
 
 // ResidentRepository handles persistence for Tenant Residents (end-users).
