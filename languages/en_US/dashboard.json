@@ -1,0 +1,40 @@
+{
+  "welcome": {
+    "title": "Welcome back, Worner",
+    "subtitle": "Real-time monitoring of your tenant network."
+  },
+  "stats": {
+    "total_projects": "Active Projects",
+    "total_requests": "Total Requests (24h)",
+    "storage_used": "Storage Used",
+    "active_users": "Users Online"
+  },
+  "quick_links": {
+    "create_project": "New Project",
+    "view_logs": "Audit Trail",
+    "invite_member": "Invite Developer"
+  },
+  "charts": {
+    "requests_over_time": "Requests Over Time",
+    "response_time": "Avg. Response Time (ms)",
+    "error_rate": "Error Rate"
+  },
+  "new_project": {
+    "title": "Tenant Onboarding",
+    "step_info": "Infrastructure & Regions",
+    "step_quotas": "Limits & Performance",
+    "step_security": "Security Shield",
+    "fields": {
+      "name": "Project Name",
+      "slug": "Unique ID (Slug)",
+      "region": "Server Region",
+      "timezone": "Default Timezone",
+      "max_users": "Max Concurrent Users",
+      "max_conns": "Max DB Connection Pool",
+      "max_storage": "Disk Quota (Sovereign Storage)",
+      "max_db": "Database Quota (Postgres Weight)",
+      "secondary_secret": "Agency Password (Optional)",
+      "secondary_secret_hint": "Extra layer for multi-tenant / agency governance"
+    }
+  }
+}

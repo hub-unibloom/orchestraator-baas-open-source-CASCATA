@@ -20,6 +20,10 @@ Navegar quebra o contexto. Para mitigar isso:
 - **Quick-Peek Overlay (O "Pulo do Gato"):** Um clique com o botão direito nos itens do menu principal sobrepõe a tela alvo em um modal "glassmorphism" de 94vw/94vh. Isso permite visualizar e checar configurações em outra seção (ex: Políticas RLS) sem perder o editor de código que está aberto no fundo (ex: RPC/Edge).
 - **Gestão de Abas Inteligente:** Telas pesadas utilizam abas inferiores resizáveis (Drag-to-Resize Bottom Panels) para Logs/Avisos em vez de scroll vertical forçado.
 
+### 1.3 Internacionalização Soberana e Lean Context
+- **Contextual i18n Loading:** O frontend não carrega um "dicionário gigante". Ele solicita os termos específicos da página via API no diretório `/languages`.
+- **Zero Cloud Translation:** A interface é 100% nativa. Se um idioma não foi escolhido no `install.sh`, ele não existe no servidor, reduzindo a superfície de ataque e o footprint de armazenamento.
+
 ---
 
 ## 2. Mapa Estrutural dos Módulos Core

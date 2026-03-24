@@ -65,8 +65,15 @@ type LoginResponse struct {
 
 // CreateProjectRequest defines the fields required to birth a new tenant.
 type CreateProjectRequest struct {
-	Name string `json:"name"`
-	Slug string `json:"slug"`
+	Name            string `json:"name"`
+	Slug            string `json:"slug"`
+	Region          string `json:"region"`
+	TimeZone        string `json:"timezone"`
+	MaxUsers        int    `json:"max_users"`
+	MaxConns        int    `json:"max_conns"`
+	MaxStorageMB    int64  `json:"max_storage_mb"`
+	MaxDBWeightMB   int64  `json:"max_db_weight_mb"`
+	SecondarySecret string `json:"secondary_secret,omitempty"`
 }
 
 // HandleLogin processes the Worner/Member authentication flow.
@@ -134,14 +141,21 @@ func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Reque
 	}
 
 	p := &domain.Project{
-		Name:      req.Name,
-		Slug:      req.Slug,
-		DBName:    fmt.Sprintf("project_%s", req.Slug),
-		Status:    "active",
-		Metadata:  map[string]interface{}{"created_by": "worner_dashboard"},
-		LogRetentionDays: 30,
+		Name:                req.Name,
+		Slug:                req.Slug,
+		DBName:              "cascata_meta", // Unified High-Density Pool
+		Status:              "active",
+		Region:              req.Region,
+		TimeZone:            req.TimeZone,
+		MaxUsers:            req.MaxUsers,
+		MaxConns:            req.MaxConns,
+		MaxStorageMB:        req.MaxStorageMB,
+		MaxDBWeightMB:       req.MaxDBWeightMB,
+		SecondarySecretHash: req.SecondarySecret, // Hashing happens in service
+		Metadata:            map[string]interface{}{"created_by": "worner_dashboard"},
+		LogRetentionDays:    30,
 		
-		// Real Cryptographic Identities (Phase 10.1 Cleanup)
+		// Real Cryptographic Identities
 		AnonKey:    anon,
 		ServiceKey: svc,
 		JWTSecret:  jwt,
@@ -153,6 +167,13 @@ func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Reque
 		SendError(w, r, http.StatusInternalServerError, ErrGenesisFailure, "GENESIS_FAILED", err.Error())
 		return
 	}
+
+	// 3. System Auditor Ledger (Governance Sinergy)
+	_ = h.authSvc.LogAudit(r.Context(), p.Slug, "PROJECT_BIRTH", "SYSTEM", "MEMBER", map[string]interface{}{
+		"name":          p.Name,
+		"max_users":     p.MaxUsers,
+		"max_db_weight": p.MaxDBWeightMB,
+	})
 
 	SendJSON(w, r, http.StatusCreated, p)
 }

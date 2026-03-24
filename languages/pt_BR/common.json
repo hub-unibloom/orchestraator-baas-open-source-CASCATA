@@ -1,0 +1,33 @@
+{
+  "sidebar": {
+    "dashboard": "Painel",
+    "database": "Banco de Dados",
+    "auth": "Autenticação",
+    "storage": "Armazenamento",
+    "automation": "Automação",
+    "settings": "Configurações",
+    "logs": "Relatórios de Auditoria"
+  },
+  "modals": {
+    "title_new_project": "Novo Projeto Cascata",
+    "confirm_delete": "Você tem certeza?",
+    "delete_warning": "Esta ação é irreversível e apagará todos os dados do inquilino.",
+    "save_changes": "Salvar Alterações",
+    "cancel": "Cancelar",
+    "continue": "Continuar"
+  },
+  "actions": {
+    "create": "Criar",
+    "edit": "Editar",
+    "delete": "Excluir",
+    "search": "Buscar...",
+    "refresh": "Atualizar",
+    "deploy": "Enviar para Produção"
+  },
+  "status": {
+    "online": "Conectado",
+    "offline": "Desconectado",
+    "syncing": "Sincronizando...",
+    "loading": "Carregando..."
+  }
+}

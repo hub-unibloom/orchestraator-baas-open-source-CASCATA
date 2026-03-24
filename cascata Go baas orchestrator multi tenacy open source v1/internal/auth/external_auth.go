@@ -65,18 +65,28 @@ func (s *ExternalAuthService) Callback(ctx context.Context, slug, provider, code
 
 	// 4. Resolve Tenant Pool
 	p, err := s.projectSvc.Resolve(ctx, slug)
-	if err != nil { return nil, "", err }
+	if err != nil || p == nil { 
+		return nil, "", fmt.Errorf("auth: project %s not found or inactive", slug) 
+	}
+	
 	pool, err := s.projectSvc.GetPool(ctx, p)
-	if err != nil { return nil, "", err }
+	if err != nil || pool == nil { 
+		return nil, "", fmt.Errorf("auth: could not establish sovereign pool for %s", slug) 
+	}
 
 	// 5. Linked Identity Logic (Upsert Identity Pattern)
-	// If the resident email exists, we link the new provider. If not, create a new resident.
+	// We use WithRLS to ensure the lookup happens within a restricted transaction scope.
 	var r *domain.Resident
 	claims := database.UserClaims{Role: "anon"}
 	err = pool.WithRLS(ctx, claims, slug, false, func(tx pgx.Tx) error {
 		var findErr error
-		r, _, findErr = s.resRepo.FindByIdentifier(ctx, tx, profile.Email)
-		return findErr
+		// Anti-Crash: FindByIdentifier must handle empty results gracefully
+		res, _, findErr := s.resRepo.FindByIdentifier(ctx, tx, profile.Email)
+		if findErr != nil {
+			return findErr
+		}
+		r = res
+		return nil
 	})
 
 	if err != nil {

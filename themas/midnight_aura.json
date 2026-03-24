@@ -1,0 +1,137 @@
+{
+  "id": "midnight_aura",
+  "name": "Midnight Cascata (Elite Edition)",
+  "version": "1.2.0",
+  "creator": "Worner / Cascata Team",
+  "aura": {
+    "motion_factor": 1.0,
+    "glass_blur": "28px",
+    "shadow_weight": 0.45,
+    "border_radius_base": "12px",
+    "glow_strength": "0.6",
+    "texture": {
+      "type": "noise",
+      "intensity": 0.04,
+      "blend_mode": "overlay"
+    }
+  },
+  "typography": {
+    "font_main": "Inter, system-ui",
+    "font_mono": "Fira Code, monospace",
+    "letter_spacing": "-0.01em",
+    "line_height_base": "1.5"
+  },
+  "effects": {
+    "shadows": {
+      "soft": "0 2px 10px rgba(0,0,0,0.1)",
+      "medium": "0 8px 30px rgba(0,0,0,0.2)",
+      "high": "0 20px 50px rgba(0,0,0,0.3)",
+      "neon": "0 0 20px var(--accent-primary-glow)"
+    },
+    "glass": {
+      "border_opacity": 0.08,
+      "surface_opacity": 0.72,
+      "saturation": 1.4
+    }
+  },
+  "palettes": {
+    "dark": {
+      "surface": {
+        "pit": "#05060B",
+        "base": "#080A10",
+        "raised": "#111420",
+        "elevated": "#1A1F2E",
+        "overlay": "#242A3D",
+        "skeleton": "linear-gradient(90deg, #111420 25%, #1A1F2E 50%, #111420 75%)"
+      },
+      "content": {
+        "primary": "#F8FAFC",
+        "secondary": "#94A3B8",
+        "muted": "#475569",
+        "inverse": "#0F172A"
+      },
+      "accent": {
+        "primary": {
+          "base": "#6366F1",
+          "hover": "#4F46E5",
+          "active": "#4338CA",
+          "glow": "rgba(99,102,241,0.5)",
+          "gradient": [ "#6366F1", "#4F46E5" ]
+        },
+        "secondary": {
+          "base": "#0EA5E9",
+          "hover": "#0284C7",
+          "active": "#0369A1",
+          "glow": "rgba(14,165,233,0.4)",
+          "gradient": [ "#0EA5E9", "#0284C7" ]
+        }
+      },
+      "status": {
+        "success": "#10B981",
+        "danger": "#EF4444",
+        "warning": "#F59E0B",
+        "info": "#3B82F6"
+      },
+      "border": {
+        "subtle": "rgba(255,255,255,0.05)",
+        "default": "rgba(255,255,255,0.1)",
+        "strong": "rgba(255,255,255,0.2)",
+        "focus": "#6366F1"
+      },
+      "states": {
+        "hover_overlay": "rgba(255,255,255,0.04)",
+        "active_overlay": "rgba(255,255,255,0.08)",
+        "disabled_opacity": 0.4
+      }
+    },
+    "light": {
+      "surface": {
+        "pit": "#E2E8F0",
+        "base": "#F1F5F9",
+        "raised": "#FFFFFF",
+        "elevated": "#FFFFFF",
+        "overlay": "#F8FAFC",
+        "skeleton": "linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%)"
+      },
+      "content": {
+        "primary": "#0F172A",
+        "secondary": "#475569",
+        "muted": "#94A3B8",
+        "inverse": "#F8FAFC"
+      },
+      "accent": {
+        "primary": {
+          "base": "#4F46E5",
+          "hover": "#4338CA",
+          "active": "#3730A3",
+          "glow": "rgba(79,70,229,0.3)",
+          "gradient": [ "#4F46E5", "#3730A3" ]
+        },
+        "secondary": {
+          "base": "#0284C7",
+          "hover": "#0369A1",
+          "active": "#075985",
+          "glow": "rgba(2,132,199,0.2)",
+          "gradient": [ "#0284C7", "#075985" ]
+        }
+      },
+      "status": {
+        "success": "#059669",
+        "danger": "#DC2626",
+        "warning": "#D97706",
+        "info": "#2563EB"
+      },
+      "border": {
+        "subtle": "rgba(0,0,0,0.05)",
+        "default": "rgba(0,0,0,0.1)",
+        "strong": "rgba(0,0,0,0.15)",
+        "focus": "#4F46E5"
+      },
+      "states": {
+        "hover_overlay": "rgba(0,0,0,0.02)",
+        "active_overlay": "rgba(0,0,0,0.05)",
+        "disabled_opacity": 0.5
+      }
+    }
+  }
+}

@@ -25,12 +25,16 @@ func NewProjectRepository(repo *database.Repository) *ProjectRepository {
 func (r *ProjectRepository) Create(ctx context.Context, p *domain.Project) error {
 	const sql = `
 		INSERT INTO system.projects (
-			name, slug, db_name, jwt_secret, anon_key, service_key, metadata, log_retention_days, status
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			name, slug, db_name, jwt_secret, secondary_secret_hash, anon_key, service_key, 
+			region, timezone, max_users, max_conns, max_storage_mb, max_db_weight_mb,
+			metadata, log_retention_days, status
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		RETURNING id, created_at, updated_at
 	`
 	err := r.repo.Pool.QueryRow(ctx, sql,
-		p.Name, p.Slug, p.DBName, p.JWTSecret, p.AnonKey, p.ServiceKey, p.Metadata, p.LogRetentionDays, p.Status,
+		p.Name, p.Slug, p.DBName, p.JWTSecret, p.SecondarySecretHash, p.AnonKey, p.ServiceKey,
+		p.Region, p.TimeZone, p.MaxUsers, p.MaxConns, p.MaxStorageMB, p.MaxDBWeightMB,
+		p.Metadata, p.LogRetentionDays, p.Status,
 	).Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt)
 
 	if err != nil {
@@ -45,14 +49,21 @@ func (r *ProjectRepository) Create(ctx context.Context, p *domain.Project) error
 // Critical for Multi-Tenancy resolution at Phase 2 and 17.
 func (r *ProjectRepository) GetByIdentifier(ctx context.Context, identifier string) (*domain.Project, error) {
 	const sql = `
-		SELECT id, name, slug, db_name, status, custom_domain, default_domain, anon_key, service_key, jwt_secret, metadata, log_retention_days, created_at, updated_at
+		SELECT 
+			id, name, slug, db_name, status, custom_domain, default_domain, 
+			anon_key, service_key, jwt_secret, secondary_secret_hash,
+			region, timezone, max_users, max_conns, max_storage_mb, max_db_weight_mb,
+			metadata, log_retention_days, created_at, updated_at
 		FROM system.projects 
 		WHERE slug = $1 OR custom_domain = $1 OR default_domain = $1
 		LIMIT 1
 	`
 	p := &domain.Project{}
 	err := r.repo.Pool.QueryRow(ctx, sql, identifier).Scan(
-		&p.ID, &p.Name, &p.Slug, &p.DBName, &p.Status, &p.CustomDomain, &p.DefaultDomain, &p.AnonKey, &p.ServiceKey, &p.JWTSecret, &p.Metadata, &p.LogRetentionDays, &p.CreatedAt, &p.UpdatedAt,
+		&p.ID, &p.Name, &p.Slug, &p.DBName, &p.Status, &p.CustomDomain, &p.DefaultDomain, 
+		&p.AnonKey, &p.ServiceKey, &p.JWTSecret, &p.SecondarySecretHash,
+		&p.Region, &p.TimeZone, &p.MaxUsers, &p.MaxConns, &p.MaxStorageMB, &p.MaxDBWeightMB,
+		&p.Metadata, &p.LogRetentionDays, &p.CreatedAt, &p.UpdatedAt,
 	)
 
 	if err != nil {

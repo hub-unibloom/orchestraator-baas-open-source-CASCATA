@@ -27,6 +27,13 @@ CREATE TABLE IF NOT EXISTS system.projects (
     service_key TEXT NOT NULL,
     anon_key TEXT NOT NULL,
     jwt_secret TEXT NOT NULL,
+    secondary_secret_hash TEXT, -- Extra security layer (Phase 24: Agency mode)
+    region TEXT DEFAULT 'global',
+    timezone TEXT DEFAULT 'UTC',
+    max_users INTEGER DEFAULT 100,
+    max_conns INTEGER DEFAULT 10,
+    max_storage_mb BIGINT DEFAULT 1024,
+    max_db_weight_mb BIGINT DEFAULT 1024,
     log_retention_days INTEGER DEFAULT 30,
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

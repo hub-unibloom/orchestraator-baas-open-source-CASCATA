@@ -89,7 +89,13 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	// Routes
 	// 1. PUBLIC ROUTES
 	router.Get("/health", s.handleHealth)
-	router.Post("/system/auth/login", s.SystemH.HandleLogin) // Public Dashboard Front-door
+	router.Post("/system/auth/login", s.SystemH.HandleLogin) 
+
+	// Static i18n & Themes Sovereignty
+	fsLangs := http.FileServer(http.Dir("languages"))
+	fsThemes := http.FileServer(http.Dir("themas"))
+	router.Handle("/languages/*", http.StripPrefix("/languages/", fsLangs))
+	router.Handle("/themas/*", http.StripPrefix("/themas/", fsThemes))
 	
 	// 2. PROTECTED SYSTEM ROUTES (Dashboard/Members)
 	router.Group(func(r chi.Router) {
@@ -110,6 +116,7 @@ func (s *Server) Start(ctx context.Context, id int) error {
 		
 		// Map v1 tenant operations
 		r.Route("/v1/{project}", func(r chi.Router) {
+			r.Get("/stats", s.DataH.HandleProjectOverview) // Project Overview Real Data
 			r.Get("/openapi", s.DataH.HandleOpenAPI)
 			
 			// Identity Gateway (Phase 10.1 & 13)

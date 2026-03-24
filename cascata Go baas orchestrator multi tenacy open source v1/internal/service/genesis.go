@@ -67,11 +67,17 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 
 	// 3.5. Transit Encryption of Sensitive Metadata (Sovereignty Layer)
 	transitKey := "cascata-master-key"
-	encryptedJWT, err := s.transit.Encrypt(ctx, transitKey, p.JWTSecret)
-	if err != nil {
-		slog.Warn("genesis: vault transit failed, using plain secret", "slug", p.Slug, "err", err)
-	} else {
+	
+	// Encrypt JWT Secret
+	if encryptedJWT, err := s.transit.Encrypt(ctx, transitKey, p.JWTSecret); err == nil {
 		p.JWTSecret = encryptedJWT
+	}
+
+	// Encrypt Secondary Secret (Agency Mode) - If provided from Onboarding Modal
+	if p.SecondarySecretHash != "" {
+		if encryptedSec, err := s.transit.Encrypt(ctx, transitKey, p.SecondarySecretHash); err == nil {
+			p.SecondarySecretHash = encryptedSec
+		}
 	}
 
 	// 4. System Metadata Registration

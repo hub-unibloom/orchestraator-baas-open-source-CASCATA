@@ -1,0 +1,33 @@
+{
+  "explorer": {
+    "title": "Database Explorer",
+    "subtitle": "Tables, Schemas, and RLS Governance",
+    "tables_list": "Tables List",
+    "no_tables": "No tables found in this project.",
+    "create_table": "Create New Table"
+  },
+  "query_editor": {
+    "run": "Run Query",
+    "run_selection": "Run Selection",
+    "beautify": "Beautify SQL",
+    "history": "Query History",
+    "explain": "Analyze Performance"
+  },
+  "table_view": {
+    "rows": "Rows",
+    "columns": "Columns",
+    "insert": "Insert Row",
+    "import": "Import CSV/SQL",
+    "export": "Export Data",
+    "refresh": "Refresh Table"
+  },
+  "rls_security": {
+    "title": "Row-Level Security (RLS)",
+    "status_on": "Active",
+    "status_off": "Pending",
+    "enable": "Enable RLS Isolation",
+    "disable": "Disable RLS",
+    "policy_name": "Policy Name",
+    "roles": "Roles"
+  }
+}

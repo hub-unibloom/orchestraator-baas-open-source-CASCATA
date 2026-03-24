@@ -19,6 +19,31 @@ O Cascata não é um SaaS qualquer com tela azul e botão "Get Started". É uma 
 
 ---
 
+## 1.2 Aura & Personalidade (The Personality Schema)
+
+Diferente de sistemas comuns, o Cascata utiliza **Auras** para definir o comportamento sensorial da interface. Um tema não troca apenas cores; ele troca a **Personalidade Visual** através de 4 vetores atômicos:
+
+1. **Cinética Global (`--aura-motion`)**: 
+   - Multiplicador de `time` para todas as animações (0.7s p/ Snappy, 1.3s p/ Cinematic).
+2. **Difusão Espacial (`--aura-glass-blur`)**: 
+   - Define a pureza do vidro (px). De 4px (Transparent) a 40px (Deep Frost).
+3. **Textura de Fundo (`--aura-texture`)**: 
+   - Aplicação de shaders/padrões: `noise` (analógico), `grid` (técnico), `pure` (liso).
+4. **Elevação de Sombra (`--aura-shadow-weight`)**: 
+   - Perfil de profundidade: `sharp` (limpo), `soft` (luxo), `glow` (iluminado).
+
+---
+
+## 1.3 Soberania de Temas (Theme Injection Policy)
+
+Os temas do Cascata Studio são entidades externas carregadas via HTTP do diretório `/themas/`. Isso remove a responsabilidade estética do motor Go e delega ao Worner a capacidade de expandir o ecossistema visual de forma soberana.
+
+- **Storage**: `/themas/[tema_name].json`
+- **Dual-Palette Matrix**: Cada JSON deve obrigatoriamente prover `palettes.dark` e `palettes.light` para garantir resiliência visual e acessibilidade.
+- **Dynamic Loading**: O frontend Studio faz fetch dos JSONs e injeta as variáveis CSS (`aura-*`, `surface-*`, `accent-*`) dinamicamente no `:root` via JavaScript (Theme Engine).
+
+---
+
 ## 2. Sistema de Tokens (Design Tokens)
 
 Zero cores hardcoded. Zero `bg-slate-900`, `text-indigo-500`, `border-gray-200` direto nos componentes. Tudo referencia tokens semânticos que mudam com o tema.
@@ -354,17 +379,19 @@ Carregamento lazy por namespace — não carrega 5MB de uma vez:
 
 ```
 frontend/src/locales/
-├── en/                    (base — sempre carregado)
-│   ├── common.json        (Cancel, Save, Delete, Confirm, Error...)
-│   ├── auth.json          (Login, Logout, OTP, MFA...)
-│   ├── database.json      (Tables, Columns, RLS, Indexes...)
-│   ├── automation.json    (Triggers, Nodes, Flows, Webhooks...)
-│   ├── storage.json       (Upload, Download, Quota, Providers...)
-│   ├── security.json      (Vault, Keys, Panic Mode, Masking...)
-│   ├── settings.json      (Preferences, Theme, Members, Agents...)
-│   └── errors.json        (Todos os códigos de erro do backend)
-├── pt-BR/
-│   └── (mesma estrutura — carregado dinamicamente)
+├── en_US/                 (base — sempre carregado)
+│   ├── common.json        (Sidebar, Topbar, Modais globais, Botões base)
+│   └── pages/             (Lazy-loaded sob demanda)
+│       ├── auth.json      (Login, OTP...)
+│       ├── database.json  (Tables, RLS...)
+│       └── storage.json   (Uploads...)
+├── pt_BR/                 (mesma estrutura — carregado dinamicamente)
+└── (outros idiomas...)
+
+### 7.3 Soberania de Dados e Performance (LGPD Safe)
+O Cascata v1 é terminantemente proibido de utilizar tradutores de nuvem (Google Translate, Bing). 
+- **Otimização de Recursos:** O processo `install.sh` permite selecionar os idiomas desejados e expurgar preventivamente todos os outros, mantendo o ambiente de produção ultra-enxuto.
+- **Lazy Selection:** A variável `DEFAULT_LANGUAGE` no `.env` define qual bundle carregar prioritariamente no boot do app.
 ├── es/
 ├── zh/
 └── fr/

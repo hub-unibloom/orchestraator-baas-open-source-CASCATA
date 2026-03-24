@@ -1,0 +1,40 @@
+{
+  "welcome": {
+    "title": "Seja bem-vindo de volta, Worner",
+    "subtitle": "Monitoramento total da sua rede de inquilinos em tempo real."
+  },
+  "stats": {
+    "total_projects": "Projetos Ativos",
+    "total_requests": "Requisições Totais (24h)",
+    "storage_used": "Armazenamento",
+    "active_users": "Usuários On-line"
+  },
+  "quick_links": {
+    "create_project": "Novo Projeto",
+    "view_logs": "Ver Auditoria",
+    "invite_member": "Convidar Desenvolvedor"
+  },
+  "charts": {
+    "requests_over_time": "Requisições por Tempo",
+    "response_time": "Tempo Médio de Resposta (ms)",
+    "error_rate": "Taxa de Erro"
+  },
+  "new_project": {
+    "title": "Onboarding de Inquilino",
+    "step_info": "Infraestrutura & Regionalização",
+    "step_quotas": "Limites & Performance",
+    "step_security": "Escudo de Segurança",
+    "fields": {
+      "name": "Nome do Projeto",
+      "slug": "Identificador Único (Slug)",
+      "region": "Região do Nó",
+      "timezone": "Fuso Horário Padrão",
+      "max_users": "Limite de Usuários Simultâneos",
+      "max_conns": "Pool de Conexões Máximo",
+      "max_storage": "Espaço em Disco (Sovereign Storage)",
+      "max_db": "Cota de Banco de Dados (Postgres Weight)",
+      "secondary_secret": "Senha de Agência (Opcional)",
+      "secondary_secret_hint": "Camada adicional para gestão multi-inquilino"
+    }
+  }
+}

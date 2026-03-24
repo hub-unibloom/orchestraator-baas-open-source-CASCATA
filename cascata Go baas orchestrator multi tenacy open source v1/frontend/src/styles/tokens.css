@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Cascata Dark - Deep Space (Default Identity) */
+    --surface-pit:      8, 10, 16;    /* #080A10 — fundo de abismos */
+    --surface-base:     11, 14, 21;   /* #0B0E15 — fundo principal */
+    --surface-raised:   16, 20, 30;   /* #10141E — cards, painéis */
+    --surface-elevated: 22, 27, 40;   /* #161B28 — modais */
+    --surface-overlay:  30, 36, 54;   /* #1E2436 — tooltips */
+
+    /* Content & Typography */
+    --content-primary:   248, 250, 252;  
+    --content-secondary: 180, 188, 208;  
+    --content-muted:     100, 112, 140;  
+    --content-disabled:  55, 62, 80;     
+    --content-inverse:   10, 13, 20;     
+
+    /* Accent & Brand (Phase 1.0.0.0 Synergy) */
+    --accent-primary:     99, 102, 241;   /* Indigo */
+    --accent-primary-dim: 79, 82, 200;    
+    --accent-secondary:   56, 189, 248;   /* Sky */
+    --accent-danger:      239, 68, 68;    
+    --accent-warning:     234, 179, 8;    
+    --accent-success:     34, 197, 94;    
+    --accent-info:        56, 189, 248;   
+
+    /* Aura & Personality Vectors (Default Aura: Deep Frost / Precise) */
+    --aura-motion-factor: 1;              /* 1x speed */
+    --aura-glass-blur:    24px;           /* Spatial Depth */
+    --aura-shadow-weight: 0.12;           /* Low opacity base shadow */
+    --aura-texture-noise: 0.05;           /* Subtle film grain */
+
+    /* Borders */
+    --border-subtle:   255, 255, 255, 0.05;  
+    --border-default:  255, 255, 255, 0.09;  
+    --border-strong:   255, 255, 255, 0.15;  
+  }
+
+  body {
+    background-color: rgb(var(--surface-base));
+    color: rgb(var(--content-secondary));
+    @apply antialiased font-sans;
+  }
+
+  .glass-panel {
+    background: rgba(var(--surface-elevated), 0.72);
+    backdrop-filter: blur(var(--aura-glass-blur)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--aura-glass-blur)) saturate(1.4);
+    border: 1px solid var(--border-subtle);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+      0 0 0 1px rgba(0, 0, 0, var(--aura-shadow-weight)),
+      0 8px 32px -8px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Custom Sliders for High-Density Quotas */
+  input[type='range'] {
+    @apply h-1.5 rounded-full bg-white/10 appearance-none cursor-pointer overflow-hidden;
+  }
+  input[type='range']::-webkit-slider-thumb {
+    @apply w-4 h-4 rounded-full bg-accent-primary border-2 border-white/20 appearance-none shadow-lg shadow-accent-primary/50;
+    box-shadow: -407px 0 0 400px #6366f1;
+  }
+}

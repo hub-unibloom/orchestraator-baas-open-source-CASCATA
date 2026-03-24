@@ -94,6 +94,50 @@ collect_worner_credentials() {
     done
 }
 
+collect_language_preference() {
+    log_step "Experiência de Uso: Internacionalização Soberana"
+    
+    local LANG_DIR="${TARGET_DIR}/languages"
+    if [[ ! -d "$LANG_DIR" ]]; then
+        mkdir -p "$LANG_DIR"
+        log_warn "Diretório de idiomas vazio. Prosseguindo com fallback en_US."
+        DEFAULT_LANG="en_US"
+        return
+    fi
+
+    echo -e "  ${C_DIM}Selecione o idioma principal do Cascata Studio:${C_RESET}\n"
+    
+    local langs=($(ls -d "$LANG_DIR"/*/ | xargs -n 1 basename))
+    if [[ ${#langs[@]} -eq 0 ]]; then
+        DEFAULT_LANG="en_US"
+        return
+    fi
+
+    for i in "${!langs[@]}"; do
+        echo -e "    $((i+1)). ${langs[i]}"
+    done
+
+    echo ""
+    local choice
+    while true; do
+        read -p "  Opção (1-${#langs[@]}): " choice
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#langs[@]}" ]; then
+            DEFAULT_LANG="${langs[$((choice-1))]}"
+            break
+        fi
+    done
+
+    # Cleanup: Delete other languages to keep the environment lean (as requested)
+    log_info "Otimizando pacotes de idiomas: Mantendo apenas '$DEFAULT_LANG'..."
+    for l in "${langs[@]}"; do
+        if [ "$l" != "$DEFAULT_LANG" ]; then
+            rm -rf "${LANG_DIR}/${l}"
+        fi
+    done
+    
+    log_success "Idioma '$DEFAULT_LANG' definido como oficial do Studio."
+}
+
 # --- 3. REPOSITORY SYNC ---
 sync_repository() {
     log_step "Sincronizando Código Fonte"
@@ -219,6 +263,9 @@ DB_USER=${DB_USER}
 DB_PASS=${DB_PASS}
 DB_NAME=cascata_meta
 DB_PORT=5432
+
+# Language Preference
+DEFAULT_LANGUAGE=${DEFAULT_LANG}
 
 # Performance / Auto-Tuning (Computed by Installer)
 PG_SHARED_BUFFERS=${PG_SHARED_BUFFERS}
@@ -493,6 +540,7 @@ show_final() {
 print_banner
 check_privileges
 collect_worner_credentials
+collect_language_preference
 sync_repository
 ensure_dependencies
 apply_tuning

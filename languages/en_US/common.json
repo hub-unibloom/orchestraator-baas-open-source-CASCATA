@@ -1,0 +1,33 @@
+{
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "database": "Database",
+    "auth": "Authentication",
+    "storage": "Storage",
+    "automation": "Automation",
+    "settings": "Settings",
+    "logs": "Audit Logs"
+  },
+  "modals": {
+    "title_new_project": "New Cascata Project",
+    "confirm_delete": "Are you sure?",
+    "delete_warning": "This action is irreversible and will delete all tenant data.",
+    "save_changes": "Save Changes",
+    "cancel": "Cancel",
+    "continue": "Continue"
+  },
+  "actions": {
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "search": "Search...",
+    "refresh": "Refresh",
+    "deploy": "Deploy to Production"
+  },
+  "status": {
+    "online": "Connected",
+    "offline": "Disconnected",
+    "syncing": "Syncing...",
+    "loading": "Loading..."
+  }
+}

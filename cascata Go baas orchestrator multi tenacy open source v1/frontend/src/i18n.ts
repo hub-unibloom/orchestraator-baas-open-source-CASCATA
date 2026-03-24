@@ -1,22 +1,35 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import commonEN from './locales/en/common.json';
-import dashboardEN from './locales/en/dashboard.json';
+import HttpBackend from 'i18next-http-backend';
+import LanguageDetector from 'i18next-browser-languagedetector';
 
-// In a real scenario, this could be lazy loaded via i18next-http-backend
+// Sinergy: Implementation of the "Hybrid Bundle" Strategy
+// Loads only 'common' on boot and other namespaces lazily.
 i18n
+  .use(HttpBackend)
+  .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    resources: {
-      en: {
-        common: commonEN,
-        dashboard: dashboardEN
-      }
-    },
-    lng: 'en', // Default locale
-    fallbackLng: 'en',
+    fallbackLng: 'en_US',
+    ns: ['common', 'dashboard', 'database'], // Available namespaces
+    defaultNS: 'common',
+    
     interpolation: {
-      escapeValue: false // React already escapes values
+      escapeValue: false, // React already escapes
+    },
+    
+    backend: {
+      // Sovereign Path: Internal Cascata API (served from /languages)
+      loadPath: '/languages/{{lng}}/{{ns}}.json',
+    },
+
+    detection: {
+      order: ['localStorage', 'navigator'],
+      caches: ['localStorage'],
+    },
+    
+    react: {
+      useSuspense: true, // Seamless UI during language loading
     }
   });
 

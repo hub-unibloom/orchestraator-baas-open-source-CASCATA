@@ -54,6 +54,61 @@ func (h *DataHandler) resolvePrivacy(p *domain.Project) privacy.ProjectPrivacyCo
 	return cfg
 }
 
+// ProjectStats defines the metrics for the Project Dashboard Overview.
+type ProjectStats struct {
+	TotalTables int      `json:"total_tables"`
+	SchemaSize  int64    `json:"schema_size_bytes"`
+	TotalUsers  int      `json:"total_users"`
+	Status      string   `json:"status"`
+	TableNames  []string `json:"table_names"`
+}
+
+// HandleProjectOverview returns real telemetry for a specific tenant schema.
+func (h *DataHandler) HandleProjectOverview(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "project")
+	ctx := r.Context()
+
+	// 1. Resolve Project (Ensure RLS context)
+	p, err := h.projectSvc.Resolve(ctx, slug)
+	if err != nil {
+		SendError(w, r, http.StatusNotFound, ErrNotFound, "Project not found")
+		return
+	}
+
+	stats := ProjectStats{
+		Status:     p.Status,
+		TableNames: []string{},
+	}
+
+	// 2. Query Schema Size & Table Count
+	sqlStats := `
+		SELECT 
+			count(*)::int as total_tables,
+			COALESCE(sum(pg_total_relation_size(quote_ident(schemaname) || '.' || quote_ident(relname))), 0)::bigint as total_size
+		FROM pg_stat_user_tables 
+		WHERE schemaname = $1
+	`
+	_ = h.projectSvc.Repo().Pool.QueryRow(ctx, sqlStats, slug).Scan(&stats.TotalTables, &stats.SchemaSize)
+
+	// 3. Inventory Table Names (The "Real" List)
+	rows, _ := h.projectSvc.Repo().Pool.Query(ctx, "SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_type = 'BASE TABLE'", slug)
+	if rows != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var name string
+			if err := rows.Scan(&name); err == nil {
+				stats.TableNames = append(stats.TableNames, name)
+			}
+		}
+	}
+
+	// 4. Query Resident Count
+	sqlUsers := fmt.Sprintf("SELECT count(*)::int FROM %s.residents", slug)
+	_ = h.projectSvc.Repo().Pool.QueryRow(ctx, sqlUsers).Scan(&stats.TotalUsers)
+
+	h.respond(w, r, stats)
+}
+
 // ServeGet retrieves table records with filtering, selection and canonical cross-tenant isolation.
 func (h *DataHandler) ServeGet(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "project")

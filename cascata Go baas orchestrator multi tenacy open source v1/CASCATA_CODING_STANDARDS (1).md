@@ -54,10 +54,12 @@ Nunca `password`, `key`, `token` puros em variáveis. Sempre o estado do dado no
 ### 2.2 Arquitetura em Camadas (obrigatória)
 ```
 Handler     → decodifica request, valida na borda, codifica response via `SendJSON/SendError`. Zero lógica de negócio.
-Service     → lógica de negócio, orquestração, validações complexas. Zero acesso direto a dados.
-Repository  → acesso a dados puro (Postgres, Dragonfly, Vault). Zero lógica de negócio.
-```
-Cruzar camadas é proibido. Handler não acessa Repository diretamente.
+Service     → lógica de negócio, orquestração, validações complexas. Gerencia o controle de transação e injeção de contexto RLS.
+Repository  → acesso a dados puro via `pgx.Tx`. Imune ao meio externo, opera estritamente no contexto de transação fornecido.
+
+Cruzando as Camadas (RLS Law):
+- Repositórios NUNCA abrem conexões ou instanciam pools. Recebem `tx pgx.Tx`.
+- Serviços utilizam o wrapper `pool.WithRLS` para injetar o `search_path` (Schema do Tenant) e as Claims de segurança de forma atômica no início de cada transação.
 
 ### 2.3 Tipagem
 - Toda resposta de API tem `struct` definida com tags `json:"field_name"`
@@ -95,7 +97,8 @@ _ = riskyOperation()
 - Funções de criptografia e Vault isoladas em pacotes próprios e auditáveis
 - Chaves nunca passadas como `string` pura entre funções — use tipos opacos ou structs dedicadas
 - RLS Fail-Closed: se a injeção de contexto falhar, `ROLLBACK` forçado — nunca executa query sem contexto de segurança estabelecido.
-- **Database Sinergy (Phase 22):** O padrão `WithRLS` deve implementar loop de **Retry para erros transientes** (conn reset) e injeção atômica em um único RTT SQL.
+- **Database Sinergy (Phase 22):** O padrão `WithRLS` deve implementar loop de **Retry para erros transientes** (conn reset) e injeção atômica por meio de `SET LOCAL search_path` e `SET LOCAL cascata.claims`.
+- **Logical Multi-Tenancy:** Para sustentar 5.000 usuários em 2GB de RAM, o isolamento físico (DB per Tenant) é desencorajado. O padrão ouro é a isolação por **SCHEMA** dentro do pool unificado do Cascata.
 
 ### 2.7 Concorrência
 - Todo canal tem `select` com `case ctx.Done()` — sem goroutine que bloqueia indefinidamente

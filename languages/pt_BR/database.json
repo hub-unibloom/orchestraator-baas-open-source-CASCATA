@@ -1,0 +1,33 @@
+{
+  "explorer": {
+    "title": "Explorador de Banco de Dados",
+    "subtitle": "Gestão de Tabelas, Schemas e Isolamento RLS",
+    "tables_list": "Lista de Tabelas",
+    "no_tables": "Nenhuma tabela encontrada neste projeto.",
+    "create_table": "Criar Nova Tabela"
+  },
+  "query_editor": {
+    "run": "Executar Query",
+    "run_selection": "Executar Seleção",
+    "beautify": "Formatar SQL",
+    "history": "Histórico de Comandos",
+    "explain": "Analisar Performance"
+  },
+  "table_view": {
+    "rows": "Linhas",
+    "columns": "Colunas",
+    "insert": "Inserir Linha",
+    "import": "Importar CSV/SQL",
+    "export": "Exportar Dados",
+    "refresh": "Atualizar Tabela"
+  },
+  "rls_security": {
+    "title": "Segurança Row-Level (RLS)",
+    "status_on": "Ativo",
+    "status_off": "Pendente",
+    "enable": "Ativar Isolamento RLS",
+    "disable": "Desativar RLS",
+    "policy_name": "Nome da Política de Acesso",
+    "roles": "Papéis (Roles)"
+  }
+}
