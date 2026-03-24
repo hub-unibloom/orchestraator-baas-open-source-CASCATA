@@ -1,13 +1,12 @@
- => [builder  8/10] RUN templ generate                                                                                              0.7s 
- => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                      71.8s 
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                      72.6s 
 ------                                                                                                                                   
  > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                  
-48.94 # cascata/internal/i18n                                                                                                            
-48.94 internal/i18n/i18n.go:20:6: assignment mismatch: 1 variable but bundle.LoadMessageFile returns 2 values                            
-48.94 internal/i18n/i18n.go:21:6: assignment mismatch: 1 variable but bundle.LoadMessageFile returns 2 values
+55.40 # cascata/internal/ui/components                                                                                                   
+55.40 internal/ui/components/project_card_templ.go:193:6: OnboardingModal redeclared in this block                                       
+55.40 	internal/ui/components/onboarding_modal_templ.go:11:6: other declaration of OnboardingModal
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                             84.7s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                             86.6s
 Dockerfile.backend:23
 
 --------------------
