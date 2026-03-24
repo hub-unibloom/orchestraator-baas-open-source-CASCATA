@@ -9,11 +9,12 @@ services:
     container_name: cascata-orchestrator
     environment:
       - PORT=8080
-      - DB_URL=postgres://cascata_admin:cascata_pass@cascata-db:5432/cascata_meta
+      - DB_URL=postgres://${DB_USER}:${DB_PASS}@cascata-db:5432/${DB_NAME}
       - DFLY_URL=redis://cascata-cache:6379
-      - GO_ENV=development
-      - VAULT_ADDR=http://cascata-vault:8200
-      - VAULT_TOKEN=cascata_root_token
+      - GO_ENV=${NODE_ENV}
+      - VAULT_ADDR=${VAULT_ADDR}
+      - VAULT_TOKEN=${VAULT_TOKEN}
+      - SYSTEM_JWT_SECRET=${SYSTEM_JWT_SECRET}
     ports:
       - "8080:8080"
     volumes:
@@ -30,9 +31,9 @@ services:
     image: postgres:18-alpine
     container_name: cascata-db
     environment:
-      - POSTGRES_USER=cascata_admin
-      - POSTGRES_PASSWORD=cascata_pass
-      - POSTGRES_DB=cascata_meta
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_DB=${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
@@ -66,14 +67,14 @@ services:
   cascata-vault:
     image: hashicorp/vault:1.15
     container_name: cascata-vault
-    environment:
-      - VAULT_ADDR=http://127.0.0.1:8200
-      - VAULT_DEV_ROOT_TOKEN_ID=cascata_root_token
     cap_add:
       - IPC_LOCK
     networks:
       - cascata-net
-    command: server -dev -dev-listen-address=0.0.0.0:8200
+    command: server -config=/vault/config/cascata-vault.hcl
+    volumes:
+      - ./deployments/vault-config.hcl:/vault/config/cascata-vault.hcl:ro
+      - cascata-vault-data:/vault/file
     healthcheck:
       test: ["CMD", "vault", "status"]
       interval: 5s
@@ -86,5 +87,6 @@ networks:
 
 volumes:
   cascata-db-data:
+  cascata-vault-data:
   cascata_extension_payloads:
     name: cascata_extension_payloads

@@ -185,8 +185,8 @@ secure_bootstrap() {
     log_step "Provisão de Identidade Criptográfica (.env)"
     
     if [[ -f ".env" ]]; then
-        log_warn "Arquivo .env já existente. Ignorando overwrite."
-        return
+        log_warn "Arquivo .env já existente. Fazendo backup e gerando novo para FRESH INSTALL."
+        mv .env .env.bak.$(date +%s)
     fi
 
     local DB_PASS=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
@@ -207,7 +207,7 @@ DB_PORT=5432
 DRAGONFLY_PORT=6379
 
 # Security Infrastructure (Vault)
-VAULT_ADDR=http://vault:8200
+VAULT_ADDR=http://cascata-vault:8200
 VAULT_TOKEN=PENDING_INIT_FROM_BOOTSTRAP
 
 # Internal Logic Exchange
@@ -225,8 +225,8 @@ launch_cluster_base() {
         log_error "Arquitetura YAML não detectada em $(pwd)"
     fi
 
-    log_info "Limpando Containers e Redes Órfãs..."
-    "${DOCKER_CMD[@]}" down --remove-orphans >/dev/null 2>&1 || true
+    log_info "ANICILAÇÃO DE DADOS: Limpando Containers, Redes e VOLUMES Órfãos..."
+    "${DOCKER_CMD[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
 
     log_info "Realizando boot isolado da malha Docker..."
     "${DOCKER_CMD[@]}" pull -q || true
