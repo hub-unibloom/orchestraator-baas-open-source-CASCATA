@@ -1,0 +1,29 @@
+ => [cascata-orchestrator builder 7/9] RUN go mod download        1.2s
+ => ERROR [cascata-orchestrator builder 8/9] RUN CGO_ENABLED=0   90.4s
+------
+ > [cascata-orchestrator builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:
+55.36 # cascata/internal/database
+55.36 internal/database/manager.go:13:2: "github.com/jackc/pgx/v5/pgxpool" imported and not used
+------
+[+] up 0/2
+ ⠙ Image cascatagobaasorchestratormultitenacyopensou... Building 102.2s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensou... Building 102.2s
+Dockerfile.backend:20
+
+--------------------
+
+  18 |     
+
+  19 |     # Fazer o build do orchestrator e do provisionador CLI
+
+  20 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
+
+  21 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
+
+  22 |     
+
+--------------------
+
+target cascata-orchestrator: failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
+
+ubuntu@ip-172-26-7-197:~$ 

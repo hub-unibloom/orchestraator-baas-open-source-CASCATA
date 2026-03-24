@@ -10,7 +10,6 @@ import (
 
 	"cascata/internal/domain"
 	"cascata/internal/telemetry"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // TenantPoolManager is now a lightweight Logical Multiplexer.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"cascata/internal/database"
+	"github.com/jackc/pgx/v5"
 )
 
 // ImpactScanner recursively analyzes the database schema and Cascata system metadata to find dependencies.
