@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"cascata/internal/database"
 	"cascata/internal/domain"
 	"github.com/jackc/pgx/v5"
 )

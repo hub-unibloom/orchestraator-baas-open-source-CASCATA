@@ -1,13 +1,13 @@
- => [cascata-orchestrator builder 7/9] RUN go mod download        1.2s
- => ERROR [cascata-orchestrator builder 8/9] RUN CGO_ENABLED=0   90.4s
+ => [cascata-orchestrator builder 7/9] RUN go mod downloa  1.0s
+ => ERROR [cascata-orchestrator builder 8/9] RUN CGO_ENA  92.1s
 ------
  > [cascata-orchestrator builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:
-55.36 # cascata/internal/database
-55.36 internal/database/manager.go:13:2: "github.com/jackc/pgx/v5/pgxpool" imported and not used
+57.27 # cascata/internal/repository
+57.27 internal/repository/resident_repository.go:7:2: "cascata/internal/database" imported and not used
 ------
 [+] up 0/2
- ⠙ Image cascatagobaasorchestratormultitenacyopensou... Building 102.2s
- ⠙ Image cascatagobaasorchestratormultitenacyopensou... Building 102.2s
+ ⠙ Image cascatagobaasorchestratormultitenacy... Building 104.0s
+ ⠙ Image cascatagobaasorchestratormultitenacy... Building 104.0s
 Dockerfile.backend:20
 
 --------------------
