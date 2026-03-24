@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import Login from '../pages/Login';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Shield } from 'lucide-react';
 import { VARIANTS } from '../lib/motion';
 

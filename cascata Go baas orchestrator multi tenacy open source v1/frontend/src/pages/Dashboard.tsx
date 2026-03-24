@@ -13,7 +13,7 @@ interface DashboardProps {
   onEnvChange: (env: 'live' | 'draft') => void;
 }
 
-export default function Dashboard({ currentEnv, onEnvChange }: DashboardProps) {
+export default function Dashboard({ currentEnv }: DashboardProps) {
   const { t } = useTranslation();
 
   return (

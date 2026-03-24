@@ -213,7 +213,7 @@ function LayoutOrchestrator() {
 }
 
 // NavItem Component
-function NavItem({ icon, label, route, active, expanded, onClick }: any) {
+function NavItem({ icon, label, active, expanded, onClick }: any) {
   const iconSize = expanded ? 18 : 20;
   const TheIcon = React.cloneElement(icon as React.ReactElement, { size: iconSize });
 

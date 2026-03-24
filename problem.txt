@@ -1,68 +1,36 @@
-[+] up 9/9
- ✔ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Built                       118.5s
- ✔ Network cascatagobaasorchestratormultitenacyopensourcev1_cascata-net        Created                     0.1s
- ✔ Volume cascata_extension_payloads                                           Created                     0.0s
- ✔ Volume cascatagobaasorchestratormultitenacyopensourcev1_cascata-vault-data  Created                     0.0s
- ✔ Volume cascatagobaasorchestratormultitenacyopensourcev1_cascata-db-data     Created                     0.0s
- ✔ Container cascata-cache                                                     Started                     0.8s
- ✔ Container cascata-vault                                                     Started                     0.7s
- ✔ Container cascata-db                                                        Healthy                     11.3s
- ✔ Container cascata-orchestrator                                              Started                     11.5s
-✓ Containers Base enviados à rede.
+ => CANCELED [cascata-orchestrator builder 8/9] RUN CGO_ENABLED  34.1s 
+ => [cascata-studio builder 5/6] COPY frontend/ ./                0.3s 
+ => ERROR [cascata-studio builder 6/6] RUN npm run build         11.2s 
+------                                                                 
+ > [cascata-studio builder 6/6] RUN npm run build:
+0.638 
+0.638 > cascata-frontend-v1@1.0.0 build
+0.638 > tsc && vite build
+0.638 
+11.06 src/App.tsx(216,33): error TS6133: 'route' is declared but its value is never read.
+11.06 src/components/AuthGuard.tsx(4,18): error TS6133: 'AnimatePresence' is declared but its value is never read.
+11.06 src/pages/Dashboard.tsx(16,49): error TS6133: 'onEnvChange' is declared but its value is never read.
+------
+[+] up 0/2
+ ⠙ Image cascatagobaasorchestratormultitenacyopensour... Building 54.0s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensour... Building 54.0s
+Dockerfile.frontend:7
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Vault Operator: Inicialização Avançada e Unseal
-ℹ Aguardando Protocolo Ping Vault API...
-ℹ Vault Previamente Inicializado.
+--------------------
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Recarregando Conexão e Monitorando Healthchecks
-⚠ Timeout secundário disparado visualmente.
-✓ 
-Ecossistema consolidado completamente.
+   5 |     RUN npm install
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ Injeção de Identidade: Worner Provisioning (Secure Go-Calculated)
-ℹ Calculando Bcrypt Custo 12 e persistindo via Cascata-Engine...
-✓ Membro Worner (eac55441-7570-4a9c-a0be-95dd9d9c2b51) injetado via Engine.
+   6 |     COPY frontend/ ./
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▸ CASCATA STUDIO v1 INSTALADO
-  ✦ Cascata Frontend:     http://172.26.7.197:3000
-  ✦ Cascata Backend:      http://172.26.7.197:8080
+   7 | >>> RUN npm run build
 
---- Chaves de Acesso e Setup ---
-  Worner E-mail: gg@gg.com
-  OTP / MFA: Desativado
+   8 |     
 
-  DB_ADMIN: cascata_admin
-  JWT_MASTER: OahtzIxHlIiqf3pHR248...8idaE
-  VAULT_APP_TOKEN: PENDING_INIT_FR...
+   9 |     # Stágio 2 - Servindo (Nginx 1.25)
 
-✓ Deploy Inviolável. Mantenha os endereços e segredos longe do escrutínio público.
+--------------------
 
-ubuntu@ip-172-26-7-197:~$ docker ps
-permission denied while trying to connect to the docker API at unix:///var/run/docker.sock
-ubuntu@ip-172-26-7-197:~$ cd cascata Go baas orchestrator multi tenacy open source v1
--bash: cd: too many arguments
-ubuntu@ip-172-26-7-197:~$ cd "/home/ubuntu/cascata_root/cascata Go baas orchestrator multi tenacy open source v1" 
--bash: cd: /home/ubuntu/cascata_root/cascata Go baas orchestrator multi tenacy open source v1: No such file or directory
-ubuntu@ip-172-26-7-197:~$ cd ~/cascata_root/cascata\ Go\ baas\ orchestrator\ multi\ tenacy\ open\ source\ v1
--bash: cd: /home/ubuntu/cascata_root/cascata Go baas orchestrator multi tenacy open source v1: No such file or directory
-ubuntu@ip-172-26-7-197:~$ cd /home/ubuntu/cascata_root/cascata\ Go\ baas\ orchestrator\ multi\ tenacy\ open\ source\ v1
--bash: cd: /home/ubuntu/cascata_root/cascata Go baas orchestrator multi tenacy open source v1: No such file or directory
+target cascata-studio: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
 
-
-ubuntu@ip-172-26-7-197:~$ sudo usermod -aG docker ubuntu
-newgrp docker
-docker ps
-
-
-ubuntu@ip-172-26-7-197:~$ docker ps
-CONTAINER ID   IMAGE                                                                   COMMAND                  CREATED          STATUS                      PORTS                                                   NAMES
-52805d85a49f   cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator   "./cascata-orchestra…"   24 minutes ago   Up 24 minutes               0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp             cascata-orchestrator
-381194293bc8   postgres:18-alpine                                                      "docker-entrypoint.s…"   24 minutes ago   Up 24 minutes (healthy)     0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp             cascata-db
-074cbcc2abd6   docker.dragonflydb.io/dragonflydb/dragonfly                             "/usr/bin/tini -- en…"   24 minutes ago   Up 24 minutes (healthy)     0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp             cascata-cache
-6b105f6ad0f2   hashicorp/vault:1.15                                                    "docker-entrypoint.s…"   24 minutes ago   Up 24 minutes (unhealthy)   8200/tcp, 0.0.0.0:8207->8207/tcp, [::]:8207->8207/tcp   cascata-vault
 ubuntu@ip-172-26-7-197:~$ 
 
