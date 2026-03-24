@@ -1,13 +1,13 @@
- => [cascata-orchestrator builder 7/9] RUN go mod downloa  1.0s
- => ERROR [cascata-orchestrator builder 8/9] RUN CGO_ENA  92.1s
+ => [cascata-orchestrator builder 7/9] RUN go mod downloa  1.1s
+ => ERROR [cascata-orchestrator builder 8/9] RUN CGO_ENA  93.2s
 ------
  > [cascata-orchestrator builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:
-57.27 # cascata/internal/repository
-57.27 internal/repository/resident_repository.go:7:2: "cascata/internal/database" imported and not used
+78.09 # cascata/internal/auth
+78.09 internal/auth/external_auth.go:72:47: cannot use pool (variable of type *database.Repository) as pgx.Tx value in argument to s.resRepo.FindByIdentifier: *database.Repository does not implement pgx.Tx (missing method Begin)
 ------
 [+] up 0/2
- ⠙ Image cascatagobaasorchestratormultitenacy... Building 104.0s
- ⠙ Image cascatagobaasorchestratormultitenacy... Building 104.0s
+ ⠙ Image cascatagobaasorchestratormultitenacy... Building 105.7s
+ ⠙ Image cascatagobaasorchestratormultitenacy... Building 105.7s
 Dockerfile.backend:20
 
 --------------------

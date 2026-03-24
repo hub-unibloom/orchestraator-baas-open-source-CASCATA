@@ -192,6 +192,17 @@ func (s *ResidentAuthService) issueResidentToken(ctx context.Context, projectSlu
 		claims["mfa_verified_at"] = time.Now().Unix()
 	}
 
+	// Dynamic Audit: Update last login within tenant schema context
+	pool, err := s.projectSvc.GetPool(ctx, p)
+	if err == nil {
+		go func() {
+			c := database.UserClaims{Role: "service_role"}
+			_ = pool.WithRLS(context.Background(), c, projectSlug, false, func(tx pgx.Tx) error {
+				return s.resRepo.UpdateLastLogin(context.Background(), tx, r.ID)
+			})
+		}()
+	}
+
 	signedToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return signedToken.SignedString([]byte(p.JWTSecret))
 }

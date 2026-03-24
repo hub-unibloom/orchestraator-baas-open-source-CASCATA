@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/repository"
 	"cascata/internal/service"
+	"github.com/jackc/pgx/v5"
 )
 
 // ExternalAuthService manages OAuth2/OIDC interactions with third-party providers (Phase 16).
@@ -69,7 +71,14 @@ func (s *ExternalAuthService) Callback(ctx context.Context, slug, provider, code
 
 	// 5. Linked Identity Logic (Upsert Identity Pattern)
 	// If the resident email exists, we link the new provider. If not, create a new resident.
-	r, _, err := s.resRepo.FindByIdentifier(ctx, pool, profile.Email)
+	var r *domain.Resident
+	claims := database.UserClaims{Role: "anon"}
+	err = pool.WithRLS(ctx, claims, slug, false, func(tx pgx.Tx) error {
+		var findErr error
+		r, _, findErr = s.resRepo.FindByIdentifier(ctx, tx, profile.Email)
+		return findErr
+	})
+
 	if err != nil {
 		// Create new resident user from external profile
 		r = &domain.Resident{
