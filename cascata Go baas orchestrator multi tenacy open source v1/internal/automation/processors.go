@@ -51,10 +51,20 @@ func (e *WorkflowEngine) ProcessNode(ctx context.Context, execCtx *ExecutionCont
 		pool, err := execCtx.PoolManager.GetPool(ctx, execCtx.ProjectSlug, execCtx.DBName, execCtx.MaxConns)
 		if err != nil { return nil, err }
 		
-		rows, err := pool.Pool.Query(ctx, sql)
+		claims := database.UserClaims{
+			Sub:   "automation_query",
+			Email: "automation@cascata.system",
+			Role:  "service_role",
+		}
+
+		err = pool.WithRLS(ctx, claims, execCtx.ProjectSlug, false, func(tx pgx.Tx) error {
+			rows, err := tx.Query(ctx, sql)
+			if err != nil { return err }
+			defer rows.Close()
+			return nil
+		})
+
 		if err != nil { return nil, err }
-		defer rows.Close()
-		
 		return map[string]string{"status": "executed (synced pool)"}, nil
 
 	case "PUSH_NOTIFICATION":

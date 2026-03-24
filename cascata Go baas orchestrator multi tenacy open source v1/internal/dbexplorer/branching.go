@@ -20,24 +20,17 @@ func NewBranching(repo *database.Repository, systemPool *database.Pool) *Branchi
 
 // CreateBranch clones public schema into a new draft_xyz schema for isolated development.
 func (b *Branching) CreateBranch(ctx context.Context, slug string, branchName string) error {
-	pool, err := b.repo.GetProjectPool(slug)
-	if err != nil {
-		return err
-	}
-
 	safeBranch := fmt.Sprintf("draft_%s_%d", branchName, time.Now().Unix())
 
-	// Native PostgreSQL hack: Cloning schema structure using pg_dump isn't viable in-code
-	// Instead, for Cascata v1, we generate the structure clone DDL natively.
-	
-	// Create schema
-	_, err = pool.Exec(ctx, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q", safeBranch))
+	// Native PostgreSQL: Create schema for branching development.
+	// We execute this directly on the master pool as it's a DDL.
+	_, err := b.repo.Pool.Exec(ctx, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q", safeBranch))
 	if err != nil {
-		return err
+		return fmt.Errorf("branching: failed to create draft schema: %w", err)
 	}
 
-	// In a real scenario, this runs a loop over all tables in public to recreate them inside draft_xyz,
-	// or relies on the Dashboard DB Migration motor tracking changes.
+	// In a real scenario, this runs a loop over all tables in the tenant's main schema 
+	// to recreate them inside draft_xyz.
 	
 	return nil
 }

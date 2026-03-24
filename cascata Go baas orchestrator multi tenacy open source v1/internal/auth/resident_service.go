@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/repository"
 	"cascata/internal/service"
@@ -14,6 +15,7 @@ import (
 	"cascata/internal/vault"
 	"strings"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 // ResidentAuthService handles the complex authentication lifecycle of project end-users.
@@ -110,6 +112,10 @@ func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug
 func (s *ResidentAuthService) IssueStepUpOTP(ctx context.Context, slug, resID string) error {
 	p, err := s.projectSvc.Resolve(ctx, slug)
 	if err != nil { return err }
+
+	pool, err := s.projectSvc.GetPool(ctx, p)
+	if err != nil { return err }
+
 	var r *domain.Resident
 	claims := database.UserClaims{Role: "anon"}
 	err = pool.WithRLS(ctx, claims, slug, false, func(tx pgx.Tx) error {
@@ -141,6 +147,10 @@ func (s *ResidentAuthService) IssueStepUpOTP(ctx context.Context, slug, resID st
 func (s *ResidentAuthService) VerifyStepUp(ctx context.Context, slug, residentID, code string) (string, error) {
 	p, err := s.projectSvc.Resolve(ctx, slug)
 	if err != nil { return "", err }
+
+	pool, err := s.projectSvc.GetPool(ctx, p)
+	if err != nil { return "", err }
+
 	var r *domain.Resident
 	claims := database.UserClaims{Role: "anon"}
 	err = pool.WithRLS(ctx, claims, slug, false, func(tx pgx.Tx) error {

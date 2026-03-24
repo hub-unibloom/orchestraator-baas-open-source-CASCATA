@@ -38,23 +38,19 @@ func (s *ImpactScanner) ScanTableDeletion(ctx context.Context, slug string, tabl
 		Automations: make([]string, 0),
 	}
 
-	// 1. Scan PostgreSQL pg_depend for Views, Functions, Triggers
-	// This uses a recursive CTE or specific pg_catalog queries in production.
-	pool, err := s.repo.GetProjectPool(slug)
-	if err != nil {
-		return nil, err
-	}
-
-	// Mocking pg_depend query
-	sqlPGDepend := `
-		SELECT objid::regclass::text as dependent_name, classid::regclass::text as type
-		FROM pg_depend 
-		WHERE refobjid = $1::regclass AND deptype = 'n'
-	`
-	// In a real scenario, this resolves OIDs properly.
-	rows, err := pool.Query(ctx, sqlPGDepend, table)
-	if err == nil {
+	// 1. Scan PostgreSQL pg_depend for Views, Functions, Triggers securely
+	claims := database.UserClaims{Role: "service_role"}
+	err := s.repo.WithRLS(ctx, claims, slug, false, func(tx pgx.Tx) error {
+		// pg_depend query
+		sqlPGDepend := `
+			SELECT objid::regclass::text as dependent_name, classid::regclass::text as type
+			FROM pg_depend 
+			WHERE refobjid = $1::regclass AND deptype = 'n'
+		`
+		rows, err := tx.Query(ctx, sqlPGDepend, table)
+		if err != nil { return err }
 		defer rows.Close()
+		
 		for rows.Next() {
 			var name, depType string
 			if err := rows.Scan(&name, &depType); err == nil {
@@ -65,7 +61,9 @@ func (s *ImpactScanner) ScanTableDeletion(ctx context.Context, slug string, tabl
 				}
 			}
 		}
-	}
+		return nil
+	})
+	if err != nil { slog.Warn("impact_scanner: pg_depend scan error", "slug", slug, "error", err) }
 
 	// 2. Scan Cascata Automations (Metadata DB)
 	// We search for nodes that reference the table slug

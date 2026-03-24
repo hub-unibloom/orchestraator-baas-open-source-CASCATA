@@ -178,7 +178,23 @@ net.ipv4.tcp_keepalive_time=60
 EOF
     
     sysctl -p "$SYSCTL_CONF" >/dev/null 2>&1 || true
-    log_success "Parâmetros Kernel gravados e persistidos."
+    
+    # --- Dynamic Postgres Tuning Resolution ---
+    local TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    local TOTAL_RAM_MB=$((TOTAL_RAM_KB / 1024))
+    
+    # Strategy: shared_buffers = 25% of RAM, max 1GB for density safety.
+    export PG_SHARED_BUFFERS="$((TOTAL_RAM_MB / 4))MB"
+    if [[ $((TOTAL_RAM_MB / 4)) -gt 1024 ]]; then PG_SHARED_BUFFERS="1024MB"; fi
+    
+    # Strategy: effective_cache_size = 50% of RAM
+    export PG_EFFECTIVE_CACHE="$((TOTAL_RAM_MB / 2))MB"
+    
+    # Strategy: work_mem = safer small value per connection to avoid OOM in high concurrency
+    export PG_WORK_MEM="4MB"
+    if [[ $TOTAL_RAM_MB -lt 2048 ]]; then PG_WORK_MEM="2MB"; fi
+
+    log_success "Parâmetros Kernel gravados e tuning de RAM calculado ($TOTAL_RAM_MB MB)."
 }
 
 secure_bootstrap() {
@@ -203,6 +219,11 @@ DB_USER=${DB_USER}
 DB_PASS=${DB_PASS}
 DB_NAME=cascata_meta
 DB_PORT=5432
+
+# Performance / Auto-Tuning (Computed by Installer)
+PG_SHARED_BUFFERS=${PG_SHARED_BUFFERS}
+PG_EFFECTIVE_CACHE=${PG_EFFECTIVE_CACHE}
+PG_WORK_MEM=${PG_WORK_MEM}
 
 # Dragonfly DB Engine
 DRAGONFLY_PORT=6379
