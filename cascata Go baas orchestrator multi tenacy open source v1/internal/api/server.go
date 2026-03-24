@@ -165,6 +165,7 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	// Determine the listener: TCP for container mesh, Unix for local speed-ups
 	var ln net.Listener
 	var err error
+	var socketPath string
 
 	// Se estivermos em produção ou container, preferimos TCP para o Gateway Nginx encontrar o serviço
 	if s.Cfg.Environment == "production" {
@@ -172,9 +173,10 @@ func (s *Server) Start(ctx context.Context, id int) error {
 		if err != nil {
 			return fmt.Errorf("api.Start (TCP): listen: %w", err)
 		}
-		slog.Info("listening on port (TCP)", "port", s.Cfg.Port)
+		slog.Info("OPERATING IN PRODUCTION MESH", "port", s.Cfg.Port, "protocol", "TCP")
 	} else {
-		socketPath := fmt.Sprintf("%s/worker_%d.sock", s.Cfg.SocketDir, id)
+		slog.Info("OPERATING IN LOCAL/DEV MESH", "dir", s.Cfg.SocketDir)
+		socketPath = fmt.Sprintf("%s/worker_%d.sock", s.Cfg.SocketDir, id)
 		if _, err := os.Stat(s.Cfg.SocketDir); os.IsNotExist(err) {
 			_ = os.MkdirAll(s.Cfg.SocketDir, 0755)
 		}
@@ -213,7 +215,7 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if ln.Addr().Network() == "unix" {
+	if ln.Addr().Network() == "unix" && socketPath != "" {
 		defer os.Remove(socketPath)
 	}
 
