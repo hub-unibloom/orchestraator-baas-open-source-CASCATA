@@ -1,58 +1,29 @@
- => [cascata-studio builder 5/6] COPY frontend/ ./                                                        0.2s
- => ERROR [cascata-studio builder 6/6] RUN npm run build                                                 10.6s
- => [cascata-orchestrator builder  3/10] WORKDIR /app                                                     0.0s
- => CANCELED [cascata-orchestrator builder  4/10] RUN go install github.com/a-h/templ/cmd/templ@latest    6.6s
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/ma  1.2s 
 ------                                                                                                         
- > [cascata-studio builder 6/6] RUN npm run build:                                                             
-0.751                                                                                                          
-0.751 > cascata-frontend-v1@1.0.0 build                                                                        
-0.751 > tsc && vite build                                                                                      
-0.751                                                                                                          
-10.39 src/App.tsx(1,8): error TS6133: 'React' is declared but its value is never read.                         
-10.40 src/App.tsx(1,27): error TS6133: 'useEffect' is declared but its value is never read.                    
-10.40 src/App.tsx(5,21): error TS6133: 'Zap' is declared but its value is never read.                          
-10.40 src/App.tsx(5,34): error TS6133: 'HardDrive' is declared but its value is never read.                    
-10.40 src/App.tsx(5,45): error TS6133: 'Smartphone' is declared but its value is never read.
-10.40 src/App.tsx(6,3): error TS6133: 'Settings' is declared but its value is never read.
-10.40 src/App.tsx(6,27): error TS6133: 'Rocket' is declared but its value is never read.
-10.40 src/App.tsx(6,35): error TS6133: 'Terminal' is declared but its value is never read.
-10.40 src/App.tsx(6,45): error TS6133: 'Search' is declared but its value is never read.
-10.41 src/App.tsx(6,53): error TS6133: 'Bell' is declared but its value is never read.
-10.41 src/App.tsx(12,18): error TS6133: 'VARIANTS' is declared but its value is never read.
-10.41 src/App.tsx(56,9): error TS6133: 't' is declared but its value is never read.
-10.41 src/App.tsx(111,43): error TS6133: 'to' is declared but its value is never read.
-10.41 src/components/ProjectCard.tsx(4,35): error TS6133: 'Globe' is declared but its value is never read.
-10.41 src/components/ProjectCard.tsx(24,9): error TS6133: 't' is declared but its value is never read.
-10.41 src/components/modals/TenantOnboardingModal.tsx(6,11): error TS6196: 'Quotas' is declared but never used.
-10.41 src/components/shared/NavigationModal.tsx(4,35): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
-10.41 src/i18n.ts(3,25): error TS2307: Cannot find module 'i18next-http-backend' or its corresponding type declarations.
-10.41 src/i18n.ts(4,30): error TS2307: Cannot find module 'i18next-browser-languagedetector' or its corresponding type declarations.
-10.41 src/pages/Dashboard.tsx(4,22): error TS6133: 'List' is declared but its value is never read.
-10.41 src/pages/Dashboard.tsx(4,42): error TS6133: 'Filter' is declared but its value is never read.
-10.41 src/pages/Dashboard.tsx(4,62): error TS6133: 'Bell' is declared but its value is never read.
-10.41 src/pages/Dashboard.tsx(13,9): error TS6133: 't' is declared but its value is never read.
-10.41 src/pages/ProjectDashboard.tsx(6,14): error TS6133: 'Zap' is declared but its value is never read.
-10.41 src/pages/ProjectDashboard.tsx(95,9): error TS2322: Type '{ icon: LucideIcon; label: string; id: string; }[]' is not assignable to type 'NavItem[]'.
-10.41   Property 'path' is missing in type '{ icon: LucideIcon; label: string; id: string; }' but required in type 'NavItem'.
+ > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:        
+1.079 package command-line-arguments                                                                           
+1.079   imports cascata/internal/api from main.go                                                              
+1.079 	imports cascata/internal/ui/pages from ui_handler.go
+1.079 	imports cascata/internal/api from project_dashboard_templ.go: import cycle not allowed
 ------
-[+] up 0/2
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-studio       Building                   11.7s
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                   11.7s
-Dockerfile.frontend:7
+[+] up 0/1
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                   65.5s
+Dockerfile.backend:23
 
 --------------------
 
-   5 |     RUN npm install
+  21 |     
 
-   6 |     COPY frontend/ ./
+  22 |     # Fazer o build do orchestrator e do provisionador CLI
 
-   7 | >>> RUN npm run build
+  23 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
 
-   8 |     
+  24 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
 
-   9 |     # Stágio 2 - Servindo (Nginx 1.25)
+  25 |     
 
 --------------------
 
-target cascata-studio: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
+failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
 
+ubuntu@ip-172-26-7-197:~$ 
