@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -98,8 +99,14 @@ func (r *Repository) WithRLS(ctx context.Context, claims UserClaims, projectSlug
 
 func isTransientError(err error) bool {
 	var pgErr *pgconn.PgError
-	// Phase 22: list of retryable Postgres/PgBouncer error codes
-	// 57P01: admin_shutdown, 57P03: cannot_connect_now, 08000: connection_exception
+	if errors.As(err, &pgErr) {
+		// 57P01: admin_shutdown, 57P03: cannot_connect_now, 08000: connection_exception
+		switch pgErr.Code {
+		case "57P01", "57P03", "08000":
+			return true
+		}
+	}
+
 	if fmt.Sprintf("%v", err) == "conn closed" { return true }
 	if err != nil && (fmt.Sprintf("%v", err) == "driver: bad connection") { return true }
 	

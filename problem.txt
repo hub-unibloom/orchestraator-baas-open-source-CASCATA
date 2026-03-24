@@ -1,22 +1,15 @@
- => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             78.7s 
+ => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             77.9s 
 ------                                                                                                                                                                                        
  > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                                                         
-10.10 # cascata/internal/domain                                                                                                                                                               
-10.10 internal/domain/member.go:9:2: RoleWorner redeclared in this block                                                                                                                      
-10.10   internal/domain/identity.go:22:2: other declaration of RoleWorner                                                                                                                     
-10.10 internal/domain/member.go:10:2: RoleManager redeclared in this block                                                                                                                    
-10.10 	internal/domain/identity.go:23:2: other declaration of RoleManager
-10.10 internal/domain/member.go:11:2: RoleDeveloper redeclared in this block
-10.10 	internal/domain/identity.go:24:2: other declaration of RoleDeveloper
-10.10 internal/domain/member.go:12:2: RoleAnalyst redeclared in this block
-10.10 	internal/domain/identity.go:25:2: other declaration of RoleAnalyst
-56.32 # cascata/internal/vault
-56.32 internal/vault/vault.go:33:9: not enough return values
-56.32 	have (*VaultService)
-56.32 	want (*VaultService, error)
+55.43 # cascata/internal/privacy                                                                                                                                                              
+55.43 internal/privacy/engine.go:61:59: undefined: VaultFormatPrefix                                                                                                                          
+55.43 internal/privacy/engine.go:135:58: undefined: VaultFormatPrefix                                                                                                                         
+55.43 internal/privacy/engine.go:144:17: undefined: VaultFormatPrefix                                                                                                                         
+55.75 # cascata/internal/database
+55.75 internal/database/database.go:100:6: declared and not used: pgErr
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  90.4s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  91.3s
 Dockerfile.backend:20
 
 --------------------
@@ -34,4 +27,6 @@ Dockerfile.backend:20
 --------------------
 
 failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
+
+ubuntu@ip-172-26-7-197:~$ 
 

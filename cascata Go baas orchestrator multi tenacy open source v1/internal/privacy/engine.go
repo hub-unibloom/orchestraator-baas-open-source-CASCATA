@@ -141,7 +141,7 @@ func (e *Engine) SanitizeWrite(ctx context.Context, authCtx *domain.AuthContext,
 				if err != nil {
 					return nil, fmt.Errorf("privacy: failed to encrypt sensitive column %s: %w", col, err)
 				}
-				data[col] = VaultFormatPrefix + enc
+				data[col] = enc
 			}
 		}
 	}

@@ -27,12 +27,7 @@ func (s *TransitService) Encrypt(ctx context.Context, keyName string, data strin
 		return "", fmt.Errorf("vault.TransitEncrypt [%s]: %w", keyName, err)
 	}
 
-	ciphertext, ok := resp.Data["ciphertext"].(string)
-	if !ok {
-		return "", fmt.Errorf("vault.TransitEncrypt: ciphertext not found in response")
-	}
-
-	return ciphertext, nil
+	return resp.Data.Ciphertext, nil
 }
 
 // Decrypt wraps the Vault Transit 'decrypt' operation.
@@ -44,12 +39,7 @@ func (s *TransitService) Decrypt(ctx context.Context, keyName string, ciphertext
 		return "", fmt.Errorf("vault.TransitDecrypt [%s]: %w", keyName, err)
 	}
 
-	plaintextB64, ok := resp.Data["plaintext"].(string)
-	if !ok {
-		return "", fmt.Errorf("vault.TransitDecrypt: plaintext not found in response")
-	}
-
-	decoded, err := base64.StdEncoding.DecodeString(plaintextB64)
+	decoded, err := base64.StdEncoding.DecodeString(resp.Data.Plaintext)
 	if err != nil {
 		return "", fmt.Errorf("vault.TransitDecrypt.Decode [%s]: %w", keyName, err)
 	}
