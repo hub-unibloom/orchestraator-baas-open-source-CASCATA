@@ -57,7 +57,7 @@ print_banner() {
    ╚═════╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝
 ${C_RESET}${C_DIM}                              v1.0.0.0 | Orchestrator Studio${C_RESET}"
     echo -e "${C_DIM}---------------------------------------------------------------${C_RESET}\n"
-    log_info "Inicializando Orquestração Zero-Trust..."
+    log_info "Inicializando Orquestração Zero-Trust | Soberania Cascata v1..."
 }
 
 check_privileges() {
@@ -105,11 +105,12 @@ collect_language_preference() {
         return
     fi
 
-    echo -e "  ${C_DIM}Selecione o idioma principal do Cascata Studio:${C_RESET}\n"
+    echo -e "  ${C_DIM}Selecione o idioma principal do Cascata Orchestrator:${C_RESET}\n"
     
-    local langs=($(ls -d "$LANG_DIR"/*/ | xargs -n 1 basename))
+    local langs=($(ls "$LANG_DIR"/*.json | xargs -n 1 basename | sed 's/\.json$//'))
     if [[ ${#langs[@]} -eq 0 ]]; then
-        DEFAULT_LANG="en_US"
+        DEFAULT_LANG="en-US"
+        log_warn "Nenhum arquivo de tradução encontrado. Fallback en-US ativo."
         return
     fi
 
@@ -127,15 +128,8 @@ collect_language_preference() {
         fi
     done
 
-    # Cleanup: Delete other languages to keep the environment lean (as requested)
-    log_info "Otimizando pacotes de idiomas: Mantendo apenas '$DEFAULT_LANG'..."
-    for l in "${langs[@]}"; do
-        if [ "$l" != "$DEFAULT_LANG" ]; then
-            rm -rf "${LANG_DIR}/${l}"
-        fi
-    done
-    
-    log_success "Idioma '$DEFAULT_LANG' definido como oficial do Studio."
+    # Cleanup: Mantemos os arquivos JSON, apenas definimos o padrão no .env
+    log_success "Idioma '$DEFAULT_LANG' definido como oficial do Orquestrador."
 }
 
 # --- 3. REPOSITORY SYNC ---
@@ -509,14 +503,14 @@ show_final() {
     local EXTERNAL_IP
     EXTERNAL_IP=$(curl -s -m 5 https://checkip.amazonaws.com || curl -s -m 5 https://ifconfig.me || echo "localhost")
     
-    log_step "CASCATA STUDIO v1 INSTALADO"
+    log_step "CASCATA SOVEREIGN ORCHESTRATOR v1 INSTALADO"
     
     # Exibições de Tokens padrão como solicitado. Apenas os de utilização.
     local JWT_EXT=$(grep '^SYSTEM_JWT_SECRET=' .env | cut -d '=' -f2)
     local APP_EXT=$(grep '^VAULT_TOKEN=' .env | cut -d '=' -f2)
 
-    echo -e "  ✦ ${C_BOLD}Cascata Studio (Dashboard):${C_RESET}  http://${EXTERNAL_IP}"
-    echo -e "  ✦ ${C_BOLD}Cascata Backend (V1 API):${C_RESET}    http://${EXTERNAL_IP}/v1/\n"
+    echo -e "  ✦ ${C_BOLD}Cascata Dashboard (Sovereign):${C_RESET}  http://${EXTERNAL_IP}"
+    echo -e "  ✦ ${C_BOLD}Cascata Private API (V1):${C_RESET}       http://${EXTERNAL_IP}/v1/\n"
     
     echo -e "${C_DIM}--- Chaves de Acesso e Setup ---${C_RESET}"
     echo -e "  ${C_BOLD}Worner E-mail:${C_RESET} ${WORNER_EMAIL}"
