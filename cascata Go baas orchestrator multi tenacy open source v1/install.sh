@@ -433,11 +433,9 @@ provision_worner_execution() {
 
 # --- 8. COMPLETION ---
 show_final() {
+    # Detecção de IP Real (Public Cloud Awareness)
     local EXTERNAL_IP
-    EXTERNAL_IP=$(ip route get 1 2>/dev/null | awk '{print $7; exit}' || echo "localhost")
-    if [[ -z "$EXTERNAL_IP" ]]; then
-        EXTERNAL_IP=$(curl -s -m 5 ifconfig.me || echo "127.0.0.1")
-    fi
+    EXTERNAL_IP=$(curl -s -m 5 https://checkip.amazonaws.com || curl -s -m 5 https://ifconfig.me || echo "localhost")
     
     log_step "CASCATA STUDIO v1 INSTALADO"
     
@@ -456,7 +454,13 @@ show_final() {
     echo -e "  ${C_BOLD}JWT_MASTER:${C_RESET} ${JWT_EXT:0:20}...${JWT_EXT: -5}"
     echo -e "  ${C_BOLD}VAULT_APP_TOKEN:${C_RESET} ${APP_EXT:0:15}...\n"
     
-    log_success "Deploy Inviolável. Mantenha os endereços e segredos longe do escrutínio público.\n"
+    log_success "Deploy Inviolável. Mantenha os endereços e segredos longe do escrutínio público."
+    
+    # Dica de Operação Manual (Permissões Docker)
+    if ! groups $USER | grep &>/dev/null "\bdocker\b"; then
+        log_warn "DICA: Para rodar comandos docker manuais sem sudo, execute:"
+        echo -e "  ${C_CYAN}sudo usermod -aG docker \$USER && newgrp docker${C_RESET}\n"
+    fi
 }
 
 # --- EXECUTION FLOW ---

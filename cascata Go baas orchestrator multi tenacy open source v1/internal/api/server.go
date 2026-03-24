@@ -162,26 +162,34 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	// Use the chi router as the main handler
 	mainHandler := router
 
-	// Determine the listener: Unix Socket or TCP
+	// Determine the listener: TCP for container mesh, Unix for local speed-ups
 	var ln net.Listener
 	var err error
 
-	socketPath := fmt.Sprintf("%s/worker_%d.sock", s.Cfg.SocketDir, id)
-	if _, err := os.Stat(s.Cfg.SocketDir); os.IsNotExist(err) {
-		_ = os.MkdirAll(s.Cfg.SocketDir, 0755)
-	}
-
-	ln, err = net.Listen("unix", socketPath)
-	if err != nil {
-		slog.Warn("falling back to TCP listener", "reason", err.Error())
+	// Se estivermos em produção ou container, preferimos TCP para o Gateway Nginx encontrar o serviço
+	if s.Cfg.Environment == "production" {
 		ln, err = net.Listen("tcp", ":"+s.Cfg.Port)
 		if err != nil {
-			return fmt.Errorf("api.Start: listen: %w", err)
+			return fmt.Errorf("api.Start (TCP): listen: %w", err)
 		}
+		slog.Info("listening on port (TCP)", "port", s.Cfg.Port)
 	} else {
-		// Set permissions for Unix Socket so Nginx can access it
-		_ = os.Chmod(socketPath, 0777)
-		slog.Info("listening on unix socket", "path", socketPath)
+		socketPath := fmt.Sprintf("%s/worker_%d.sock", s.Cfg.SocketDir, id)
+		if _, err := os.Stat(s.Cfg.SocketDir); os.IsNotExist(err) {
+			_ = os.MkdirAll(s.Cfg.SocketDir, 0755)
+		}
+
+		ln, err = net.Listen("unix", socketPath)
+		if err != nil {
+			slog.Warn("falling back to TCP listener", "reason", err.Error())
+			ln, err = net.Listen("tcp", ":"+s.Cfg.Port)
+			if err != nil {
+				return fmt.Errorf("api.Start: listen: %w", err)
+			}
+		} else {
+			_ = os.Chmod(socketPath, 0777)
+			slog.Info("listening on unix socket", "path", socketPath)
+		}
 	}
 
 	s.http = &http.Server{

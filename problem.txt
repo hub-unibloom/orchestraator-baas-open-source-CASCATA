@@ -1,23 +1,68 @@
 [+] up 9/9
- ✔ Image cascatagobaasorchestratormultitenacy... Built   115.9s
- ✔ Network cascatagobaasorchestratormultitena... Created 0.1s
- ✔ Volume cascatagobaasorchestratormultitenac... Created 0.0s
- ✔ Volume cascata_extension_payloads             Created 0.0s
- ✔ Volume cascatagobaasorchestratormultitenac... Created 0.0s
- ✔ Container cascata-db                          Healthy 11.3s
- ✔ Container cascata-cache                       Started 0.8s
- ✔ Container cascata-vault                       Started 0.7s
- ✔ Container cascata-orchestrator                Started 11.4s
+ ✔ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Built                       118.5s
+ ✔ Network cascatagobaasorchestratormultitenacyopensourcev1_cascata-net        Created                     0.1s
+ ✔ Volume cascata_extension_payloads                                           Created                     0.0s
+ ✔ Volume cascatagobaasorchestratormultitenacyopensourcev1_cascata-vault-data  Created                     0.0s
+ ✔ Volume cascatagobaasorchestratormultitenacyopensourcev1_cascata-db-data     Created                     0.0s
+ ✔ Container cascata-cache                                                     Started                     0.8s
+ ✔ Container cascata-vault                                                     Started                     0.7s
+ ✔ Container cascata-db                                                        Healthy                     11.3s
+ ✔ Container cascata-orchestrator                                              Started                     11.5s
 ✓ Containers Base enviados à rede.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ▸ Vault Operator: Inicialização Avançada e Unseal
 ℹ Aguardando Protocolo Ping Vault API...
-⚠ Vault demorando no boot.
-⚠ ATENÇÃO: Operação Single-Node / VPS em Cluster Primário.
-ℹ As diretrizes Keys-Shares & Thresholds são configuradas como = 1 para provisionamento cloud único.
-Get "https://127.0.0.1:8200/v1/sys/seal-status": http: server gave HTTP response to HTTPS client
-ubuntu@ip-172-26-7-197:~$ docker logs cascata-vault
+ℹ Vault Previamente Inicializado.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Recarregando Conexão e Monitorando Healthchecks
+⚠ Timeout secundário disparado visualmente.
+✓ 
+Ecossistema consolidado completamente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Injeção de Identidade: Worner Provisioning (Secure Go-Calculated)
+ℹ Calculando Bcrypt Custo 12 e persistindo via Cascata-Engine...
+✓ Membro Worner (eac55441-7570-4a9c-a0be-95dd9d9c2b51) injetado via Engine.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ CASCATA STUDIO v1 INSTALADO
+  ✦ Cascata Frontend:     http://172.26.7.197:3000
+  ✦ Cascata Backend:      http://172.26.7.197:8080
+
+--- Chaves de Acesso e Setup ---
+  Worner E-mail: gg@gg.com
+  OTP / MFA: Desativado
+
+  DB_ADMIN: cascata_admin
+  JWT_MASTER: OahtzIxHlIiqf3pHR248...8idaE
+  VAULT_APP_TOKEN: PENDING_INIT_FR...
+
+✓ Deploy Inviolável. Mantenha os endereços e segredos longe do escrutínio público.
+
+ubuntu@ip-172-26-7-197:~$ docker ps
 permission denied while trying to connect to the docker API at unix:///var/run/docker.sock
+ubuntu@ip-172-26-7-197:~$ cd cascata Go baas orchestrator multi tenacy open source v1
+-bash: cd: too many arguments
+ubuntu@ip-172-26-7-197:~$ cd "/home/ubuntu/cascata_root/cascata Go baas orchestrator multi tenacy open source v1" 
+-bash: cd: /home/ubuntu/cascata_root/cascata Go baas orchestrator multi tenacy open source v1: No such file or directory
+ubuntu@ip-172-26-7-197:~$ cd ~/cascata_root/cascata\ Go\ baas\ orchestrator\ multi\ tenacy\ open\ source\ v1
+-bash: cd: /home/ubuntu/cascata_root/cascata Go baas orchestrator multi tenacy open source v1: No such file or directory
+ubuntu@ip-172-26-7-197:~$ cd /home/ubuntu/cascata_root/cascata\ Go\ baas\ orchestrator\ multi\ tenacy\ open\ source\ v1
+-bash: cd: /home/ubuntu/cascata_root/cascata Go baas orchestrator multi tenacy open source v1: No such file or directory
+
+
+ubuntu@ip-172-26-7-197:~$ sudo usermod -aG docker ubuntu
+newgrp docker
+docker ps
+
+
+ubuntu@ip-172-26-7-197:~$ docker ps
+CONTAINER ID   IMAGE                                                                   COMMAND                  CREATED          STATUS                      PORTS                                                   NAMES
+52805d85a49f   cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator   "./cascata-orchestra…"   24 minutes ago   Up 24 minutes               0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp             cascata-orchestrator
+381194293bc8   postgres:18-alpine                                                      "docker-entrypoint.s…"   24 minutes ago   Up 24 minutes (healthy)     0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp             cascata-db
+074cbcc2abd6   docker.dragonflydb.io/dragonflydb/dragonfly                             "/usr/bin/tini -- en…"   24 minutes ago   Up 24 minutes (healthy)     0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp             cascata-cache
+6b105f6ad0f2   hashicorp/vault:1.15                                                    "docker-entrypoint.s…"   24 minutes ago   Up 24 minutes (unhealthy)   8200/tcp, 0.0.0.0:8207->8207/tcp, [::]:8207->8207/tcp   cascata-vault
 ubuntu@ip-172-26-7-197:~$ 
 
