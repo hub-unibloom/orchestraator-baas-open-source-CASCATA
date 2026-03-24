@@ -22,16 +22,18 @@ type PhantomService struct {
 	privacy  *privacy.Engine
 	injector *Injector
 	aiEngine *ai.Engine
-	runtime  *WasmRuntime
+	runtime   *WasmRuntime
+	jsRuntime *JSRuntime
 }
 
 func NewPhantomService(ctx context.Context, repo *database.Repository, pEng *privacy.Engine, aiEngine *ai.Engine) *PhantomService {
 	return &PhantomService{
-		repo:     repo,
-		privacy:  pEng,
-		injector: NewInjector(),
-		aiEngine: aiEngine,
-		runtime:  NewWasmRuntime(ctx, aiEngine),
+		repo:      repo,
+		privacy:   pEng,
+		injector:  NewInjector(),
+		aiEngine:  aiEngine,
+		runtime:   NewWasmRuntime(ctx, aiEngine),
+		jsRuntime: NewJSRuntime(aiEngine),
 	}
 }
 
@@ -98,6 +100,25 @@ func (s *PhantomService) InvokeFunction(ctx context.Context, projectSlug, functi
 	if err != nil {
 		span.RecordError(err)
 		return nil, fmt.Errorf("phantom.service: execution failed: %w", err)
+	}
+
+	return result, nil
+}
+
+// InvokeJS executes a specific edge JavaScript script for a tenant.
+// Integrated with OpenTelemetry and Cache Sinergy.
+func (s *PhantomService) InvokeJS(ctx context.Context, projectSlug, source string, params map[string]interface{}) (interface{}, error) {
+	tr := otel.Tracer("phantom-service")
+	ctx, span := tr.Start(ctx, "InvokeJS", trace.WithAttributes(
+		attribute.String("cascata.project", projectSlug),
+	))
+	defer span.End()
+
+	// Phase 12 Execution (Isolated JS Isolate)
+	result, err := s.jsRuntime.Execute(ctx, projectSlug, source, params)
+	if err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("phantom.service.js: execution failed: %w", err)
 	}
 
 	return result, nil

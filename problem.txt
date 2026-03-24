@@ -1,55 +1,24 @@
-log part1 12:45 REAL
-
- => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             79.6s 
+ => [builder 7/9] RUN go mod download                                                                                                                                                    1.4s 
+ => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             81.0s 
 ------                                                                                                                                                                                        
  > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                                                         
-63.57 # cascata/internal/auth                                                                                                                                                                 
-63.57 internal/auth/resident_service.go:9:2: "cascata/internal/database" imported and not used                                                                                                
-63.57 internal/auth/resident_service.go:61:7: declared and not used: hashedPassword                                                                                                           
-63.57 internal/auth/external_auth.go:7:2: "net/http" imported and not used                                                                                                                    
-63.62 # cascata/internal/automation
-63.62 internal/automation/engine.go:7:2: "net/http" imported and not used
-63.62 internal/automation/engine.go:17:2: "cascata/internal/utils" imported and not used
-63.62 internal/automation/engine.go:132:21: proj.MaxConnections undefined (type *domain.Project has no field or method MaxConnections)
-63.62 internal/automation/processors.go:80:13: undefined: ai
+67.06 # cascata/internal/api                                                                                                                                                                  
+67.06 internal/api/data_handler.go:28:15: undefined: ai                                                                                                                                       
+67.06 internal/api/data_handler.go:31:145: undefined: ai                                                                                                                                      
+67.06 internal/api/data_handler.go:39:16: undefined: ai                                                                                                                                       
+67.06 internal/api/data_handler.go:361:2: declared and not used: authCtx
+67.06 internal/api/realtime.go:20:17: undefined: privacy
+67.06 internal/api/realtime.go:25:63: undefined: privacy
+67.06 internal/api/realtime.go:152:8: invalid operation: operator ! not defined on b.ctx.Err() (value of interface type error)
+67.06 internal/api/realtime.go:199:17: undefined: privacy
+67.06 internal/api/auth_handler.go:213:17: undefined: fmt
+67.06 internal/api/middleware.go:72:76: undefined: domain.IdentityCascataMember
+67.06 internal/api/realtime.go:199:17: too many errors
+80.35 # cascata/internal/cron
+80.35 internal/cron/scheduler.go:7:2: "time" imported and not used
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                 120.3s
-failed to execute bake: exit status 1
-ubuntu@ip-172-26-7-197:~$ 
-
-lOG REAL ATUAL
-
----
-
-
-
-
------
-LOG PARTE 2, POSSSIVEL?!
-Isso não ta aconteceno, mas é apenas uma das posssibildaide e futuro caso vc não realize uma correçãoq eu consere o istema como um too em toas ass suas bases poeria ar problema assim:
- => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             80.0s 
-------                                                                                                                                                                                        
- > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                                                         
-64.72 # cascata/internal/webhook                                                                                                                                                              
-64.72 internal/webhook/service.go:8:2: "fmt" imported and not used                                                                                                                            
-64.72 internal/webhook/service.go:10:2: "log/slog" imported and not used                                                                                                                      
-64.72 internal/webhook/service.go:42:27: s.telemetry.GetTracer undefined (type *"cascata/internal/telemetry".TelemetryEngine has no field or method GetTracer)                                
-64.72 internal/webhook/service.go:53:11: undefined: InboundReceiver
-64.72 internal/webhook/service.go:102:4: s.LogRun undefined (type *Service has no field or method LogRun)
-79.72 # cascata/internal/cron
-79.72 internal/cron/scheduler.go:6:2: "fmt" imported and not used
-79.72 internal/cron/scheduler.go:8:2: "time" imported and not used
-79.72 internal/cron/scheduler.go:29:24: undefined: automation.Engine
-79.72 internal/cron/scheduler.go:35:55: undefined: automation.Engine
-79.72 internal/cron/scheduler.go:36:19: undefined: asynq.DragonflyClientOpt
-79.72 internal/cron/scheduler.go:99:26: undefined: automation.Node
-79.72 internal/cron/scheduler.go:112:5: undefined: tzStr
-79.72 internal/cron/scheduler.go:151:27: s.telemetry.GetTracer undefined (type *"cascata/internal/telemetry".TelemetryEngine has no field or method GetTracer)
-79.72 internal/cron/scheduler.go:165:25: undefined: automation.Node
-------
-[+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  93.4s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  94.5s
 Dockerfile.backend:20
 
 --------------------
@@ -69,13 +38,4 @@ Dockerfile.backend:20
 failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
 
 ubuntu@ip-172-26-7-197:~$ 
-
-
-
-
-[repito que ese segundo problema nãoa conteceu, oq ue aconteceu foi aprnas o log part1, eu trouxe apenas esse log part2 para te mosstrar que ediçẽos mal feitas com conehcimentossuperficiais  o sistema alojaram mais problemas:
-
-
-]
-
 

@@ -12,6 +12,7 @@ import (
 	"cascata/internal/communication"
 	"cascata/internal/database"
 	"cascata/internal/domain"
+	"cascata/internal/phantom"
 	"cascata/internal/service"
 )
 
@@ -38,9 +39,10 @@ type WorkflowEngine struct {
 	postman    communication.Dispatcher
 	aiEngine   *ai.Engine
 	realtime   Broadcaster
+	phantomSvc *phantom.PhantomService
 }
 
-func NewWorkflowEngine(repo *database.Repository, projectSvc *service.ProjectService, poolMgr *database.TenantPoolManager, postman communication.Dispatcher, aiEngine *ai.Engine, realtime Broadcaster) *WorkflowEngine {
+func NewWorkflowEngine(repo *database.Repository, projectSvc *service.ProjectService, poolMgr *database.TenantPoolManager, postman communication.Dispatcher, aiEngine *ai.Engine, realtime Broadcaster, phantomSvc *phantom.PhantomService) *WorkflowEngine {
 	return &WorkflowEngine{
 		repo:       repo,
 		projectSvc: projectSvc,
@@ -48,6 +50,7 @@ func NewWorkflowEngine(repo *database.Repository, projectSvc *service.ProjectSer
 		postman:    postman,
 		aiEngine:   aiEngine,
 		realtime:   realtime,
+		phantomSvc: phantomSvc,
 	}
 }
 

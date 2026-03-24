@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"cascata/internal/ai"
 	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/privacy"
@@ -357,8 +358,6 @@ func (h *DataHandler) ServeSeed(w http.ResponseWriter, r *http.Request) {
 	
 	count, _ := strconv.Atoi(countStr)
 	if count > 50 { count = 50 } // Max limit for stability
-
-	authCtx, _ := domain.FromContext(r.Context())
 	
 	// Phase 32: Genesis Lab in action
 	_, _ = h.synthetic.GenerateRecords(r.Context(), slug, table, count)

@@ -119,7 +119,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	cacheMgr := database.NewCacheManager(dfly)
 	postman := communication.NewTrinityPostman(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom)
 
-	residentAuthSvc := auth.NewResidentAuthService(projectService, resRepo, sessionSvc, otpMgr, postman, govSvc, auditService)
+	residentAuthSvc := auth.NewResidentAuthService(projectService, resRepo, sessionSvc, otpMgr, postman, govSvc, auditService, transitSvc)
 	externalAuthSvc := auth.NewExternalAuthService(projectService, resRepo, residentAuthSvc)
 	systemAuth := auth.NewSystemAuthService(memberRepo, auditService)
 	
@@ -128,7 +128,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	migrationService := service.NewMigrationService(cfg, projectService, auditService)
 	
 	realtimeHub := api.NewRealtimeHub(projectService, pEngine)
-	workflowEngine := automation.NewWorkflowEngine(repo, projectService, poolManager, postman, aiEngine, realtimeHub)
+	workflowEngine := automation.NewWorkflowEngine(repo, projectService, poolManager, postman, aiEngine, realtimeHub, phantomSvc)
 	eventQueue := automation.NewEventQueue(dfly)
 	webhookService := webhook.NewService(repo, eventQueue, auditService, otelEngine)
 	
@@ -141,7 +141,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	}()
 
 	// --- 7. Provisioning & Storage (Phase 2 & 8) ---
-	genesisSvc := service.NewGenesisService(repo, projectRepo, tenantRepo, poolManager, vaultSvc, transitService, migrationService)
+	genesisSvc := service.NewGenesisService(repo, projectRepo, tenantRepo, poolManager, vaultSvc, transitSvc, migrationService)
 	indexer := storage.NewIndexer(repo)
 	storageSvc := storage.NewService(cfg.StoragePath, dfly, repo, indexer)
 	

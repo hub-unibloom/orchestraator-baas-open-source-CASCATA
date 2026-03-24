@@ -69,7 +69,7 @@ func (m *MemberAuthMiddleware) EnforceMemberSession(next http.Handler) http.Hand
 		authCtx, err := m.sessionSvc.ValidateSession(r.Context(), token)
 		if err != nil {
 			slog.Warn("member.auth: session validation failed", "error", err)
-			SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, string(domain.IdentityCascataMember), "SESSION_EXPIRED_OR_INVALID")
+			SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, string(domain.IdentityMember), "SESSION_EXPIRED_OR_INVALID")
 			return
 		}
 

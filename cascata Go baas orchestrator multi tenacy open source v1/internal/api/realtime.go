@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cascata/internal/domain"
+	"cascata/internal/privacy"
 	"cascata/internal/service"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -149,7 +150,7 @@ func (h *RealtimeHub) listenLoop(b *tenantBroadcaster, pool *pgxpool.Pool) {
 	for {
 		notification, err := conn.Conn().WaitForNotification(b.ctx)
 		if err != nil {
-			if !b.ctx.Err() != nil {
+			if b.ctx.Err() == nil {
 				slog.Error("realtime: notification wait error", "slug", b.slug, "err", err)
 			}
 			return

@@ -98,10 +98,18 @@ func (e *WorkflowEngine) ProcessNode(ctx context.Context, execCtx *ExecutionCont
 		return map[string]string{"status": "broadcasted"}, err
 
 	case domain.NodeScript:
-		// Edge Logic (Phantom JS - Phase 23 integration)
+		// Edge Logic (Phantom JS/WASM - Phase 12/23 integration)
 		source, _ := props["source"].(string)
-		slog.Debug("automation: edge script script", "source", source)
-		return map[string]string{"status": "script executed (simulated)"}, nil
+		lang, _ := props["language"].(string) // "javascript" or "wasm"
+		
+		if lang == "wasm" {
+			// WASM Binary should be in binary property
+			bin, _ := props["binary"].([]byte)
+			return e.phantomSvc.InvokeFunction(ctx, execCtx.ProjectSlug, node.ID, bin, execCtx.Vars)
+		}
+
+		// Real JS Execution (Modo Padrão - Phase 12)
+		return e.phantomSvc.InvokeJS(ctx, execCtx.ProjectSlug, source, execCtx.Vars)
 
 	default:
 		return nil, fmt.Errorf("unknown node type: %s", node.Type)

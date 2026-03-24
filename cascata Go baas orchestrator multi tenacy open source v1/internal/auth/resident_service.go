@@ -10,8 +10,10 @@ import (
 	"cascata/internal/repository"
 	"cascata/internal/service"
 	"cascata/internal/communication"
+	"cascata/internal/crypto"
+	"cascata/internal/vault"
+	"strings"
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // ResidentAuthService handles the complex authentication lifecycle of project end-users.
@@ -24,9 +26,10 @@ type ResidentAuthService struct {
 	postman    communication.Dispatcher
 	govSvc     *GovernanceService
 	auditSvc   domain.Auditor
+	transit    *vault.TransitService
 }
 
-func NewResidentAuthService(projectSvc *service.ProjectService, resRepo *repository.ResidentRepository, sessionMgr *SessionManager, otpMgr *OTPManager, postman communication.Dispatcher, govSvc *GovernanceService, audit domain.Auditor) *ResidentAuthService {
+func NewResidentAuthService(projectSvc *service.ProjectService, resRepo *repository.ResidentRepository, sessionMgr *SessionManager, otpMgr *OTPManager, postman communication.Dispatcher, govSvc *GovernanceService, audit domain.Auditor, transit *vault.TransitService) *ResidentAuthService {
 	return &ResidentAuthService{
 		projectSvc: projectSvc,
 		resRepo:    resRepo,
@@ -35,6 +38,7 @@ func NewResidentAuthService(projectSvc *service.ProjectService, resRepo *reposit
 		postman:    postman,
 		govSvc:     govSvc,
 		auditSvc:   audit,
+		transit:    transit,
 	}
 }
 
@@ -62,11 +66,20 @@ func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug
 		return nil, "", fmt.Errorf("resident.auth.AuthenticateByCPF: resident lookup failed: %w", err)
 	}
 
-	// 3.5 Verify Password (Sovereignty Shield - Phase 10)
-	// Cascata Philosophy: The Admin (Worner) decides the auth strength.
-	// If a password hash exists, we MUST verify it. If empty, we allow access based on the identifier alone.
+	// 3.5 Verify Password (Sovereignty Shield - Phase 10: Argon2id + Vault Pepper)
 	if hashedPassword != "" {
-		if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+		// Detect if the hash is peppered via Vault Transit (Begins with Vault signature)
+		if strings.HasPrefix(hashedPassword, "vault:") && s.transit != nil {
+			decrypted, err := s.transit.Decrypt(ctx, "cascata-master-key", hashedPassword)
+			if err == nil {
+				hashedPassword = decrypted
+			} else {
+				slog.Error("resident.auth: vault decryption failed", "slug", projectSlug, "err", err)
+			}
+		}
+
+		valid, err := crypto.ComparePassword(password, hashedPassword)
+		if err != nil || !valid {
 			slog.Warn("resident.auth: authentication failed (wrong password)", "slug", projectSlug, "cpf", cpf)
 			return nil, "", fmt.Errorf("resident.auth: invalid credentials")
 		}
@@ -248,14 +261,24 @@ func (s *ResidentAuthService) SignupResident(ctx context.Context, projectSlug st
 		return fmt.Errorf("resident.auth.SignupResident: pool resolution failed: %w", err)
 	}
 
-	// 2. Hash Password (standard cost 12 as per Cascata Rules)
+	// 2. Hash Password (Argon2id + Optional Vault Pepper - Phase 10)
 	var hashedPassword string
 	if rawPassword != "" {
-		hash, err := bcrypt.GenerateFromPassword([]byte(rawPassword), 12)
+		hash, err := crypto.HashPassword(rawPassword)
 		if err != nil {
 			return fmt.Errorf("resident.auth.SignupResident: password hashing failed: %w", err)
 		}
-		hashedPassword = string(hash)
+
+		// Optional: Apply Sovereignty Pepper via Vault Transit
+		// For high-trust projects, we wrap the Argon2id hash in AES-GCM via Vault
+		if val, _ := p.Metadata["vault_pepper"].(bool); val && s.transit != nil {
+			peppered, err := s.transit.Encrypt(ctx, "cascata-master-key", hash)
+			if err == nil {
+				hash = peppered
+			}
+		}
+		
+		hashedPassword = hash
 	}
 
 	// 3. Persist via Repository (Phase 10.2 schema)
