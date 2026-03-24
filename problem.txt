@@ -1,38 +1,77 @@
- => ERROR [cascata-orchestrator builder 8/9] RUN CGO_ENABLED=0   97.9s
- => [cascata-studio stage-1 2/2] COPY --from=builder /app/dist /  0.1s 
- => [cascata-studio] exporting to image                           0.4s 
- => => exporting layers                                           0.2s 
- => => exporting manifest sha256:33072aacdf4371b7ce95aa24149d5be  0.0s 
- => => exporting config sha256:79f922eaba3a5fe0d8694f8afb123074e  0.0s 
- => => exporting attestation manifest sha256:2b3141dd05a7b54491c  0.0s 
- => => exporting manifest list sha256:164638e1e7ba9e26bd4a88489b  0.0s 
- => => naming to docker.io/library/cascatagobaasorchestratormult  0.0s
- => => unpacking to docker.io/library/cascatagobaasorchestratorm  0.1s
- => [cascata-studio] resolving provenance for metadata file       0.1s
-------
- > [cascata-orchestrator builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:
-83.86 # cascata/internal/api
-83.86 internal/api/server.go:217:19: undefined: socketPath
-------
-[+] up 0/2
- ⠙ Image cascatagobaasorchestratormultitenacyopensou... Building 115.6s
- ⠙ Image cascatagobaasorchestratormultitenacyopensou... Building 115.6s
-Dockerfile.backend:20
+Request URL
+http://100.54.11.109/system/auth/login
+Request Method
+POST
+Status Code
+404 Not Found
 
---------------------
 
-  18 |     
+  <html>
+<head><title>404 Not Found</title></head>
+<body>
+<center><h1>404 Not Found</h1></center>
+<hr><center>nginx/1.25.5</center>
+</body>
+</html>
 
-  19 |     # Fazer o build do orchestrator e do provisionador CLI
 
-  20 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
 
-  21 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
+Logs terminal e ddeploys:
+[+] up 12/12
+ ✔ Image cascatagobaasorchestratormultitenacyopensour... Built   122.2s
+ ✔ Image cascatagobaasorchestratormultitenacyopensour... Built   122.2s
+ ✔ Network cascatagobaasorchestratormultitenacyopenso... Created 0.1s
+ ✔ Volume cascatagobaasorchestratormultitenacyopensou... Created 0.0s
+ ✔ Volume cascata_extension_payloads                     Created 0.0s
+ ✔ Volume cascatagobaasorchestratormultitenacyopensou... Created 0.0s
+ ✔ Container cascata-studio                              Started 1.3s
+ ✔ Container cascata-vault                               Started 1.3s
+ ✔ Container cascata-db                                  Healthy 11.8s
+ ✔ Container cascata-cache                               Started 1.2s
+ ✔ Container cascata-orchestrator                        Started 11.6s
+ ✔ Container cascata-gateway                             Started 11.9s
+✓ Containers Base enviados à rede.
 
-  22 |     
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Vault Operator: Inicialização Avançada e Unseal
+ℹ Aguardando Protocolo Ping Vault API...
+ℹ Vault Previamente Inicializado.
 
---------------------
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Recarregando Conexão e Monitorando Healthchecks
+⚠ Timeout secundário disparado visualmente.
+✓ 
+Ecossistema consolidado completamente.
 
-target cascata-orchestrator: failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Injeção de Identidade: Worner Provisioning (Secure Go-Calculated)
+ℹ Calculando Bcrypt Custo 12 e persistindo via Cascata-Engine...
+✓ Membro Worner (3d935936-f29c-4240-8738-87b4d1691775) injetado via Engine.
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ CASCATA STUDIO v1 INSTALADO
+  ✦ Cascata Frontend:     http://100.54.11.109:3000
+  ✦ Cascata Backend:      http://100.54.11.109:8080
+
+--- Chaves de Acesso e Setup ---
+  Worner E-mail: thalesjed@g.com
+  OTP / MFA: Desativado
+
+  DB_ADMIN: cascata_admin
+  JWT_MASTER: Tjp7wuhXLLwEixOZN3Y5...5pbqw
+  VAULT_APP_TOKEN: PENDING_INIT_FR...
+
+✓ Deploy Inviolável. Mantenha os endereços e segredos longe do escrutínio público.
+⚠ DICA: Para rodar comandos docker manuais sem sudo, execute:
+  sudo usermod -aG docker $USER && newgrp docker
+
+ubuntu@ip-172-26-7-197:~$ docker ps
+CONTAINER ID   IMAGE                                                                   COMMAND                  CREATED         STATUS                     PORTS                                                   NAMES
+2fa76609a9ea   nginx:1.25-alpine                                                       "/docker-entrypoint.…"   6 minutes ago   Up 6 minutes               0.0.0.0:80->80/tcp, [::]:80->80/tcp                     cascata-gateway
+3934620f1f5f   cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator   "./cascata-orchestra…"   6 minutes ago   Up 6 minutes               8080/tcp                                                cascata-orchestrator
+3329809da168   postgres:18-alpine                                                      "docker-entrypoint.s…"   6 minutes ago   Up 6 minutes (healthy)     0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp             cascata-db
+049ab5f2209e   cascatagobaasorchestratormultitenacyopensourcev1-cascata-studio         "/docker-entrypoint.…"   6 minutes ago   Up 6 minutes               80/tcp                                                  cascata-studio
+2fdedd145bcf   docker.dragonflydb.io/dragonflydb/dragonfly                             "/usr/bin/tini -- en…"   6 minutes ago   Up 6 minutes (healthy)     0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp             cascata-cache
+b97653482e65   hashicorp/vault:1.15                                                    "docker-entrypoint.s…"   6 minutes ago   Up 6 minutes (unhealthy)   8200/tcp, 0.0.0.0:8207->8207/tcp, [::]:8207->8207/tcp   cascata-vault
 ubuntu@ip-172-26-7-197:~$ 
+

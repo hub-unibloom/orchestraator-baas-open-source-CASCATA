@@ -81,7 +81,7 @@ collect_worner_credentials() {
         read -s -p "  Senha Mestre (Mínimo 12 caracteres): " WORNER_PASS
         echo ""
         if [[ ${#WORNER_PASS} -ge 12 ]]; then break; fi
-        log_warn "A segurança exige o mínimo de 12 caracteres (Bcrypt Cost 12+)."
+        log_warn "A segurança exige o mínimo de 12 caracteres (Argon2id High-Memory)."
     done
 
     while true; do
@@ -396,7 +396,7 @@ provision_worner_execution() {
         log_error "Containers Core inoperantes. Não foi possível provisionar o Worner."
     fi
 
-    log_info "Calculando Bcrypt Custo 12 e persistindo via Cascata-Engine..."
+    log_info "Calculando Argon2id (64MB/4-Threads) e persistindo via Cascata-Engine..."
     
     # 1. Provisionamento via Binário Compilado (Não requer Go no container final)
     local PROVISION_OUT
@@ -443,8 +443,8 @@ show_final() {
     local JWT_EXT=$(grep '^SYSTEM_JWT_SECRET=' .env | cut -d '=' -f2)
     local APP_EXT=$(grep '^VAULT_TOKEN=' .env | cut -d '=' -f2)
 
-    echo -e "  ✦ ${C_BOLD}Cascata Frontend:${C_RESET}     http://${EXTERNAL_IP}:3000"
-    echo -e "  ✦ ${C_BOLD}Cascata Backend:${C_RESET}      http://${EXTERNAL_IP}:8080\n"
+    echo -e "  ✦ ${C_BOLD}Cascata Studio (Dashboard):${C_RESET}  http://${EXTERNAL_IP}"
+    echo -e "  ✦ ${C_BOLD}Cascata Backend (V1 API):${C_RESET}    http://${EXTERNAL_IP}/v1/\n"
     
     echo -e "${C_DIM}--- Chaves de Acesso e Setup ---${C_RESET}"
     echo -e "  ${C_BOLD}Worner E-mail:${C_RESET} ${WORNER_EMAIL}"
