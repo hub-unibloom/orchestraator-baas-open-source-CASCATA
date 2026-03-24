@@ -73,6 +73,8 @@ services:
     volumes:
       - ./deployments/vault-config.hcl:/vault/config/cascata-vault.hcl:ro
       - cascata-vault-data:/vault/file
+    ports:
+      - "8207:8207"
     healthcheck:
       test: ["CMD", "vault", "status"]
       interval: 5s

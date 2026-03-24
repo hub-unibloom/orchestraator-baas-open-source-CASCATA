@@ -207,7 +207,7 @@ DB_PORT=5432
 DRAGONFLY_PORT=6379
 
 # Security Infrastructure (Vault)
-VAULT_ADDR=http://cascata-vault:8200
+VAULT_ADDR=http://cascata-vault:8207
 VAULT_TOKEN=PENDING_INIT_FROM_BOOTSTRAP
 
 # Internal Logic Exchange

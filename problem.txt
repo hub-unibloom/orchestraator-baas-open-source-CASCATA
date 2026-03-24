@@ -1,19 +1,23 @@
 [+] up 9/9
- ✔ Image cascatagobaasorchestratormultitenacy... Built   115.8s
- ✔ Network cascatagobaasorchestratormultitena... Created 0.1s
- ✔ Volume cascatagobaasorchestratormultitenac... Created 0.0s
- ✔ Volume cascata_extension_payloads             Created 0.0s
- ✔ Volume cascatagobaasorchestratormultitenac... Created 0.0s
- ✔ Container cascata-vault                       Started 0.7s
- ✔ Container cascata-db                          Healthy 11.3s
- ✔ Container cascata-cache                       Started 0.7s
- ✔ Container cascata-orchestrator                Started 11.3s
+ ✔ Image cascatagobaasorchestratormultitenacyo... Built   115.8s
+ ✔ Network cascatagobaasorchestratormultitenac... Created 0.1s
+ ✔ Volume cascatagobaasorchestratormultitenacy... Created 0.0s
+ ✔ Volume cascata_extension_payloads              Created 0.0s
+ ✔ Volume cascatagobaasorchestratormultitenacy... Created 0.0s
+ ✔ Container cascata-cache                        Started 0.8s
+ ✔ Container cascata-vault                        Started 0.7s
+ ✔ Container cascata-db                           Healthy 11.3s
+ ✔ Container cascata-orchestrator                 Started 11.4s
 ✓ Containers Base enviados à rede.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ▸ Vault Operator: Inicialização Avançada e Unseal
-✗ Container Vault estritamente inoperante ou não iniciado. Verifique 'docker logs cascata-vault'.
-ubuntu@ip-172-26-7-197:~$ docker logs cascata-vault
-permission denied while trying to connect to the docker API at unix:///var/run/docker.sock
+✗ Container Vault estritamente inoperante. Status detectado: Exited (1) 3 seconds ago. Logs do container: 
+2026-03-24T17:25:03.118Z [INFO]  proxy environment: http_proxy="" https_proxy="" no_proxy=""
+2026-03-24T17:25:03.119Z [INFO]  incrementing seal generation: generation=1
+2026-03-24T17:25:03.124Z [INFO]  core: Initializing version history cache for core
+2026-03-24T17:25:03.125Z [INFO]  events: Starting event system
+Error parsing listener configuration.
+Error initializing listener of type tcp: listen tcp4 0.0.0.0:8200: bind: address already in use
 ubuntu@ip-172-26-7-197:~$ 
 
