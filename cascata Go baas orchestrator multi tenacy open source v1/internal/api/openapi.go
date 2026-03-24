@@ -3,8 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-
-	"cascata/internal/domain"
 	"cascata/internal/service"
 )
 

@@ -12,7 +12,6 @@ import (
 	"cascata/internal/domain"
 	"cascata/internal/phantom"
 	"cascata/internal/repository"
-	"cascata/internal/service"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"

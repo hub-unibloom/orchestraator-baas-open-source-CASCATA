@@ -2,12 +2,12 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -64,7 +64,7 @@ func SendError(w http.ResponseWriter, r *http.Request, status int, code, message
 			attribute.String("error.code", code),
 			attribute.String("error.message", message),
 		)
-		span.SetStatus(trace.Status{Code: trace.SpanStatusCodeError, Description: message})
+		span.SetStatus(codes.Error, message)
 	}
 
 	// 2. Prepare Payload
