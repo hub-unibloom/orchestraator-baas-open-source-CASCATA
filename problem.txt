@@ -1,0 +1,27 @@
+ => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux g  92.4s 
+------                                                        
+ > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                       
+78.33 # cascata/internal/automation                           
+78.33 internal/automation/processors.go:9:2: "log/slog" imported and not used
+------
+[+] up 0/1
+ ⠙ Image cascatagobaasorchestratormultitena... Building 109.1s
+Dockerfile.backend:20
+
+--------------------
+
+  18 |     
+
+  19 |     # Fazer o build do orchestrator e do provisionador CLI
+
+  20 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
+
+  21 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
+
+  22 |     
+
+--------------------
+
+failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
+
+ubuntu@ip-172-26-7-197:~$ 
