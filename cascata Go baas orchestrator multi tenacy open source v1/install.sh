@@ -189,6 +189,7 @@ secure_bootstrap() {
         mv .env .env.bak.$(date +%s)
     fi
 
+    local DB_USER="cascata_root_$(tr -dc 'a-z0-9' < /dev/urandom | head -c 8)"
     local DB_PASS=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
     local JWT_SEC=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 64)
 
@@ -198,7 +199,7 @@ PROJECT_NAME=cascata
 NODE_ENV=production
 
 # Core Databases
-DB_USER=cascata_admin
+DB_USER=${DB_USER}
 DB_PASS=${DB_PASS}
 DB_NAME=cascata_meta
 DB_PORT=5432
@@ -400,7 +401,10 @@ provision_worner_execution() {
     
     # 1. Provisionamento via Binário Compilado (Não requer Go no container final)
     local PROVISION_OUT
-    PROVISION_OUT=$(docker exec -e DB_URL="postgres://cascata_admin:$(grep '^DB_PASS=' .env | cut -d'=' -f2)@cascata-db:5432/cascata_meta" \
+    local CURRENT_DB_USER=$(grep '^DB_USER=' .env | cut -d'=' -f2)
+    local CURRENT_DB_PASS=$(grep '^DB_PASS=' .env | cut -d'=' -f2)
+    
+    PROVISION_OUT=$(docker exec -e DB_URL="postgres://${CURRENT_DB_USER}:${CURRENT_DB_PASS}@cascata-db:5432/cascata_meta" \
         "$ORCH_CONTAINER" ./worner-provision "$WORNER_EMAIL" "$WORNER_PASS" "$MFA_ENABLED" 2>&1)
 
     if [[ ! "$PROVISION_OUT" =~ "SUCCESS_ID:" ]]; then

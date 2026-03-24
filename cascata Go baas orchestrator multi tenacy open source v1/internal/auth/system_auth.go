@@ -40,7 +40,7 @@ func (s *SystemAuthService) AuthenticateMember(ctx context.Context, email, passw
 	}
 	
 	if !isValid {
-		slog.Warn("system.auth: invalid password for member", "email", email)
+		slog.Warn("system.auth: password mismatch", "email", email, "hash_prefix", member.PasswordHash[:15])
 		return nil, fmt.Errorf("system.auth: invalid credentials")
 	}
 
