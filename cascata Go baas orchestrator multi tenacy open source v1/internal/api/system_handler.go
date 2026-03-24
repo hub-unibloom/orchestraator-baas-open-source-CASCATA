@@ -10,11 +10,15 @@ import (
 	"cascata/internal/auth"
 	"cascata/internal/crypto"
 	"cascata/internal/domain"
+	"cascata/internal/i18n"
 	"cascata/internal/ratelimit"
 	"cascata/internal/repository"
 	"cascata/internal/service"
 	"cascata/internal/storage"
+	"cascata/internal/ui/components"
+	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
+	"strconv"
 )
 
 // SystemHandler handles management-level authentication and sessions.
@@ -128,9 +132,21 @@ func (h *SystemHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 // HandleCreateProject birthes a new tenant via the Genesis service.
 func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Request) {
 	var req CreateProjectRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		SendError(w, r, http.StatusBadRequest, ErrInvalidRequest, "Invalid payload")
-		return
+	
+	// HTMX Synergy: Support for Form Data
+	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+		_ = r.ParseForm()
+		req.Name = r.FormValue("name")
+		req.Slug = r.FormValue("slug")
+		req.Region = "SOVEREIGN_NODE" // Default for Phase 1
+		req.MaxUsers, _ = strconv.Atoi(r.FormValue("max_users"))
+		req.MaxStorageMB, _ = strconv.ParseInt(r.FormValue("max_storage_mb"), 10, 64)
+	} else {
+		// Standard JSON API support
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			SendError(w, r, http.StatusBadRequest, ErrInvalidRequest, "Invalid payload")
+			return
+		}
 	}
 
 	// 1. Prepare Metadata for the newborn project
@@ -174,6 +190,23 @@ func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Reque
 		"max_users":     p.MaxUsers,
 		"max_db_weight": p.MaxDBWeightMB,
 	})
+
+	// 4. Fragment Synergy (HTMX Response)
+	if r.Header.Get("HX-Request") == "true" {
+		loc := i18n.GetLocalizer(r)
+		uiProject := components.Project{
+			ID:           p.ID,
+			Name:         p.Name,
+			Slug:         p.Slug,
+			Region:       p.Region,
+			Status:       p.Status,
+			MaxUsers:     p.MaxUsers,
+			MaxConns:     p.MaxConns,
+			MaxStorageMB: int(p.MaxStorageMB),
+		}
+		templ.Handler(components.ProjectCard(uiProject, loc)).ServeHTTP(w, r)
+		return
+	}
 
 	SendJSON(w, r, http.StatusCreated, p)
 }

@@ -1,0 +1,33 @@
+package layouts
+
+import (
+	"cascata/internal/ui/components"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
+)
+
+templ Base(title string, loc *i18n.Localizer) {
+	<!DOCTYPE html>
+	<html lang="en" class="dark">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ title } | Cascata BaaS</title>
+			
+			<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+			<script defer src="https://unpkg.com/alpinejs@3.13.5/dist/cdn.min.js"></script>
+			
+			<link rel="stylesheet" href="/static/tokens.css"/>
+			
+			<link rel="preconnect" href="https://fonts.googleapis.com"/>
+			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+			<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet"/>
+		</head>
+		<body class="bg-surface-base text-content-primary font-sans selection:bg-accent-primary/30 h-screen overflow-hidden flex flex-col uppercase italic font-bold">
+			@components.Navigation(loc)
+			<main id="main-content" class="flex-1 overflow-hidden relative">
+				{ children... }
+			</main>
+			@components.SystemStatus(loc)
+		</body>
+	</html>
+}

@@ -1,0 +1,58 @@
+ => [cascata-orchestrator builder 5/9] COPY . .                                                           0.1s
+ => ERROR [cascata-studio builder 6/6] RUN npm run build                                                 13.2s
+ => CANCELED [cascata-orchestrator builder 6/9] RUN go mod tidy                                          13.4s
+------                                                                                                         
+ > [cascata-studio builder 6/6] RUN npm run build:                                                             
+1.663                                                                                                          
+1.663 > cascata-frontend-v1@1.0.0 build                                                                        
+1.663 > tsc && vite build                                                                                      
+1.663                                                                                                          
+12.71 src/App.tsx(1,8): error TS6133: 'React' is declared but its value is never read.                         
+12.71 src/App.tsx(1,27): error TS6133: 'useEffect' is declared but its value is never read.                    
+12.71 src/App.tsx(5,21): error TS6133: 'Zap' is declared but its value is never read.
+12.71 src/App.tsx(5,34): error TS6133: 'HardDrive' is declared but its value is never read.
+12.71 src/App.tsx(5,45): error TS6133: 'Smartphone' is declared but its value is never read.
+12.71 src/App.tsx(6,3): error TS6133: 'Settings' is declared but its value is never read.
+12.72 src/App.tsx(6,27): error TS6133: 'Rocket' is declared but its value is never read.
+12.72 src/App.tsx(6,35): error TS6133: 'Terminal' is declared but its value is never read.
+12.72 src/App.tsx(6,45): error TS6133: 'Search' is declared but its value is never read.
+12.72 src/App.tsx(6,53): error TS6133: 'Bell' is declared but its value is never read.
+12.72 src/App.tsx(12,18): error TS6133: 'VARIANTS' is declared but its value is never read.
+12.72 src/App.tsx(56,9): error TS6133: 't' is declared but its value is never read.
+12.72 src/App.tsx(111,43): error TS6133: 'to' is declared but its value is never read.
+12.72 src/components/ProjectCard.tsx(4,35): error TS6133: 'Globe' is declared but its value is never read.
+12.72 src/components/ProjectCard.tsx(24,9): error TS6133: 't' is declared but its value is never read.
+12.72 src/components/modals/TenantOnboardingModal.tsx(6,11): error TS6196: 'Quotas' is declared but never used.
+12.72 src/components/shared/NavigationModal.tsx(4,35): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+12.72 src/i18n.ts(3,25): error TS2307: Cannot find module 'i18next-http-backend' or its corresponding type declarations.
+12.72 src/i18n.ts(4,30): error TS2307: Cannot find module 'i18next-browser-languagedetector' or its corresponding type declarations.
+12.72 src/pages/Dashboard.tsx(4,22): error TS6133: 'List' is declared but its value is never read.
+12.72 src/pages/Dashboard.tsx(4,42): error TS6133: 'Filter' is declared but its value is never read.
+12.72 src/pages/Dashboard.tsx(4,62): error TS6133: 'Bell' is declared but its value is never read.
+12.72 src/pages/Dashboard.tsx(13,9): error TS6133: 't' is declared but its value is never read.
+12.72 src/pages/ProjectDashboard.tsx(6,14): error TS6133: 'Zap' is declared but its value is never read.
+12.72 src/pages/ProjectDashboard.tsx(95,9): error TS2322: Type '{ icon: LucideIcon; label: string; id: string; }[]' is not assignable to type 'NavItem[]'.
+12.72   Property 'path' is missing in type '{ icon: LucideIcon; label: string; id: string; }' but required in type 'NavItem'.
+------
+[+] up 0/2
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-studio       Building                   14.4s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                   14.4s
+Dockerfile.frontend:7
+
+--------------------
+
+   5 |     RUN npm install
+
+   6 |     COPY frontend/ ./
+
+   7 | >>> RUN npm run build
+
+   8 |     
+
+   9 |     # Stágio 2 - Servindo (Nginx 1.25)
+
+--------------------
+
+target cascata-studio: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
+
+ubuntu@ip-172-26-7-197:~$ 

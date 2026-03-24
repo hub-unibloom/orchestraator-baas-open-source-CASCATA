@@ -35,8 +35,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onEnterProject }) => {
     fetchProjects();
   }, []);
 
-  const filteredProjects = projects.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) || 
+  const filteredProjects = projects.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.slug.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -50,63 +50,63 @@ const Dashboard: React.FC<DashboardProps> = ({ onEnterProject }) => {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex gap-4">
-           <div className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted group-focus-within:text-accent-primary transition-colors" size={18} />
-              <input 
-                className="bg-surface-raised/40 border border-white/5 rounded-full py-3 pl-10 pr-4 w-64 outline-none focus:border-accent-primary/50 transition-all font-medium text-sm"
-                placeholder="Pesquisar projetos..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-           </div>
-           <button 
-              onClick={() => setIsModalOpen(true)}
-              className="bg-accent-primary hover:bg-accent-primary-dim text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-all shadow-lg shadow-accent-primary/20 hover:scale-105"
-           >
-              <Plus size={20} /> Novo Inquilino
-           </button>
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted group-focus-within:text-accent-primary transition-colors" size={18} />
+            <input
+              className="bg-surface-raised/40 border border-white/5 rounded-full py-3 pl-10 pr-4 w-64 outline-none focus:border-accent-primary/50 transition-all font-medium text-sm"
+              placeholder="Pesquisar projetos..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-accent-primary hover:bg-accent-primary-dim text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-all shadow-lg shadow-accent-primary/20 hover:scale-105"
+          >
+            <Plus size={20} /> Novo Inquilino
+          </button>
         </motion.div>
       </div>
 
       {/* Grid de Tenancies */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8">
         {loading ? (
-           <div className="col-span-full flex flex-col items-center justify-center py-32 space-y-4">
-              <RefreshCcw className="animate-spin text-accent-primary" size={48} />
-              <p className="text-content-muted font-mono tracking-widest text-[10px] uppercase">Sincronizando Pulso Neural...</p>
-           </div>
+          <div className="col-span-full flex flex-col items-center justify-center py-32 space-y-4">
+            <RefreshCcw className="animate-spin text-accent-primary" size={48} />
+            <p className="text-content-muted font-mono tracking-widest text-[10px] uppercase">Sincronizando Pulso Neural...</p>
+          </div>
         ) : filteredProjects.length > 0 ? (
           filteredProjects.map((p, i) => (
-            <motion.div 
+            <motion.div
               key={p.slug}
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
             >
-              <ProjectCard 
+              <ProjectCard
                 project={p}
                 onEnter={() => onEnterProject(p.slug)}
-                onDelete={(slug) => console.log('Delete target:', slug)} 
+                onDelete={(slug) => console.log('Delete target:', slug)}
               />
             </motion.div>
           ))
         ) : (
           <div className="col-span-full flex flex-col items-center justify-center py-32 space-y-6">
-             <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center text-content-muted border border-white/5">
-                <LayoutGrid size={48} />
-             </div>
-             <div className="text-center">
-                <p className="text-lg font-bold text-white">Nenhum Inquilino Detectado</p>
-                <p className="text-content-muted mt-2">Inicie a gênese do seu primeiro projeto soberano.</p>
-             </div>
+            <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center text-content-muted border border-white/5">
+              <LayoutGrid size={48} />
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-white">Nenhum Inquilino Detectado</p>
+              <p className="text-content-muted mt-2">Inicie a gênese do seu primeiro projeto soberano.</p>
+            </div>
           </div>
         )}
       </div>
 
       {/* Multi-step Onboarding Modal */}
-      <TenantOnboardingModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <TenantOnboardingModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         onSuccess={fetchProjects}
       />
     </div>

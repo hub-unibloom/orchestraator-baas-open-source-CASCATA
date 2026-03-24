@@ -1,0 +1,63 @@
+package pages
+
+import (
+	"github.com/nicksnyder/go-i18n/v2/i18n"
+	internalI18n "cascata/internal/i18n"
+)
+
+templ Dashboard(loc *i18n.Localizer) {
+	<div class="p-12 max-w-7xl mx-auto space-y-12 overflow-y-auto custom-scrollbar h-full">
+		<!-- HEADER E AÇÕES -->
+		<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10 animate-fade-in transition-all">
+			<div>
+				<h2 class="text-3xl font-black text-white tracking-tight flex items-center gap-3 italic uppercase">
+					<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-accent-primary"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>
+					{ internalI18n.T(loc, "dashboard_title") }
+				</h2>
+				<p class="text-content-muted mt-2 font-bold uppercase tracking-[0.4em] text-[10px] opacity-60 italic">{ internalI18n.T(loc, "dashboard_subtitle") }</p>
+			</div>
+			
+			<button 
+				hx-get="/system/projects/onboarding" 
+				hx-target="#modal-root" 
+				class="px-10 py-5 rounded-[22px] bg-accent-primary text-white font-black tracking-widest text-[10px] shadow-2xl shadow-accent-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 uppercase italic"
+			>
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> 
+				{ internalI18n.T(loc, "new_project") }
+			</button>
+		</div>
+
+		<!-- BARRA DE BUSCA E FILTROS -->
+		<div class="flex flex-col md:flex-row gap-6 relative z-20">
+			<div class="flex-1 relative group">
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="absolute left-5 top-1/2 -translate-y-1/2 text-content-muted group-focus-within:text-accent-primary transition-colors"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+				<input 
+					type="text" 
+					name="search"
+					placeholder={ internalI18n.T(loc, "search_projects") } 
+					hx-post="/system/projects/search"
+					hx-target="#project-grid"
+					hx-trigger="keyup changed delay:300ms"
+					class="w-full h-16 bg-surface-raised border border-white/5 rounded-[22px] pl-16 pr-8 text-xs text-white font-mono focus:border-accent-primary/50 focus:ring-1 focus:ring-accent-primary/50 transition-all outline-none glass-panel font-bold tracking-widest placeholder:text-content-muted/30 uppercase italic"
+				/>
+			</div>
+			<button 
+				hx-get="/system/projects/list" 
+				hx-target="#project-grid"
+				class="h-16 w-16 rounded-[22px] bg-surface-raised border border-white/5 flex items-center justify-center text-content-muted hover:text-accent-primary hover:border-accent-primary/50 transition-all active:rotate-180 shadow-inner group"
+			>
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-active:animate-spin"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path></svg>
+			</button>
+		</div>
+
+		<!-- GRID DE PROJETOS (HTMX TARGET) -->
+		<div id="project-grid" hx-get="/system/projects/list" hx-trigger="load" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
+			<div class="col-span-full py-24 text-center border-2 border-dashed border-white/5 rounded-[48px] opacity-40 bg-surface-raised/20 animate-pulse font-bold tracking-widest text-[10px] uppercase italic">
+				{ internalI18n.T(loc, "sync_neural") }
+			</div>
+		</div>
+
+		<!-- MODAL ROOT (HTMX TARGET) -->
+		<div id="modal-root"></div>
+	</div>
+}

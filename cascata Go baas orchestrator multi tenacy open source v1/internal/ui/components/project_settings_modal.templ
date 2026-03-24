@@ -1,0 +1,117 @@
+package components
+
+import (
+	"github.com/nicksnyder/go-i18n/v2/i18n"
+)
+
+templ ProjectSettingsModal(slug string, loc *i18n.Localizer) {
+	<div 
+		x-data="{ tab: 'mpc' }"
+		class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-surface-base/80 backdrop-blur-2xl animate-fade-in"
+		id="modal-settings"
+	>
+		<div 
+			@click.away="document.getElementById('modal-settings').remove()"
+			class="w-full max-w-4xl bg-surface-raised border border-white/10 rounded-[48px] shadow-[0_0_120px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col h-[70vh] relative italic font-bold"
+		>
+			<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent-primary via-accent-secondary to-accent-primary"></div>
+			
+			<!-- MODAL HEADER & TABS -->
+			<div class="px-12 pt-12 pb-8 border-b border-white/5 flex items-center justify-between shrink-0">
+				<div class="flex items-center gap-6">
+					<h2 class="text-2xl font-black text-white italic uppercase tracking-tighter">{ slug }</h2>
+					<nav class="flex items-center gap-2 bg-black/20 p-1.5 rounded-2xl border border-white/5">
+						<button 
+							@click="tab = 'mpc'" 
+							:class="tab === 'mpc' ? 'bg-accent-primary text-white shadow-lg shadow-accent-primary/20' : 'text-content-muted hover:text-white'"
+							class="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all italic"
+						>
+							MPC Settings
+						</button>
+						<button 
+							@click="tab = 'project'" 
+							:class="tab === 'project' ? 'bg-accent-primary text-white shadow-lg shadow-accent-primary/20' : 'text-content-muted hover:text-white'"
+							class="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all italic"
+						>
+							Project Settings
+						</button>
+						<button 
+							@click="tab = 'members'" 
+							:class="tab === 'members' ? 'bg-accent-primary text-white shadow-lg shadow-accent-primary/20' : 'text-content-muted hover:text-white'"
+							class="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all italic"
+						>
+							Management
+						</button>
+					</nav>
+				</div>
+				<button @click="document.getElementById('modal-settings').remove()" class="p-3 rounded-2xl bg-white/5 text-content-muted hover:text-white transition-all">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+				</button>
+			</div>
+
+			<!-- MODAL CONTENT -->
+			<div class="flex-1 overflow-y-auto custom-scrollbar p-12">
+				<!-- MPC TAB -->
+				<div x-show="tab === 'mpc'" x-transition.opacity class="space-y-10">
+					<div class="glass-panel p-8 rounded-3xl border border-accent-primary/10 bg-accent-primary/5">
+						<h3 class="text-sm font-black text-accent-primary uppercase tracking-widest mb-4 italic">Isolamento Multi-Party Computation</h3>
+						<p class="text-xs text-content-muted leading-relaxed font-bold uppercase tracking-wider opacity-70">
+							O projeto <span class="text-white">{ slug }</span> está operando sob o protocolo de custódia distribuída. 
+							As chaves criptográficas são fragmentadas e nunca residem em um único nó.
+						</p>
+					</div>
+					<div class="grid grid-cols-2 gap-8">
+						<div class="space-y-4">
+							<label class="text-[10px] font-black uppercase tracking-widest text-content-muted italic">Threshold de Assinatura</label>
+							<div class="h-16 bg-surface-base border border-white/5 rounded-2xl flex items-center px-6 font-mono text-white text-sm font-bold italic uppercase tracking-widest">2-of-3 Nodes</div>
+						</div>
+						<div class="space-y-4">
+							<label class="text-[10px] font-black uppercase tracking-widest text-content-muted italic">Algoritmo de Curva</label>
+							<div class="h-16 bg-surface-base border border-white/5 rounded-2xl flex items-center px-6 font-mono text-accent-secondary text-sm font-bold italic uppercase tracking-widest">Ed25519_Sovereign</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- PROJECT TAB -->
+				<div x-show="tab === 'project'" x-transition.opacity class="space-y-8" style="display: none;">
+					<div class="space-y-4">
+						<label class="text-[10px] font-black uppercase tracking-widest text-content-muted italic">Domínio Customizado</label>
+						<input type="text" placeholder="api.seuprojeto.com" class="w-full h-16 bg-surface-base border border-white/5 rounded-2xl px-8 text-sm text-white font-mono outline-none focus:border-accent-primary/50 transition-all font-bold italic uppercase tracking-widest" />
+					</div>
+					<div class="flex items-center justify-between p-6 rounded-3xl bg-accent-danger/5 border border-accent-danger/10">
+						<div>
+							<h4 class="text-xs font-black text-accent-danger uppercase italic">Zona de Perigo</h4>
+							<p class="text-[10px] text-accent-danger/60 font-bold uppercase tracking-widest mt-1">A exclusão do projeto é irreversível e purgará todos os dados MPC.</p>
+						</div>
+						<button class="px-8 py-3 rounded-xl bg-accent-danger text-white text-[10px] font-black uppercase tracking-tighter italic">Deletar Projeto</button>
+					</div>
+				</div>
+
+				<!-- MEMBERS TAB -->
+				<div x-show="tab === 'members'" x-transition.opacity class="space-y-6" style="display: none;">
+					<div class="flex items-center justify-between mb-4">
+						<h3 class="text-sm font-black text-white uppercase italic">Gestores do Cluster</h3>
+						<button class="text-[10px] font-black uppercase text-accent-primary hover:underline italic">Convidar Auditor</button>
+					</div>
+					<div class="space-y-3">
+						<div class="flex justify-between items-center p-5 rounded-2xl bg-white/5 border border-white/5">
+							<div class="flex items-center gap-4">
+								<div class="w-10 h-10 rounded-full bg-accent-primary/20 flex items-center justify-center text-accent-primary font-black uppercase italic">AD</div>
+								<div>
+									<p class="text-sm font-black text-white italic uppercase tracking-tighter">Admin Principal</p>
+									<p class="text-[9px] text-content-muted font-bold uppercase tracking-widest">Proprietário do Cluster</p>
+								</div>
+							</div>
+							<span class="text-[9px] font-black text-accent-success uppercase italic">Ativo</span>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<!-- MODAL FOOTER -->
+			<div class="p-8 border-t border-white/5 bg-black/10 shrink-0 flex justify-end">
+				<button @click="document.getElementById('modal-settings').remove()" class="px-10 py-4 rounded-2xl bg-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all italic">Fechar</button>
+			</div>
+		</div>
+	</div>
+}

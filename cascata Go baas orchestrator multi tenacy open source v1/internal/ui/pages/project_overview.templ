@@ -1,0 +1,91 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
+)
+
+type ProjectStats struct {
+	Status           string
+	TotalUsers       int
+	TotalTables      int
+	SchemaSizeBytes  int64
+	TrafficRate      string
+	TableNames       []string
+}
+
+templ ProjectOverview(slug string, loc *i18n.Localizer, stats ProjectStats) {
+	<div class="max-w-7xl mx-auto space-y-12 pb-20 animate-fade-in">
+		<!-- GRID DE MÉTRICAS RÁPIDAS -->
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+			@MetricCard("Status Operacional", stats.Status, "text-accent-success", "pulse")
+			@MetricCard("Membros Totais", fmt.Sprintf("%d", stats.TotalUsers), "text-accent-primary", "users")
+			@MetricCard("Entidades", fmt.Sprintf("%d", stats.TotalTables), "text-accent-secondary", "database")
+			@MetricCard("Tráfego", stats.TrafficRate, "text-white", "activity")
+		</div>
+
+		<!-- DETALHES DE STORAGE E INVENTÁRIO -->
+		<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+			<div class="lg:col-span-2 glass-panel p-8 rounded-3xl border border-white/5 bg-surface-raised/40 relative overflow-hidden">
+				<div class="absolute top-0 right-0 w-64 h-64 bg-accent-primary/5 blur-[120px] -mr-32 -mt-32"></div>
+				<h3 class="text-xl font-bold flex items-center gap-3 text-white mb-10 relative z-10">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-accent-primary"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>
+					Inventário do Database
+				</h3>
+				<div class="space-y-4 relative z-10">
+					for _, name := range stats.TableNames {
+						<div class="flex items-center justify-between p-5 rounded-2xl bg-black/20 border border-white/5 hover:border-white/10 transition-all group">
+							<div class="flex items-center gap-4">
+								<div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-content-muted group-hover:text-accent-secondary transition-colors">
+									<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"></path><path d="M3 9h18"></path><path d="M3 15h18"></path><path d="M9 3v18"></path><path d="M15 3v18"></path></svg>
+								</div>
+								<span class="font-mono text-sm text-white uppercase italic font-bold">{ name }</span>
+							</div>
+							<span class="text-[10px] text-accent-success uppercase font-black px-4 py-1.5 bg-accent-success/5 border border-accent-success/10 rounded-full italic">SECURE_MPC</span>
+						</div>
+					}
+					if len(stats.TableNames) == 0 {
+						<div class="text-center py-20 opacity-30 italic font-black uppercase tracking-widest text-xs">
+							Nenhum Esquema Detectado no Inquilino
+						</div>
+					}
+				</div>
+			</div>
+
+			<!-- MONITOR DE QUOTA -->
+			<div class="space-y-8">
+				<div class="glass-panel p-8 rounded-3xl border border-white/5 bg-surface-raised/40 relative overflow-hidden">
+					<h3 class="text-lg font-black mb-8 flex items-center gap-3 italic uppercase">
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-accent-secondary"><path d="M12 2v8"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="M2 12h8"></path><path d="m13.07 13.07 1.41 1.41"></path><path d="M22 22l-6-6"></path><path d="m15 7 5 5-5 5-5-5 5-5z"></path></svg>
+						Monitor de Quota
+					</h3>
+					<div class="space-y-6">
+						<div>
+							<div class="flex justify-between text-[10px] font-black uppercase tracking-widest text-content-muted mb-3 italic">
+								<span>Usage</span>
+								<span>{ fmt.Sprintf("%.2f MB", float64(stats.SchemaSizeBytes)/1024/1024) }</span>
+							</div>
+							<div class="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+								<div class="h-full bg-gradient-to-r from-accent-primary to-accent-secondary opacity-60" style="width: 45%;"></div>
+							</div>
+						</div>
+						<p class="text-[10px] text-content-muted leading-relaxed font-bold uppercase tracking-wider opacity-60">Isolamento físico e lógico ativo conforme padrões Cascata MPC.</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ MetricCard(label, value, color, icon string) {
+	<div class="glass-panel p-8 rounded-3xl border border-white/5 bg-surface-raised/30 hover:bg-surface-elevated transition-all group overflow-hidden relative">
+		<div class={ "absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity", color }>
+			<!-- Icon Logic Simplified to keep Templ clean -->
+			<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+		</div>
+		<div class="relative z-10 flex flex-col gap-1">
+			<span class="text-[10px] font-black uppercase tracking-[0.2em] text-content-muted italic">{ label }</span>
+			<span class={ "text-3xl font-black tracking-tighter font-mono italic uppercase tabular-nums", color }>{ value }</span>
+		</div>
+	</div>
+}

@@ -1,0 +1,46 @@
+package components
+
+import (
+	"github.com/nicksnyder/go-i18n/v2/i18n"
+	internalI18n "cascata/internal/i18n"
+)
+
+templ Navigation(loc *i18n.Localizer) {
+	<header class="h-20 flex-shrink-0 border-b border-white/5 bg-surface-raised flex items-center justify-between px-12 z-50 shadow-2xl overflow-hidden relative">
+		<div class="absolute inset-0 bg-accent-primary/2 blur-[80px] -mt-40 -ml-40 w-80 h-80"></div>
+		
+		<div class="flex items-center gap-6 relative z-10">
+			<div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-accent-primary to-accent-secondary flex items-center justify-center shadow-lg shadow-accent-primary/20">
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-white"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg>
+			</div>
+			<div class="flex flex-col">
+				<span class="text-sm font-black tracking-tighter text-white uppercase italic leading-none">CASCATA</span>
+				<span class="text-[9px] font-bold text-accent-primary uppercase tracking-[0.3em] mt-1">Sovereign Orchestrator</span>
+			</div>
+		</div>
+
+		<nav class="flex items-center gap-1 bg-white/5 border border-white/5 p-1 rounded-2xl relative z-10 font-bold">
+			<a href="/" hx-get="/system" hx-target="#main-content" hx-push-url="true" class="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest bg-accent-primary text-white transition-all shadow-lg shadow-accent-primary/20 italic">System Hub</a>
+			<a href="/security" hx-get="/security" hx-target="#main-content" hx-push-url="true" class="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-content-muted hover:text-white hover:bg-white/5 transition-all italic">Security Lab</a>
+		</nav>
+
+		<div class="flex items-center gap-4 relative z-10" x-data="{ open: false }">
+			<button @click="open = !open" class="w-10 h-10 rounded-xl bg-surface-elevated border border-white/10 flex items-center justify-center text-content-muted hover:text-white transition-all">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+			</button>
+		</div>
+	</header>
+}
+
+templ SystemStatus(loc *i18n.Localizer) {
+	<footer class="h-10 border-t border-white/5 px-12 flex items-center justify-between text-[10px] font-mono tracking-widest uppercase bg-surface-base">
+		<div class="flex items-center gap-3">
+			<div class="w-1.5 h-1.5 rounded-full bg-accent-success animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+			<span class="text-content-muted">CAS_SYSTEM: <span class="text-white font-black italic">{ internalI18n.T(loc, "sync_neural") }</span></span>
+		</div>
+		<div class="flex items-center gap-6 text-content-muted/40 font-bold italic">
+			<span>v1.0.0.0-PROD</span>
+			<span class="text-accent-primary/40">SOVEREIGN_NODE_ALPHA</span>
+		</div>
+	</footer>
+}

@@ -28,7 +28,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onEnter, onDelete })
   const statusColor = project.status === 'active' ? 'bg-accent-success' : 'bg-content-muted';
 
   return (
-    <motion.div 
+    <motion.div
       whileHover={{ y: -4, scale: 1.01 }}
       className="glass-panel p-6 rounded-2xl group relative overflow-hidden transition-all border border-white/5 hover:border-accent-primary/50 bg-surface-raised/40"
     >
@@ -42,25 +42,25 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onEnter, onDelete })
           <div>
             <h3 className="text-lg font-bold text-content-primary">{project.name || "Sem Nome"}</h3>
             <div className="flex items-center gap-2 mt-0.5 text-[10px] font-mono text-content-muted uppercase tracking-wider">
-               <div className={`w-1.5 h-1.5 rounded-full ${statusColor} animate-pulse`} />
-               {project.region || "BRA"} • /{project.slug || "unknown"}
+              <div className={`w-1.5 h-1.5 rounded-full ${statusColor} animate-pulse`} />
+              {project.region || "BRA"} • /{project.slug || "unknown"}
             </div>
           </div>
         </div>
-        
+
         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-           <button 
-              onClick={() => onDelete(project.slug)}
-              className="p-2 rounded-lg bg-accent-danger/10 text-accent-danger hover:bg-accent-danger/20 transition-colors"
-           >
-              <Trash2 size={16} />
-           </button>
-           <button 
-              onClick={() => onEnter(project.slug)}
-              className="p-2 rounded-lg bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 transition-colors"
-           >
-              <ArrowUpRight size={16} />
-           </button>
+          <button
+            onClick={() => onDelete(project.slug)}
+            className="p-2 rounded-lg bg-accent-danger/10 text-accent-danger hover:bg-accent-danger/20 transition-colors"
+          >
+            <Trash2 size={16} />
+          </button>
+          <button
+            onClick={() => onEnter(project.slug)}
+            className="p-2 rounded-lg bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 transition-colors"
+          >
+            <ArrowUpRight size={16} />
+          </button>
         </div>
       </div>
 

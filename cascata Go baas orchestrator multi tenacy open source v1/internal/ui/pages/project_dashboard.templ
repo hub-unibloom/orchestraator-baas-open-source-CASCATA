@@ -1,0 +1,55 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"cascata/internal/api" // Para acessar as structs de dados
+)
+
+templ ProjectDashboard(slug string, loc *i18n.Localizer) {
+	<div class="h-full flex flex-col bg-surface-base animate-scale-up">
+		<!-- HEADER DO PROJETO -->
+		<header class="h-20 shrink-0 border-b border-white/5 flex items-center justify-between px-10 glass-panel sticky top-0 z-40">
+			<div class="flex items-center gap-6">
+				<button hx-get="/system" hx-target="#main-content" hx-push-url="true" class="p-3 rounded-2xl hover:bg-white/5 text-content-muted hover:text-white transition-all group">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:-translate-x-1 transition-transform"><path d="m15 18-6-6 6-6"></path></svg>
+				</button>
+				<div class="h-8 w-[1px] bg-white/10"></div>
+				<div>
+					<h1 class="text-xl font-black tracking-tight text-white italic uppercase">{ slug }</h1>
+					<p class="text-[10px] uppercase tracking-[0.3em] font-bold text-accent-primary italic">Project Cockpit v1.0</p>
+				</div>
+			</div>
+
+			<div class="flex items-center gap-6">
+				<div class="px-4 py-2 rounded-xl bg-accent-success/10 border border-accent-success/20 flex items-center gap-3">
+					<div class="w-1.5 h-1.5 rounded-full bg-accent-success animate-pulse shadow-glow"></div>
+					<span class="text-[9px] font-black text-accent-success uppercase tracking-widest italic">Live Pool Active</span>
+				</div>
+				<button 
+					hx-get={ fmt.Sprintf("/system/projects/%s/settings", slug) } 
+					hx-target="#modal-root" 
+					class="p-3 rounded-2xl bg-white/5 border border-white/10 text-content-muted hover:text-white hover:border-accent-primary/50 transition-all group active:scale-95"
+				>
+					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-45 transition-transform"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+				</button>
+			</div>
+		</header>
+
+		<!-- CONTEÚDO DINÂMICO (POLLING HTMX) -->
+		<main 
+			hx-get={ fmt.Sprintf("/system/projects/%s/overview", slug) } 
+			hx-trigger="every 10s" 
+			hx-target="#stats-view"
+			class="flex-1 overflow-y-auto custom-scrollbar p-12"
+		>
+			<div id="stats-view" hx-get={ fmt.Sprintf("/system/projects/%s/overview", slug) } hx-trigger="load">
+				<div class="flex items-center justify-center h-full py-32 opacity-30 italic font-black uppercase tracking-[0.4em] text-xs">
+					Synchronizing Tenancy Core...
+				</div>
+			</div>
+		</main>
+		<!-- MODAL ROOT (HTMX TARGET) -->
+		<div id="modal-root"></div>
+	</div>
+}

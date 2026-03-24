@@ -13,11 +13,11 @@ i18n
     fallbackLng: 'en_US',
     ns: ['common', 'dashboard', 'database'], // Available namespaces
     defaultNS: 'common',
-    
+
     interpolation: {
       escapeValue: false, // React already escapes
     },
-    
+
     backend: {
       // Sovereign Path: Internal Cascata API (served from /languages)
       loadPath: '/languages/{{lng}}/{{ns}}.json',
@@ -27,7 +27,7 @@ i18n
       order: ['localStorage', 'navigator'],
       caches: ['localStorage'],
     },
-    
+
     react: {
       useSuspense: true, // Seamless UI during language loading
     }

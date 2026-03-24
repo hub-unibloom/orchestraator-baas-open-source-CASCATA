@@ -1,0 +1,122 @@
+/* Cascata Sovereign Design System - Phase 1.0.0.0 */
+:root {
+    /* Surface Colors - Deep Space (Default Identity) */
+    --surface-pit:      8, 10, 16;    /* #080A10 — abismo */
+    --surface-base:     11, 14, 21;   /* #0B0E15 — fundo */
+    --surface-raised:   16, 20, 30;   /* #10141E — cards */
+    --surface-elevated: 22, 27, 40;   /* #161B28 — modais */
+    --surface-overlay:  30, 36, 54;   /* #1E2436 — tooltips */
+
+    /* Content & Typography */
+    --content-primary:   248, 250, 252;  
+    --content-secondary: 180, 188, 208;  
+    --content-muted:     100, 112, 140;  
+    --content-disabled:  55, 62, 80;     
+    --content-inverse:   10, 13, 20;     
+
+    /* Accents */
+    --accent-primary:     99, 102, 241;   /* Indigo */
+    --accent-primary-rgb: 99, 102, 241;
+    --accent-secondary:   56, 189, 248;   /* Sky */
+    --accent-danger:      239, 68, 68;    
+    --accent-warning:     234, 179, 8;    
+    --accent-success:     34, 197, 94;    
+    --accent-success-rgb: 34, 197, 94;
+    --accent-info:        56, 189, 248;   
+
+    /* Aura Vectors */
+    --aura-glass-blur:    24px;
+    --aura-shadow-weight: 0.12;
+
+    /* Borders */
+    --border-subtle:   rgba(255, 255, 255, 0.05);
+    --border-default:  rgba(255, 255, 255, 0.09);
+    --border-strong:   rgba(255, 255, 255, 0.15);
+}
+
+/* Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: rgb(var(--surface-base));
+    color: rgb(var(--content-secondary));
+    font-family: 'Outfit', sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+.font-mono {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.text-white { color: white; }
+.text-accent-primary { color: rgb(var(--accent-primary-rgb)); }
+.text-accent-success { color: rgb(var(--accent-success-rgb)); }
+.text-content-muted { color: rgb(var(--content-muted)); }
+
+.bg-surface-base { background-color: rgb(var(--surface-base)); }
+.bg-surface-raised { background-color: rgb(var(--surface-raised)); }
+.bg-surface-elevated { background-color: rgb(var(--surface-elevated)); }
+
+.glass-panel {
+    background: rgba(var(--surface-elevated), 0.72);
+    backdrop-filter: blur(var(--aura-glass-blur)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--aura-glass-blur)) saturate(1.4);
+    border: 1px solid var(--border-subtle);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+      0 0 0 1px rgba(0, 0, 0, var(--aura-shadow-weight)),
+      0 8px 32px -8px rgba(0, 0, 0, 0.4);
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.05);
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.2); }
+
+/* Animations & Effects */
+@keyframes fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-up {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 5px rgba(var(--accent-primary-rgb), 0.2); }
+    50% { box-shadow: 0 0 20px rgba(var(--accent-primary-rgb), 0.4); }
+}
+
+.animate-fade-in { animation: fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-scale-up { animation: scale-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-pulse-glow { animation: pulse-glow 3s infinite; }
+
+.shadow-glow {
+    box-shadow: 0 0 15px rgba(var(--accent-success-rgb), 0.3);
+}
+
+/* Layout Utilities */
+.flex-1 { flex: 1 1 0%; }
+.shrink-0 { flex-shrink: 0; }
+.space-y-4 > * + * { margin-top: 1rem; }
+.space-y-8 > * + * { margin-top: 2rem; }
+.space-y-12 > * + * { margin-top: 3rem; }
+.grid { display: grid; }
+.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1 injection)); }
+@media (min-width: 768px) {
+    .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+    .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

@@ -41,6 +41,9 @@ func main() {
 
 	cfg := config.Load()
 	logger.Init(cfg.LogLevel)
+	
+	// Phase 2: Sinergy with Languages
+	i18n.Init()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -150,13 +153,16 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	// --- 8. API Layer Dispatch (The Gateway) ---
 	interceptor := api.NewInterceptor(repo, projectRepo, phantomSvc, eventQueue, workflowEngine, auditService)
 	
+	systemH := api.NewSystemHandler(systemAuth, sessionSvc, rlEngine, genesisSvc, projectRepo, storage.NewBackupService(projectService, repo))
+	uiH := api.NewUIHandler(systemH)
+	
 	srv := api.NewServer(
 		cfg, 
 		repo, 
 		api.NewAuthMiddleware(authService, rlEngine), 
 		api.NewMemberAuthMiddleware(sessionSvc), 
 		interceptor, 
-		api.NewSystemHandler(systemAuth, sessionSvc, rlEngine, genesisSvc, projectRepo, storage.NewBackupService(projectService, repo)), 
+		systemH, 
 		api.NewDataHandler(projectService, interceptor, pEngine, cacheMgr, aiEngine), 
 		api.NewAuthHandler(residentAuthSvc, externalAuthSvc, projectService),
 		api.NewGraphQLHandler(projectService),
@@ -167,6 +173,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 		api.NewLogicHandler(phantomSvc),
 		api.NewMigrationHandler(migrationService),
 		api.NewAIHandler(aiEngine),
+		uiH,
 	)
 	
 	if err := srv.Start(ctx, id); err != nil {

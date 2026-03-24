@@ -1,0 +1,18 @@
+{
+  "dashboard_title": "CASCATA ECOSYSTEM",
+  "dashboard_subtitle": "Sovereign Tenant Orchestration",
+  "new_project": "New Tenancy",
+  "search_projects": "SEARCH PROJECTS...",
+  "sync_neural": "Synchronizing Neural Pulse...",
+  "waiting_tenants": "Awaiting Tenancy Initiation",
+  "project_name": "Project Name",
+  "url_slug": "URL Slug (Auto)",
+  "max_users": "Max Users",
+  "storage_mb": "Storage (MB)",
+  "back": "Back",
+  "next": "Next",
+  "provision_tenant": "Provision Tenancy",
+  "syncing": "Synchronizing...",
+  "genesis_title": "Infrastructure Genesis",
+  "genesis_confirm": "Provision sovereign isolation for project %s?"
+}

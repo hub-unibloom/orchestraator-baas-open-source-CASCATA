@@ -1,0 +1,18 @@
+{
+  "dashboard_title": "ECOSSISTEMA CASCATA",
+  "dashboard_subtitle": "Orquestração Soberana de Inquilinos",
+  "new_project": "Novo Inquilino",
+  "search_projects": "PESQUISAR PROJETOS...",
+  "sync_neural": "Sincronizando Pulso Neural...",
+  "waiting_tenants": "Aguardando Iniciação de Inquilinos",
+  "project_name": "Nome do Projeto",
+  "url_slug": "URL Slug (Auto)",
+  "max_users": "Usuários Máximos",
+  "storage_mb": "Storage (MB)",
+  "back": "Voltar",
+  "next": "Próximo",
+  "provision_tenant": "Provisionar Inquilino",
+  "syncing": "Sincronizando...",
+  "genesis_title": "Gênese de Infraestrutura",
+  "genesis_confirm": "Provisionar isolamento soberano para o projeto %s?"
+}

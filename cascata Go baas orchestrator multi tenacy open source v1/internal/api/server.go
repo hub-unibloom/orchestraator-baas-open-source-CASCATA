@@ -34,6 +34,7 @@ type Server struct {
 	LogicH       *LogicHandler
 	MigrationH   *MigrationHandler
 	AIH          *AIHandler
+	UIH          *UIHandler
 	http         *http.Server
 }
 
@@ -55,6 +56,7 @@ func NewServer(
 	logicH *LogicHandler,
 	migrationH *MigrationHandler,
 	aiH *AIHandler,
+	uiH *UIHandler,
 ) *Server {
 	return &Server{
 		Cfg:          cfg,
@@ -73,6 +75,7 @@ func NewServer(
 		LogicH:       logicH,
 		MigrationH:   migrationH,
 		AIH:          aiH,
+		UIH:          uiH,
 	}
 }
 
@@ -91,6 +94,14 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	router.Get("/health", s.handleHealth)
 	router.Post("/system/auth/login", s.SystemH.HandleLogin) 
 
+	// STATIC ASSETS (Sovereign CSS & Scripts)
+	fsStatic := http.FileServer(http.Dir("internal/ui/static"))
+	router.Handle("/static/*", http.StripPrefix("/static/", fsStatic))
+
+	// SOVEREIGN UI ROUTES (Templ + HTMX)
+	router.Get("/", s.UIH.ServeIndex)
+	router.Get("/system", s.UIH.ServeSystemDashboard)
+
 	// Static i18n & Themes Sovereignty
 	fsLangs := http.FileServer(http.Dir("languages"))
 	fsThemes := http.FileServer(http.Dir("themas"))
@@ -103,6 +114,10 @@ func (s *Server) Start(ctx context.Context, id int) error {
 		
 		r.Route("/system/projects", func(r chi.Router) {
 			r.Get("/", s.SystemH.HandleListProjects)
+			r.Get("/list", s.UIH.HandleUIListProjects) 
+			r.Get("/onboarding", s.UIH.HandleUIOnboarding) 
+			r.Get("/{slug}", s.UIH.HandleUIProjectDashboard)
+			r.Get("/{slug}/overview", s.UIH.HandleUIProjectOverview)
 			r.Post("/", s.SystemH.HandleCreateProject)
 			r.Delete("/{slug}", s.SystemH.HandleDeleteProject)
 			r.Get("/export", s.SystemH.HandleExportCAF)

@@ -1,20 +1,23 @@
 # --- Estágio de Build ---
 FROM golang:1.26-alpine AS builder
 
-# Instalar dependências para build (se necessário)
-RUN apk add --no-cache gcc musl-dev
+# Instalar dependências para build e Templ
+RUN apk add --no-cache gcc musl-dev git
 
 WORKDIR /app
+
+# Instalar Templ CLI (Sovereign Generation Tool)
+RUN go install github.com/a-h/templ/cmd/templ@latest
 
 # Copiar go.mod para iniciar resolução
 COPY go.mod ./
 
-# Copiar o código fonte ANTES do tidy para resolver dependências dinâmicas
+# Copiar o código fonte
 COPY . .
 
-# Resolver dependências e gerar go.sum fresco (Garante build mesmo com sum local ausente)
+# Resolver dependências e gerar componentes HTML em Go
 RUN go mod tidy
-RUN go mod download
+RUN templ generate
 
 # Fazer o build do orchestrator e do provisionador CLI
 RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go

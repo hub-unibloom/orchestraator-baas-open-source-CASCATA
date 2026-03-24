@@ -13,8 +13,8 @@ import { MOTION, VARIANTS } from './lib/motion';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AuthGuard } from './components/AuthGuard';
 
-import './styles/tokens.css'; 
-import './i18n';             
+import './styles/tokens.css';
+import './i18n';
 
 type ViewContext = 'SYSTEM_DASH' | 'PROJECT_DASH';
 
@@ -38,9 +38,9 @@ export default function App() {
         {viewContext === 'SYSTEM_DASH' ? (
           <LayoutOrchestrator onEnterProject={switchToProject} />
         ) : (
-          <ProjectDashboard 
-            slug={activeProject!} 
-            onExit={switchToSystem} 
+          <ProjectDashboard
+            slug={activeProject!}
+            onExit={switchToSystem}
           />
         )}
       </AuthGuard>
@@ -57,7 +57,7 @@ function LayoutOrchestrator({ onEnterProject }: LayoutProps) {
   const { preferences, updatePreference } = useLayoutStore();
   const { logout } = useAuth();
   const { sidebarCollapsed } = preferences;
-  
+
   const setSidebarCollapsed = (val: boolean) => updatePreference('sidebarCollapsed', val);
   const isExpanded = !sidebarCollapsed;
 
@@ -70,13 +70,13 @@ function LayoutOrchestrator({ onEnterProject }: LayoutProps) {
         className="relative flex flex-col h-full bg-surface-pit border-r border-border-subtle z-50 shrink-0 shadow-lg"
       >
         <div className="h-16 flex items-center px-4 border-b border-border-subtle shrink-0">
-          <button 
+          <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="p-1.5 rounded-xl text-accent-primary hover:text-accent-dim hover:bg-surface-raised transition-colors flex items-center justify-center group"
           >
             {isExpanded ? <Layers size={22} /> : <Menu size={22} />}
           </button>
-          
+
           <AnimatePresence initial={false}>
             {isExpanded && (
               <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto', marginLeft: 12 }} exit={{ opacity: 0, width: 0 }} className="overflow-hidden whitespace-nowrap">
@@ -88,9 +88,9 @@ function LayoutOrchestrator({ onEnterProject }: LayoutProps) {
         </div>
 
         <nav className="flex-1 overflow-y-auto custom-scrollbar py-4 px-3 flex flex-col gap-1.5">
-           <SidebarItem icon={Activity} label="Início" active expanded={isExpanded} />
-           <SidebarItem icon={Database} label="Infraestrutura" expanded={isExpanded} />
-           <SidebarItem icon={Shield} label="Segurança" expanded={isExpanded} />
+          <SidebarItem icon={Activity} label="Início" active expanded={isExpanded} />
+          <SidebarItem icon={Database} label="Infraestrutura" expanded={isExpanded} />
+          <SidebarItem icon={Shield} label="Segurança" expanded={isExpanded} />
         </nav>
 
         <div className="p-3 border-t border-border-subtle shrink-0">

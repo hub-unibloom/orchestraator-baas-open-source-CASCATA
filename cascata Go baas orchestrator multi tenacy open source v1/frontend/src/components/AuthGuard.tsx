@@ -11,7 +11,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#070707] flex items-center justify-center p-6 text-accent-primary">
-        <motion.div 
+        <motion.div
           initial="hidden" animate="visible" variants={VARIANTS.fadeIn}
           className="flex flex-col items-center gap-4"
         >
