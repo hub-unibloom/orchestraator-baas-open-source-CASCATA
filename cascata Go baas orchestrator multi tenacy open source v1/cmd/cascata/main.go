@@ -128,7 +128,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	migrationService := service.NewMigrationService(projectService, auditService)
 	
 	realtimeHub := api.NewRealtimeHub(projectService, pEngine)
-	workflowEngine := automation.NewWorkflowEngine(repo, poolManager, postman, aiEngine, realtimeHub)
+	workflowEngine := automation.NewWorkflowEngine(repo, projectService, poolManager, postman, aiEngine, realtimeHub)
 	eventQueue := automation.NewEventQueue(dfly)
 	webhookService := webhook.NewService(repo, eventQueue, auditService, otelEngine)
 	

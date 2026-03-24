@@ -22,6 +22,9 @@ func (e *WorkflowEngine) ProcessNode(ctx context.Context, execCtx *ExecutionCont
 		return nil, nil
 	}
 
+	// Resolve variables in the node's config properties (Foundation Phase 10)
+	props := e.ResolveObject(node.Config, execCtx.Vars).(map[string]interface{})
+
 	switch node.Type {
 	case domain.NodeHTTP:
 		return e.executeHttp(ctx, execCtx, node)
@@ -29,11 +32,75 @@ func (e *WorkflowEngine) ProcessNode(ctx context.Context, execCtx *ExecutionCont
 	case domain.NodeDB:
 		return e.executeSql(ctx, execCtx, node)
 
+	case "EMAIL":
+		// Legacy mapping for EMAIL nodes
+		to := fmt.Sprintf("%v", props["to"])
+		subject := fmt.Sprintf("%v", props["subject"])
+		body := fmt.Sprintf("%v", props["body"])
+		err := e.postman.SendEmail(ctx, to, subject, body)
+		return map[string]string{"status": "sent"}, err
+
+	case "WHATSAPP":
+		to := fmt.Sprintf("%v", props["to"])
+		msg := fmt.Sprintf("%v", props["message"])
+		err := e.postman.SendWhatsApp(ctx, to, msg)
+		return map[string]string{"status": "dispatched"}, err
+
+	case "DB_QUERY":
+		sql := fmt.Sprintf("%v", props["sql"])
+		pool, err := execCtx.PoolManager.GetPool(ctx, execCtx.ProjectSlug, execCtx.DBName, execCtx.MaxConns)
+		if err != nil { return nil, err }
+		
+		rows, err := pool.Pool.Query(ctx, sql)
+		if err != nil { return nil, err }
+		defer rows.Close()
+		
+		return map[string]string{"status": "executed (synced pool)"}, nil
+
+	case "PUSH_NOTIFICATION":
+		token := fmt.Sprintf("%v", props["token"])
+		title := fmt.Sprintf("%v", props["title"])
+		body := fmt.Sprintf("%v", props["body"])
+		
+		var data map[string]string
+		if d, ok := props["data"].(map[string]interface{}); ok {
+			data = make(map[string]string)
+			for k, v := range d { data[k] = fmt.Sprintf("%v", v)}
+		}
+
+		err := e.postman.SendPush(ctx, token, title, body, data)
+		return map[string]string{"status": "dispatched_to_hub"}, err
+
+	case "WEBHOOK":
+		// Simplified Webhook shortcut
+		return e.executeHttp(ctx, execCtx, node)
+
+	case "ASK_AI":
+		prompt := fmt.Sprintf("%v", props["prompt"])
+		config := ai.PromptConfig{
+			Intent:     fmt.Sprintf("%v", props["intent"]),
+			Model:      fmt.Sprintf("%v", props["model"]),
+			UserPrompt: prompt,
+		}
+		if config.Model == "" { config.Model = "gpt-4o" }
+
+		response, err := e.aiEngine.ExecuteWithContext(ctx, execCtx.ProjectSlug, config)
+		if err != nil {
+			return nil, fmt.Errorf("automation.ai: %w", err)
+		}
+		return map[string]string{"response": response}, nil
+
+	case "REALTIME_BROADCAST":
+		payload := props["payload"]
+		if payload == nil { payload = execCtx.Vars["$last"] }
+		err := e.realtime.Broadcast(ctx, execCtx.ProjectSlug, payload)
+		return map[string]string{"status": "broadcasted"}, err
+
 	case domain.NodeScript:
-		// Edge Logic (Phantom JS - TODO: Phase 23 integration with a JS runtime like otto)
-		source, _ := node.Config["source"].(string)
+		// Edge Logic (Phantom JS - Phase 23 integration)
+		source, _ := props["source"].(string)
 		slog.Debug("automation: edge script script", "source", source)
-		return map[string]string{"status": "script executed (simulated for Phase 10)"}, nil
+		return map[string]string{"status": "script executed (simulated)"}, nil
 
 	default:
 		return nil, fmt.Errorf("unknown node type: %s", node.Type)
@@ -55,7 +122,7 @@ func (e *WorkflowEngine) executeSql(ctx context.Context, execCtx *ExecutionConte
 	}
 
 	// EXECUTION: We acquire the pool for the project
-	pool, err := execCtx.PoolManager.GetPool(ctx, execCtx.ProjectSlug)
+	pool, err := execCtx.PoolManager.GetPool(ctx, execCtx.ProjectSlug, execCtx.DBName, execCtx.MaxConns)
 	if err != nil {
 		return nil, fmt.Errorf("automation: failed to resolve pool: %w", err)
 	}
