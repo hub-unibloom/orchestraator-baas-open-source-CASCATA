@@ -41,7 +41,7 @@ func (s *AuthService) AuthenticateRequest(ctx context.Context, identifier, apiKe
 	if isPrimary || isLegacy {
 		return &domain.AuthContext{
 			Mode:         domain.ModeService,
-			IdentityType: domain.IdentityCascataAgent, // Service Keys are treated as System Agents for now
+			IdentityType: domain.IdentityAgent, // Service Keys are treated as System Agents for now
 			Project:      p,
 			ProjectSlug:  p.Slug,
 			Role:         "service_role",
@@ -54,7 +54,7 @@ func (s *AuthService) AuthenticateRequest(ctx context.Context, identifier, apiKe
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			return &domain.AuthContext{
 				Mode:         domain.ModeAnon,
-				IdentityType: domain.IdentityTenantUser,
+				IdentityType: domain.IdentityResident,
 				Project:      p,
 				ProjectSlug:  p.Slug,
 				Role:         "anon",
@@ -75,7 +75,7 @@ func (s *AuthService) AuthenticateRequest(ctx context.Context, identifier, apiKe
 
 		return &domain.AuthContext{
 			Mode:         domain.ModeResident,
-			IdentityType: domain.IdentityTenantUser,
+			IdentityType: domain.IdentityResident,
 			Project:      p,
 			ProjectSlug:  p.Slug,
 			UserID:       fmt.Sprintf("%v", claims["sub"]),

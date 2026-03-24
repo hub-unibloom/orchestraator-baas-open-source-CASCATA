@@ -30,7 +30,7 @@ func NewVaultService(addr, token string) (*VaultService, error) {
 	}
 
 	slog.Info("vault connection established", "addr", addr)
-	return &VaultService{client: client}
+	return &VaultService{client: client}, nil
 }
 
 // GetClient returns the underlying vault client for specialized engine access (e.g. Transit).

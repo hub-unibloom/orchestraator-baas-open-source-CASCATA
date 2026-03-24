@@ -14,11 +14,12 @@ import (
 // Distinguishes from AuthService which handles Tenant APIs.
 type SystemAuthService struct {
 	memberRepo *repository.MemberRepository
+	auditSvc   domain.Auditor
 }
 
 // NewSystemAuthService initializes the management security layer.
-func NewSystemAuthService(repo *repository.MemberRepository) *SystemAuthService {
-	return &SystemAuthService{memberRepo: repo}
+func NewSystemAuthService(repo *repository.MemberRepository, audit domain.Auditor) *SystemAuthService {
+	return &SystemAuthService{memberRepo: repo, auditSvc: audit}
 }
 
 // AuthenticateMember validates credentials for a system operator (Dashboard login).
@@ -38,15 +39,8 @@ func (s *SystemAuthService) AuthenticateMember(ctx context.Context, email, passw
 		return nil, fmt.Errorf("system.auth: invalid credentials")
 	}
 
-	// 3. Log the successful login attempt in Audit Trail
-	_ = s.memberRepo.LogActivity(ctx, &domain.AuditLog{
-		MemberID:   member.ID,
-		MemberType: member.Type,
-		Action:     "MEMBER_LOGIN",
-		EntityType: "system.members",
-		EntityID:   member.ID,
-		Metadata:   map[string]interface{}{"email": email},
-	})
+	// 3. Log the successful login attempt in Unified Audit Ledger
+	_ = s.auditSvc.Log(ctx, "", "MEMBER_LOGIN", member.ID, string(member.Type), map[string]interface{}{"email": email})
 
 	return member, nil
 }

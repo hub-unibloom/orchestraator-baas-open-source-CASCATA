@@ -1,20 +1,22 @@
- => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-  0.5s 
-------                                                                          
- > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                           
-0.422 package command-line-arguments                                            
-0.422 	imports cascata/internal/ai from main.go
-0.422 	imports cascata/internal/database from context.go
-0.422 	imports cascata/internal/service from manager.go
-0.422 	imports cascata/internal/database from audit_service.go: import cycle not allowed
-0.422 package command-line-arguments
-0.422 	imports cascata/internal/ai from main.go
-0.422 	imports cascata/internal/database from context.go
-0.422 	imports cascata/internal/service from manager.go
-0.422 	imports cascata/internal/phantom from extension.go
-0.422 	imports cascata/internal/ai from runtime.go: import cycle not allowed
+ => ERROR [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                                                                             78.7s 
+------                                                                                                                                                                                        
+ > [builder 8/9] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                                                         
+10.10 # cascata/internal/domain                                                                                                                                                               
+10.10 internal/domain/member.go:9:2: RoleWorner redeclared in this block                                                                                                                      
+10.10   internal/domain/identity.go:22:2: other declaration of RoleWorner                                                                                                                     
+10.10 internal/domain/member.go:10:2: RoleManager redeclared in this block                                                                                                                    
+10.10 	internal/domain/identity.go:23:2: other declaration of RoleManager
+10.10 internal/domain/member.go:11:2: RoleDeveloper redeclared in this block
+10.10 	internal/domain/identity.go:24:2: other declaration of RoleDeveloper
+10.10 internal/domain/member.go:12:2: RoleAnalyst redeclared in this block
+10.10 	internal/domain/identity.go:25:2: other declaration of RoleAnalyst
+56.32 # cascata/internal/vault
+56.32 internal/vault/vault.go:33:9: not enough return values
+56.32 	have (*VaultService)
+56.32 	want (*VaultService, error)
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-casc... Building 20.8s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                                                                                  90.4s
 Dockerfile.backend:20
 
 --------------------
@@ -33,4 +35,3 @@ Dockerfile.backend:20
 
 failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
 
-ubuntu@ip-172-26-7-197:~$ 

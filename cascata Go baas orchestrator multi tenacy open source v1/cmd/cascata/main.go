@@ -117,9 +117,9 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	cacheMgr := database.NewCacheManager(dfly)
 	postman := communication.NewTrinityPostman(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom)
 
-	residentAuthSvc := auth.NewResidentAuthService(projectService, resRepo, sessionSvc, otpMgr, postman)
+	residentAuthSvc := auth.NewResidentAuthService(projectService, resRepo, sessionSvc, otpMgr, postman, auditService)
 	externalAuthSvc := auth.NewExternalAuthService(projectService, resRepo, residentAuthSvc)
-	systemAuth := auth.NewSystemAuthService(memberRepo)
+	systemAuth := auth.NewSystemAuthService(memberRepo, auditService)
 	
 	// --- 6. Orchestration Engines (Phase 11-15) ---
 	syncService := service.NewSyncService(poolManager, auditService)

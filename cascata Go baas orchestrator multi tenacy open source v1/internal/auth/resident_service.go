@@ -23,15 +23,17 @@ type ResidentAuthService struct {
 	sessionMgr *SessionManager
 	otpMgr     *OTPManager
 	postman    communication.Dispatcher
+	auditSvc   domain.Auditor
 }
 
-func NewResidentAuthService(projectSvc *service.ProjectService, resRepo *repository.ResidentRepository, sessionMgr *SessionManager, otpMgr *OTPManager, postman communication.Dispatcher) *ResidentAuthService {
+func NewResidentAuthService(projectSvc *service.ProjectService, resRepo *repository.ResidentRepository, sessionMgr *SessionManager, otpMgr *OTPManager, postman communication.Dispatcher, audit domain.Auditor) *ResidentAuthService {
 	return &ResidentAuthService{
 		projectSvc: projectSvc,
 		resRepo:    resRepo,
 		sessionMgr: sessionMgr,
 		otpMgr:     otpMgr,
 		postman:    postman,
+		auditSvc:   audit,
 	}
 }
 
@@ -49,26 +51,24 @@ func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug
 		return nil, "", fmt.Errorf("resident.auth.AuthenticateByCPF: resident lookup failed: %w", err)
 	}
 
-	// 3. Verify Password
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
-		slog.Warn("resident.auth: invalid password attempt", "tenant_slug", projectSlug, "cpf", cpf)
-		return nil, "", fmt.Errorf("resident.auth.AuthenticateByCPF: invalid credentials")
+	// 4. Issue Token
+	token, err := s.issueResidentToken(ctx, projectSlug, res, false)
+	if err != nil {
+		return nil, "", err
 	}
 
-	return user, signedJWT, nil
+	// 5. Log activity
+	_ = s.auditSvc.Log(ctx, projectSlug, "RESIDENT_LOGIN", res.ID, string(domain.IdentityResident), map[string]interface{}{"cpf": cpf})
+
+	return res, token, nil
 }
 
 // IssueStepUpOTP initiates an elevated authentication prompt for an already logged-in user.
-func (s *ResidentAuthService) IssueStepUpOTP(ctx context.Context, slug, resID string) error {
-	pool, _ := s.projectSvc.GetPool(ctx, slug)
-	r, _, err := s.resRepo.FindByIdentifier(ctx, pool, resID) // Simplified for example, should be FindByID
-	if err != nil { return err }
-
-	slog.Info("resident.auth: issuing step-up challenge", "slug", slug, "user", userID)
+	slog.Info("resident.auth: issuing step-up challenge", "slug", slug, "resident_id", resID)
 	
 	// We use the email/whatsapp as identifier for the OTP
-	identifier := u.Email
-	if identifier == "" { identifier = u.WhatsApp }
+	identifier := r.Email
+	if identifier == "" { identifier = r.WhatsApp }
 
 	code, err := s.otpMgr.IssueOTP(ctx, slug, identifier)
 	if err != nil { return err }
@@ -83,19 +83,19 @@ func (s *ResidentAuthService) IssueStepUpOTP(ctx context.Context, slug, resID st
 }
 
 // VerifyStepUp validates the elevated challenge and issues a 'mfa-elevated' JWT.
-func (s *ResidentAuthService) VerifyStepUp(ctx context.Context, slug, userID, code string) (string, error) {
+func (s *ResidentAuthService) VerifyStepUp(ctx context.Context, slug, residentID, code string) (string, error) {
 	pool, _ := s.projectSvc.GetPool(ctx, slug)
-	u, _, _ := s.userRepo.FindByID(ctx, pool, userID)
+	r, _, _ := s.resRepo.FindByIdentifier(ctx, pool, residentID)
 	
-	identifier := u.Email
-	if identifier == "" { identifier = u.WhatsApp }
+	identifier := r.Email
+	if identifier == "" { identifier = r.WhatsApp }
 
 	valid, err := s.otpMgr.VerifyOTP(ctx, slug, identifier, code)
 	if err != nil || !valid {
 		return "", fmt.Errorf("invalid step-up code")
 	}
 
-	return s.issueResidentToken(ctx, slug, u, true)
+	return s.issueResidentToken(ctx, slug, r, true)
 }
 
 // issueResidentToken generates a JWT signed with the Project's specific secret.
@@ -187,6 +187,7 @@ func (s *ResidentAuthService) VerifyOTP(ctx context.Context, projectSlug, identi
 	// 5. Update Audit Trail (Async)
 	go func() {
 		_ = s.resRepo.UpdateLastLogin(context.Background(), pool, res.ID)
+		_ = s.auditSvc.Log(context.Background(), projectSlug, "RESIDENT_LOGIN_OTP", res.ID, string(domain.IdentityResident), map[string]interface{}{"identifier": identifier})
 	}()
 
 	return res, signedJWT, nil
