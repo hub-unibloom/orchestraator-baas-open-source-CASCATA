@@ -101,10 +101,13 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 		if dfly == nil {
 			dfly = redis.NewClient(&redis.Options{
 				Addr: strings.TrimPrefix(cfg.DflyURL, "redis://"),
+				// Resilience: Automatic reconnection parameters
+				MaxRetries:      5,
+				MinRetryBackoff: 1 * time.Second,
 			})
 			if err := dfly.Ping(ctx).Err(); err != nil {
 				slog.Warn("worker: redis still chilling...", "attempt", i, "err", err)
-				dfly.Close()
+				_ = dfly.Close() // Safe close before retry
 				dfly = nil
 				success = false
 			}

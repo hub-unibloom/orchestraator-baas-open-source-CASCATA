@@ -1,15 +1,42 @@
-{"time":"2026-03-25T10:12:30.460484013Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-{"time":"2026-03-25T10:12:30.963586775Z","level":"WARN","msg":"api.error_delivered","status":401,"code":"UNAUTHORIZED_IDENTITY","message":"AUTHENTICATION_REQUIRED","detail":""}
-{"time":"2026-03-25T10:12:30.963632449Z","level":"INFO","msg":"api.request","trace_id":"da92ff2d59c1b3e3b4657ea6731e634c","method":"POST","path":"/system/projects","status":401,"latency_ms":0,"remote_ip":"191.202.103.226"}
-191.202.103.226 - - [25/Mar/2026:10:12:30 +0000] "POST /system/projects HTTP/1.1" 401 85 "http://100.54.11.109/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
-{"time":"2026-03-25T10:12:31.460558849Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-{"time":"2026-03-25T10:12:32.460753343Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-{"time":"2026-03-25T10:12:33.461527691Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+ubuntu@ip-172-26-7-197:~$ docker ps
+CONTAINER ID   IMAGE                                                                   COMMAND                  CREATED         STATUS                     PORTS                                                   NAMES
+a8d96c582546   nginx:1.25-alpine                                                       "/docker-entrypoint.…"   3 minutes ago   Up 3 minutes               0.0.0.0:80->80/tcp, [::]:80->80/tcp                     cascata-gateway
+6bd1bc8210ed   cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator   "./cascata-orchestra…"   3 minutes ago   Up 3 minutes               8080/tcp                                                cascata-orchestrator
+50b37c2c2a2b   postgres:18-alpine                                                      "docker-entrypoint.s…"   3 minutes ago   Up 3 minutes (healthy)     0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp             cascata-db
+2d00f75e22d9   hashicorp/vault:1.15                                                    "docker-entrypoint.s…"   3 minutes ago   Up 3 minutes (unhealthy)   8200/tcp, 0.0.0.0:8207->8207/tcp, [::]:8207->8207/tcp   cascata-vault
+ff4bb28e8cc6   docker.dragonflydb.io/dragonflydb/dragonfly                             "/usr/bin/tini -- en…"   3 minutes ago   Up 3 minutes (healthy)     0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp             cascata-cache
+ubuntu@ip-172-26-7-197:~$ 
+
+
+
+
+logss:
+
+{"time":"2026-03-25T11:00:11.036046055Z","level":"INFO","msg":"genesis: starting project creation","slug":"tesste","db":"cascata_meta"}
+{"time":"2026-03-25T11:00:11.03840622Z","level":"INFO","msg":"logical schema provisioned for tenant","schema":"tesste"}
+{"time":"2026-03-25T11:00:11.038426685Z","level":"INFO","msg":"vault: initiating sovereign genesis for tenant","slug":"tesste"}
+{"time":"2026-03-25T11:00:11.041316909Z","level":"WARN","msg":"genesis: rolling back project creation due to failure","slug":"tesste"}
+{"time":"2026-03-25T11:00:11.044507652Z","level":"WARN","msg":"logical schema DROPPED","schema":"tesste"}
+{"time":"2026-03-25T11:00:11.046752358Z","level":"ERROR","msg":"vault: write failure","path":"cascata/tenants/tesste/config","error":"403: permission denied"}
+{"time":"2026-03-25T11:00:11.046784654Z","level":"ERROR","msg":"system: failed to birth project","slug":"tesste","err":"genesis: vault provisioning failed: vault.ProvisionTenantVault [mount:cascata, path:tenants/tesste/config]: 403: permission denied"}
+{"time":"2026-03-25T11:00:11.046800284Z","level":"WARN","msg":"api.error_delivered","status":500,"code":"GENESIS_TENANT_BIRTH_FAILED","message":"GENESIS_FAILED","detail":"genesis: vault provisioning failed: vault.ProvisionTenantVault [mount:cascata, path:tenants/tesste/config]: 403: permission denied"}
+{"time":"2026-03-25T11:00:11.046855337Z","level":"INFO","msg":"api.request","trace_id":"ee634d7c121d8030bbc5ed1ab00bed2f","method":"POST","path":"/system/projects","status":500,"latency_ms":10,"remote_ip":"191.202.103.226"}
+{"time":"2026-03-25T11:00:11.876588548Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T11:00:12.146954362Z","level":"INFO","msg":"genesis: starting project creation","slug":"tesste","db":"cascata_meta"}
+{"time":"2026-03-25T11:00:12.148655371Z","level":"INFO","msg":"logical schema provisioned for tenant","schema":"tesste"}
+{"time":"2026-03-25T11:00:12.148673529Z","level":"INFO","msg":"vault: initiating sovereign genesis for tenant","slug":"tesste"}
+{"time":"2026-03-25T11:00:12.149464262Z","level":"WARN","msg":"genesis: rolling back project creation due to failure","slug":"tesste"}
+{"time":"2026-03-25T11:00:12.150925382Z","level":"WARN","msg":"logical schema DROPPED","schema":"tesste"}
+{"time":"2026-03-25T11:00:12.151669352Z","level":"ERROR","msg":"vault: write failure","path":"cascata/tenants/tesste/config","error":"403: permission denied"}
+{"time":"2026-03-25T11:00:12.151692674Z","level":"ERROR","msg":"system: failed to birth project","slug":"tesste","err":"genesis: vault provisioning failed: vault.ProvisionTenantVault [mount:cascata, path:tenants/tesste/config]: 403: permission denied"}
+{"time":"2026-03-25T11:00:12.151706706Z","level":"WARN","msg":"api.error_delivered","status":500,"code":"GENESIS_TENANT_BIRTH_FAILED","message":"GENESIS_FAILED","detail":"genesis: vault provisioning failed: vault.ProvisionTenantVault [mount:cascata, path:tenants/tesste/config]: 403: permission denied"}
+{"time":"2026-03-25T11:00:12.151736695Z","level":"INFO","msg":"api.request","trace_id":"ed093ee3ffb819bb3de3e17b842856a7","method":"POST","path":"/system/projects","status":500,"latency_ms":4,"remote_ip":"191.202.103.226"}
+{"time":"2026-03-25T11:00:12.877726334Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
 {
 	"Name": "POST /system/projects",
 	"SpanContext": {
-		"TraceID": "da92ff2d59c1b3e3b4657ea6731e634c",
-		"SpanID": "aaf6d86962241280",
+		"TraceID": "ee634d7c121d8030bbc5ed1ab00bed2f",
+		"SpanID": "5782147798fcb413",
 		"TraceFlags": "01",
 		"TraceState": "",
 		"Remote": false
@@ -22,8 +49,8 @@
 		"Remote": false
 	},
 	"SpanKind": 1,
-	"StartTime": "2026-03-25T10:12:30.963569491Z",
-	"EndTime": "2026-03-25T10:12:30.963661774Z",
+	"StartTime": "2026-03-25T11:00:11.035913843Z",
+	"EndTime": "2026-03-25T11:00:11.046870685Z",
 	"Attributes": [
 		{
 			"Key": "http.method",
@@ -47,24 +74,52 @@
 			}
 		},
 		{
+			"Key": "cascata.project",
+			"Value": {
+				"Type": "STRING",
+				"Value": "system_orchestrator"
+			}
+		},
+		{
+			"Key": "cascata.mode",
+			"Value": {
+				"Type": "STRING",
+				"Value": "SERVICE"
+			}
+		},
+		{
+			"Key": "cascata.identity",
+			"Value": {
+				"Type": "STRING",
+				"Value": "MEMBER"
+			}
+		},
+		{
+			"Key": "cascata.member_id",
+			"Value": {
+				"Type": "STRING",
+				"Value": "068d684c-ea29-4cea-8eb0-36fd6337506d"
+			}
+		},
+		{
 			"Key": "error.code",
 			"Value": {
 				"Type": "STRING",
-				"Value": "UNAUTHORIZED_IDENTITY"
+				"Value": "GENESIS_TENANT_BIRTH_FAILED"
 			}
 		},
 		{
 			"Key": "error.message",
 			"Value": {
 				"Type": "STRING",
-				"Value": "AUTHENTICATION_REQUIRED"
+				"Value": "GENESIS_FAILED"
 			}
 		},
 		{
 			"Key": "http.status_code",
 			"Value": {
 				"Type": "INT64",
-				"Value": 401
+				"Value": 500
 			}
 		}
 	],
@@ -83,18 +138,18 @@
 					"Key": "exception.message",
 					"Value": {
 						"Type": "STRING",
-						"Value": "request_failed_with_status_401"
+						"Value": "request_failed_with_status_500"
 					}
 				}
 			],
 			"DroppedAttributeCount": 0,
-			"Time": "2026-03-25T10:12:30.963627617Z"
+			"Time": "2026-03-25T11:00:11.046849125Z"
 		}
 	],
 	"Links": null,
 	"Status": {
 		"Code": "Error",
-		"Description": "AUTHENTICATION_REQUIRED"
+		"Description": "GENESIS_FAILED"
 	},
 	"DroppedAttributes": 0,
 	"DroppedEvents": 0,
@@ -129,29 +184,162 @@
 		"Attributes": null
 	}
 }
-{"time":"2026-03-25T10:12:34.462477704Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-{"time":"2026-03-25T10:12:35.463201348Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-{"time":"2026-03-25T10:12:36.463695718Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-{"time":"2026-03-25T10:12:37.463971525Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-{"time":"2026-03-25T10:12:38.464162384Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-{"time":"2026-03-25T10:12:39.464688994Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-{"time":"2026-03-25T10:12:40.464861551Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-.....
-{"time":"2026-03-25T10:12:40.621141122Z","level":"ERROR","msg":"pool_manager: critical master pool failure","error":"closed pool"}
-......
-{"time":"2026-03-25T10:12:49.470830656Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-{"time":"2026-03-25T10:12:50.470975427Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-{"time":"2026-03-25T10:12:51.471370209Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-{"time":"2026-03-25T10:12:52.472483886Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
-^C
+{
+	"Name": "POST /system/projects",
+	"SpanContext": {
+		"TraceID": "ed093ee3ffb819bb3de3e17b842856a7",
+		"SpanID": "baf033d560945593",
+		"TraceFlags": "01",
+		"TraceState": "",
+		"Remote": false
+	},
+	"Parent": {
+		"TraceID": "00000000000000000000000000000000",
+		"SpanID": "0000000000000000",
+		"TraceFlags": "00",
+		"TraceState": "",
+		"Remote": false
+	},
+	"SpanKind": 1,
+	"StartTime": "2026-03-25T11:00:12.146837349Z",
+	"EndTime": "2026-03-25T11:00:12.151743389Z",
+	"Attributes": [
+		{
+			"Key": "http.method",
+			"Value": {
+				"Type": "STRING",
+				"Value": "POST"
+			}
+		},
+		{
+			"Key": "http.url",
+			"Value": {
+				"Type": "STRING",
+				"Value": "/system/projects"
+			}
+		},
+		{
+			"Key": "http.user_agent",
+			"Value": {
+				"Type": "STRING",
+				"Value": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+			}
+		},
+		{
+			"Key": "cascata.project",
+			"Value": {
+				"Type": "STRING",
+				"Value": "system_orchestrator"
+			}
+		},
+		{
+			"Key": "cascata.mode",
+			"Value": {
+				"Type": "STRING",
+				"Value": "SERVICE"
+			}
+		},
+		{
+			"Key": "cascata.identity",
+			"Value": {
+				"Type": "STRING",
+				"Value": "MEMBER"
+			}
+		},
+		{
+			"Key": "cascata.member_id",
+			"Value": {
+				"Type": "STRING",
+				"Value": "068d684c-ea29-4cea-8eb0-36fd6337506d"
+			}
+		},
+		{
+			"Key": "error.code",
+			"Value": {
+				"Type": "STRING",
+				"Value": "GENESIS_TENANT_BIRTH_FAILED"
+			}
+		},
+		{
+			"Key": "error.message",
+			"Value": {
+				"Type": "STRING",
+				"Value": "GENESIS_FAILED"
+			}
+		},
+		{
+			"Key": "http.status_code",
+			"Value": {
+				"Type": "INT64",
+				"Value": 500
+			}
+		}
+	],
+	"Events": [
+		{
+			"Name": "exception",
+			"Attributes": [
+				{
+					"Key": "exception.type",
+					"Value": {
+						"Type": "STRING",
+						"Value": "*errors.errorString"
+					}
+				},
+				{
+					"Key": "exception.message",
+					"Value": {
+						"Type": "STRING",
+						"Value": "request_failed_with_status_500"
+					}
+				}
+			],
+			"DroppedAttributeCount": 0,
+			"Time": "2026-03-25T11:00:12.151730586Z"
+		}
+	],
+	"Links": null,
+	"Status": {
+		"Code": "Error",
+		"Description": "GENESIS_FAILED"
+	},
+	"DroppedAttributes": 0,
+	"DroppedEvents": 0,
+	"DroppedLinks": 0,
+	"ChildSpanCount": 0,
+	"Resource": [
+		{
+			"Key": "service.name",
+			"Value": {
+				"Type": "STRING",
+				"Value": "cascata-orchestrator"
+			}
+		},
+		{
+			"Key": "service.version",
+			"Value": {
+				"Type": "STRING",
+				"Value": "1.0.0.0"
+			}
+		}
+	],
+	"InstrumentationScope": {
+		"Name": "cascata-api",
+		"Version": "",
+		"SchemaURL": "",
+		"Attributes": null
+	},
+	"InstrumentationLibrary": {
+		"Name": "cascata-api",
+		"Version": "",
+		"SchemaURL": "",
+		"Attributes": null
+	}
+}
+{"time":"2026-03-25T11:00:13.878817168Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T11:00:14.879943115Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T11:00:15.880955402Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T11:00:16.881971485Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
 
 
-ubuntu@ip-172-26-7-197:~$ docker ps
-CONTAINER ID   IMAGE                                                                   COMMAND                  CREATED       STATUS                   PORTS                                                   NAMES
-a6aa320679cb   nginx:1.25-alpine                                                       "/docker-entrypoint.…"   8 hours ago   Up 8 hours               0.0.0.0:80->80/tcp, [::]:80->80/tcp                     cascata-gateway
-b95c4152c28e   cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator   "./cascata-orchestra…"   8 hours ago   Up 8 hours               8080/tcp                                                cascata-orchestrator
-f0d327daebc0   postgres:18-alpine                                                      "docker-entrypoint.s…"   8 hours ago   Up 8 hours (healthy)     0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp             cascata-db
-4652bcf5495b   hashicorp/vault:1.15                                                    "docker-entrypoint.s…"   8 hours ago   Up 8 hours (unhealthy)   8200/tcp, 0.0.0.0:8207->8207/tcp, [::]:8207->8207/tcp   cascata-vault
-692f5fc6cf55   docker.dragonflydb.io/dragonflydb/dragonfly                             "/usr/bin/tini -- en…"   8 hours ago   Up 8 hours (healthy)     0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp             cascata-cache
-ubuntu@ip-172-26-7-197:~$ 
 

@@ -13,13 +13,14 @@ import (
 // VaultService is the core security pillar for secret management.
 type VaultService struct {
 	client *vault.Client
+	token  string
 }
 
-// NewVaultService establishes a connection to the HashiCorp Vault.
+// NewVaultService establishes a connection and starts the vital renewal heartbeat.
 func NewVaultService(addr, token string) (*VaultService, error) {
 	client, err := vault.New(
 		vault.WithAddress(addr),
-		vault.WithRequestTimeout(5*time.Second),
+		vault.WithRequestTimeout(10*time.Second),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("vault.New: %w", err)
@@ -29,49 +30,88 @@ func NewVaultService(addr, token string) (*VaultService, error) {
 		return nil, fmt.Errorf("vault.SetToken: %w", err)
 	}
 
-	slog.Info("vault connection established", "addr", addr)
-	return &VaultService{client: client}, nil
+	svc := &VaultService{
+		client: client,
+		token:  token,
+	}
+
+	// REALITY CHECK: Start Life-Pulse Renewal System
+	go svc.keepTokenAlive(context.Background())
+
+	slog.Info("vault synergy established: auto-renewal pulse active", "addr", addr)
+	return svc, nil
 }
 
-// GetClient returns the underlying vault client for specialized engine access (e.g. Transit).
+// keepTokenAlive ensures the orchestrator never loses its keys due to TTL expiration.
+func (s *VaultService) keepTokenAlive(ctx context.Context) {
+	ticker := time.NewTicker(12 * time.Hour) // Pulse every 12h for conservative safety
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// Synergic Renewal Pulse
+			_, err := s.client.Auth.TokenRenewSelf(ctx, schema.TokenRenewSelfRequest{})
+			if err != nil {
+				slog.Error("vault: renewal pulse failure - security integrity at risk", "error", err)
+				continue
+			}
+			slog.Debug("vault: identity lease extended successfully")
+		}
+	}
+}
+
+// GetClient returns the underlying vault client for specialized engine access.
 func (s *VaultService) GetClient() *vault.Client {
 	return s.client
 }
 
-// WriteSecret stores a secret in the KV-V2 engine.
-func (s *VaultService) WriteSecret(ctx context.Context, path string, data map[string]any) error {
-	// In KV-V2, the path is mount/data/path. vault-client-go v0.4+ uses mount and path separately or combined.
-	// We use the full path approach for maximum transparency in Phase 1.
-	_, err := s.client.Secrets.KvV2Write(ctx, path, schema.KvV2WriteRequest{
-		Data: data,
-	})
-	if err != nil {
-		slog.Error("vault: write failure", "path", path, "error", err)
-		return fmt.Errorf("vault.WriteSecret [%s]: %w", path, err)
+// WriteSecret stores a secret in the KV-V2 engine using explicit mount pathing with retry logic.
+func (s *VaultService) WriteSecret(ctx context.Context, mount, path string, data map[string]any) error {
+	var err error
+	for i := 0; i < 3; i++ {
+		_, err = s.client.Secrets.KvV2Write(ctx, path, schema.KvV2WriteRequest{
+			Data: data,
+		}, vault.WithMountPath(mount))
+		
+		if err == nil {
+			return nil
+		}
+		slog.Warn("vault: write attempt failed, retrying...", "mount", mount, "path", path, "attempt", i+1, "error", err)
+		time.Sleep(time.Duration(i+1) * 500 * time.Millisecond)
 	}
-	return nil
+	
+	slog.Error("vault: write terminal failure", "mount", mount, "path", path, "error", err)
+	return fmt.Errorf("vault.WriteSecret [%s/%s]: %w", mount, path, err)
 }
 
-// ReadSecret retrieves a secret from the KV-V2 engine.
-func (s *VaultService) ReadSecret(ctx context.Context, path string) (map[string]any, error) {
-	resp, err := s.client.Secrets.KvV2Read(ctx, path)
-	if err != nil {
-		slog.Error("vault: read failure", "path", path, "error", err)
-		return nil, fmt.Errorf("vault.ReadSecret [%s]: %w", path, err)
+// ReadSecret retrieves a secret from the KV-V2 engine with retry logic.
+func (s *VaultService) ReadSecret(ctx context.Context, mount, path string) (map[string]any, error) {
+	var err error
+	var resp *vault.Response[schema.KvV2ReadResponse]
+
+	for i := 0; i < 3; i++ {
+		resp, err = s.client.Secrets.KvV2Read(ctx, path, vault.WithMountPath(mount))
+		if err == nil {
+			if resp.Data.Data == nil {
+				return nil, fmt.Errorf("vault.ReadSecret: no data payload at [%s/%s]", mount, path)
+			}
+			return resp.Data.Data, nil
+		}
+		slog.Warn("vault: read attempt failed, retrying...", "mount", mount, "path", path, "attempt", i+1, "error", err)
+		time.Sleep(time.Duration(i+1) * 500 * time.Millisecond)
 	}
-	// Responsiveness check for KV-V2 data structure
-	if resp.Data.Data == nil {
-		return nil, fmt.Errorf("vault.ReadSecret: no data payload at [%s]", path)
-	}
-	return resp.Data.Data, nil
+
+	slog.Error("vault: read terminal failure", "mount", mount, "path", path, "error", err)
+	return nil, fmt.Errorf("vault.ReadSecret [%s/%s]: %w", mount, path, err)
 }
 
-// ProvisionTenantVault creates the isolated secret infrastructure for a new project (Phase 23).
+// ProvisionTenantVault creates the isolated secret infrastructure for a new project.
 func (s *VaultService) ProvisionTenantVault(ctx context.Context, slug string) error {
 	slog.Info("vault: initiating sovereign genesis for tenant", "slug", slug)
 	
-	// We use the 'cascata' mount point as defined in our Sovereign Infrastructure Plan (install.sh).
-	// The path starts with 'cascata/' to target the specific engine.
 	mountPath := "cascata"
 	secretPath := fmt.Sprintf("tenants/%s/config", slug)
 	
@@ -79,17 +119,8 @@ func (s *VaultService) ProvisionTenantVault(ctx context.Context, slug string) er
 		"genesis_at":    time.Now().Format(time.RFC3339),
 		"status":        "sovereign_active",
 		"isolation_v":   "1.0.0.0",
+		"engine":        "sovereign_baas",
 	}
 
-	// Use specific KvV2Write with explicit mount to bypass path ambiguity in v0.4.0
-	_, err := s.client.Secrets.KvV2Write(ctx, secretPath, schema.KvV2WriteRequest{
-		Data: data,
-	}, vault.WithMountPath(mountPath))
-
-	if err != nil {
-		return fmt.Errorf("vault.ProvisionTenantVault [mount:%s, path:%s]: %w", mountPath, secretPath, err)
-	}
-
-	slog.Info("vault: genesis complete for tenant", "slug", slug)
-	return nil
+	return s.WriteSecret(ctx, mountPath, secretPath, data)
 }

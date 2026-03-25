@@ -14,5 +14,14 @@
   "provision_tenant": "Provisionar Inquilino",
   "syncing": "Sincronizando...",
   "genesis_title": "Gênese de Infraestrutura",
-  "genesis_confirm": "Provisionar isolamento soberano para o projeto %s?"
+  "genesis_confirm": "Confirmar a provisão do isolamento soberano para o inquilino %s?",
+  "project_blueprint": "BLUEPRINT DO PROJETO",
+  "architecting_nodes": "Arquitetando Nós de Dados Soberanos v1.0",
+  "id_genesis": "01 ID_GÊNESE",
+  "quota_limits": "02 LIMITES_QUOTA",
+  "deploy_nodes": "03 DEPLOY_NÓS",
+  "operation_name": "Nome da Operação",
+  "computed_slug": "Slug_Computado (Automático)",
+  "infrastructure_genesis": "Gênese de Infraestrutura",
+  "execute_provision": "EXECUTAR PROVISÃO"
 }

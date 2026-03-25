@@ -348,14 +348,24 @@ vault_bootstrap() {
     IS_INIT=$(docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault status -format=json 2>/dev/null | jq -r '.initialized' || echo "false")
     
     if [[ "$IS_INIT" == "true" ]]; then
-        log_info "Vault Previamente Inicializado."
+        log_info "Vault Previamente Inicializado. Verificando estado de Unseal..."
         
-        if [[ -f "$VAULT_KEYS_FILE" ]]; then
-            local EXISTING_KEY
-            EXISTING_KEY=$(grep "UNSEAL_KEY=" "$VAULT_KEYS_FILE" | cut -d'=' -f2 || true)
-            if [[ -n "$EXISTING_KEY" ]]; then
-                docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault operator unseal "$EXISTING_KEY" >/dev/null 2>&1 || true
-                log_success "Vault reconstituído e Unselado autonomamente."
+        local IS_SEALED
+        IS_SEALED=$(docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault status -format=json 2>/dev/null | jq -r '.sealed' || echo "true")
+
+        if [[ "$IS_SEALED" == "true" ]]; then
+            if [[ -f "$VAULT_KEYS_FILE" ]]; then
+                log_info "Vault SELADO detectado. Tentando Unseal soberano..."
+                local EXISTING_KEY
+                EXISTING_KEY=$(grep "UNSEAL_KEY=" "$VAULT_KEYS_FILE" | cut -d'=' -f2 || true)
+                if [[ -n "$EXISTING_KEY" ]]; then
+                    docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault operator unseal "$EXISTING_KEY" >/dev/null 2>&1 || true
+                    log_success "Vault reconstituído e Unselado autonomamente."
+                else
+                    log_error "Vault SELADO e chave ausente no arquivo de chaves. Intervenção manual exigida."
+                fi
+            else
+                log_error "Vault SELADO e arquivo de chaves não encontrado em $VAULT_KEYS_FILE."
             fi
         fi
     else

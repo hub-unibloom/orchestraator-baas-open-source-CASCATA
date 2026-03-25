@@ -2,6 +2,8 @@ package components
 
 import (
     "github.com/nicksnyder/go-i18n/v2/i18n"
+    "fmt"
+    cascata_i18n "cascata/internal/i18n"
 )
 
 templ OnboardingModal(loc *i18n.Localizer) {
@@ -26,7 +28,7 @@ templ OnboardingModal(loc *i18n.Localizer) {
 			            </div>
 			            <div class="space-y-2">
 			                <h2 class="text-3xl font-black text-white italic tracking-tightest leading-none uppercase">PROJECT<br/><span class="text-accent-primary text-4xl">BLUEPRINT</span></h2>
-			                <p class="text-[9px] font-mono text-content-muted uppercase tracking-[0.4em] italic leading-relaxed opacity-60">Architecting Sovereign Data Nodes v1.0</p>
+			                <p class="text-[9px] font-mono text-content-muted uppercase tracking-[0.4em] italic leading-relaxed opacity-60">{ cascata_i18n.T(loc, "architecting_nodes") }</p>
 			            </div>
 			        </div>
 
@@ -34,15 +36,15 @@ templ OnboardingModal(loc *i18n.Localizer) {
 			        <div class="space-y-6">
 			            <div :class="step >= 1 ? 'text-accent-primary opacity-100' : 'text-content-muted opacity-40'" class="flex items-center gap-4 transition-all duration-500">
 			                <div :class="step >= 1 ? 'bg-accent-primary' : 'bg-surface-elevated'" class="w-2 h-2 rounded-full shadow-glow"></div>
-			                <span class="text-[10px] font-black uppercase tracking-[0.2em] italic">01 ID_GENESIS</span>
+			                <span class="text-[10px] font-black uppercase tracking-[0.2em] italic">{ cascata_i18n.T(loc, "id_genesis") }</span>
 			            </div>
 			            <div :class="step >= 2 ? 'text-accent-secondary opacity-100' : 'text-content-muted opacity-40'" class="flex items-center gap-4 transition-all duration-500">
 			                <div :class="step >= 2 ? 'bg-accent-secondary' : 'bg-surface-elevated'" class="w-2 h-2 rounded-full shadow-glow"></div>
-			                <span class="text-[10px] font-black uppercase tracking-[0.2em] italic">02 QUOTA_LIMITS</span>
+			                <span class="text-[10px] font-black uppercase tracking-[0.2em] italic">{ cascata_i18n.T(loc, "quota_limits") }</span>
 			            </div>
 			            <div :class="step >= 3 ? 'text-accent-success opacity-100' : 'text-content-muted opacity-40'" class="flex items-center gap-4 transition-all duration-500">
 			                <div :class="step >= 3 ? 'bg-accent-success' : 'bg-surface-elevated'" class="w-2 h-2 rounded-full shadow-glow"></div>
-			                <span class="text-[10px] font-black uppercase tracking-[0.2em] italic">03 DEPLOY_NODES</span>
+			                <span class="text-[10px] font-black uppercase tracking-[0.2em] italic">{ cascata_i18n.T(loc, "deploy_nodes") }</span>
 			            </div>
 			        </div>
 			    </div>
@@ -62,7 +64,7 @@ templ OnboardingModal(loc *i18n.Localizer) {
 			                    
 			                    <div class="space-y-8">
 			                        <div class="space-y-3 group">
-			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 group-focus-within:text-accent-primary transition-colors italic">Nome da Operação</label>
+			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 group-focus-within:text-accent-primary transition-colors italic">{ cascata_i18n.T(loc, "operation_name") }</label>
 			                            <input 
 			                                name="name" 
 			                                x-model="name"
@@ -73,7 +75,7 @@ templ OnboardingModal(loc *i18n.Localizer) {
 			                            />
 			                        </div>
 			                        <div class="space-y-2 opacity-60">
-			                             <label class="text-[8px] font-black uppercase tracking-[0.5em] text-accent-primary ml-4 italic">Computed_Slug (Automated)</label>
+			                             <label class="text-[8px] font-black uppercase tracking-[0.5em] text-accent-primary ml-4 italic">{ cascata_i18n.T(loc, "computed_slug") }</label>
 			                             <div class="px-10 py-4 bg-surface-pit/20 rounded-[18px] font-mono text-xs text-accent-primary italic font-bold border border-white/5" x-text="slug || 'awaiting_input...'"></div>
 			                             <input type="hidden" name="slug" x-model="slug" />
 			                        </div>
@@ -83,21 +85,21 @@ templ OnboardingModal(loc *i18n.Localizer) {
 			                <!-- STEP 2: METRICS -->
 			                <div x-show="step === 2" x-transition.opacity style="display: none;" class="space-y-12">
 			                    <div class="space-y-4">
-			                        <h3 class="text-xl font-black text-white italic tracking-widest uppercase">Parâmetros de Quota</h3>
+			                        <h3 class="text-xl font-black text-white italic tracking-widest uppercase">{ cascata_i18n.T(loc, "quota_limits") }</h3>
 			                        <p class="text-[10px] text-content-muted font-bold uppercase tracking-widest leading-relaxed">Estabeleça os limites de expansão do nó de dados.</p>
 			                    </div>
 
 			                    <div class="grid grid-cols-2 gap-x-10 gap-y-8">
 			                        <div class="space-y-4">
-			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">Max_Concurrent_Users</label>
+			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">CONCURRENT_USERS</label>
 			                            <input type="number" name="max_users" value="1000" class="w-full h-18 bg-surface-pit border border-white/5 rounded-[20px] px-8 text-white font-mono font-black italic focus:border-accent-secondary/50 outline-none transition-all" />
 			                        </div>
 			                        <div class="space-y-4">
-			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">Storage_Limit (MB)</label>
+			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">STORAGE_LIMIT (MB)</label>
 			                            <input type="number" name="max_storage_mb" value="512" class="w-full h-18 bg-surface-pit border border-white/5 rounded-[20px] px-8 text-white font-mono font-black italic focus:border-accent-secondary/50 outline-none transition-all" />
 			                        </div>
 			                        <div class="space-y-4 col-span-2">
-			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">Data_Limit (Rows/Records)</label>
+			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">DATA_LIMIT (Rows/Records)</label>
 			                            <input type="number" name="max_data_rows" value="100000" class="w-full h-18 bg-surface-pit border border-white/5 rounded-[20px] px-8 text-white font-mono font-black italic focus:border-accent-secondary/50 outline-none transition-all" />
 			                        </div>
 			                    </div>
@@ -110,15 +112,15 @@ templ OnboardingModal(loc *i18n.Localizer) {
 			                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="relative z-10"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path><path d="m9 12 2 2 4-4"></path></svg>
 			                    </div>
 			                    <div class="space-y-4">
-			                        <h3 class="text-3xl font-black text-white uppercase italic tracking-widest leading-tight">Gênese de<br/>Infraestrutura</h3>
-			                        <p class="text-[11px] text-content-muted mx-auto max-w-sm font-bold uppercase tracking-[0.2em] leading-relaxed italic opacity-80">Confirmar a provisão do isolamento soberano para o inquilino <span class="text-accent-success" x-text="slug"></span>?</p>
+			                        <h3 class="text-3xl font-black text-white uppercase italic tracking-widest leading-tight">{ cascata_i18n.T(loc, "infrastructure_genesis") }</h3>
+			                        <p class="text-[11px] text-content-muted mx-auto max-w-sm font-bold uppercase tracking-[0.2em] leading-relaxed italic opacity-80" x-text="`{ cascata_i18n.T(loc, 'genesis_confirm') }`.replace('%s', slug)"></p>
 			                    </div>
 			                </div>
 			            </div>
 
 			            <!-- FOOTER: ACTIONS -->
 			            <div class="flex items-center gap-6 mt-12 bg-surface-pit/20 p-4 rounded-[28px] border border-white/5">
-			                <button type="button" x-show="step > 1" @click="step--" class="px-8 h-18 rounded-[20px] bg-surface-raised border border-white/5 text-white font-black italic tracking-widest text-[10px] hover:bg-surface-elevated transition-all uppercase">VOLTAR</button>
+			                <button type="button" x-show="step > 1" @click="step--" class="px-8 h-18 rounded-[20px] bg-surface-raised border border-white/5 text-white font-black italic tracking-widest text-[10px] hover:bg-surface-elevated transition-all uppercase">{ cascata_i18n.T(loc, "back") }</button>
 			                
 			                <div class="flex-1 flex justify-center gap-2">
 			                    <div :class="step === 1 ? 'w-8 bg-accent-primary' : 'w-2 bg-white/10'" class="h-1.5 rounded-full transition-all duration-500"></div>
@@ -126,10 +128,10 @@ templ OnboardingModal(loc *i18n.Localizer) {
 			                    <div :class="step === 3 ? 'w-8 bg-accent-success' : 'w-2 bg-white/10'" class="h-1.5 rounded-full transition-all duration-500"></div>
 			                </div>
 
-			                <button type="button" x-show="step < 3" @click="step++" :disabled="!name" class="px-12 h-18 rounded-[20px] bg-white text-surface-pit font-black italic tracking-widest text-[10px] hover:scale-105 active:scale-95 transition-all disabled:opacity-20 uppercase">PRÓXIMO</button>
+			                <button type="button" x-show="step < 3" @click="step++" :disabled="!name" class="px-12 h-18 rounded-[20px] bg-white text-surface-pit font-black italic tracking-widest text-[10px] hover:scale-105 active:scale-95 transition-all disabled:opacity-20 uppercase">{ cascata_i18n.T(loc, "next") }</button>
 			                <button type="submit" x-show="step === 3" @click="loading = true" class="px-12 h-18 rounded-[20px] bg-accent-success text-white font-black italic tracking-widest text-[10px] shadow-glow hover:scale-105 active:scale-95 transition-all uppercase">
-			                    <span x-show="!loading">EXECUTAR PROVISÃO</span>
-			                    <span x-show="loading" class="flex items-center gap-3 animate-pulse">SINCRONIZANDO...</span>
+			                    <span x-show="!loading">{ cascata_i18n.T(loc, "execute_provision") }</span>
+			                    <span x-show="loading" class="flex items-center gap-3 animate-pulse">{ cascata_i18n.T(loc, "syncing") }</span>
 			                </button>
 			            </div>
 			        </form>

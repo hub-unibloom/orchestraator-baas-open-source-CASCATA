@@ -56,7 +56,7 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 			_ = s.tenantRepo.DropSchema(context.Background(), p.Slug)
 			
 			// 2. Purge/Tombstone Vault Secrets to prevent orphan configurations
-			_ = s.vault.WriteSecret(context.Background(), fmt.Sprintf("cascata/tenants/%s/config", p.Slug), map[string]any{
+			_ = s.vault.WriteSecret(context.Background(), "cascata", fmt.Sprintf("tenants/%s/config", p.Slug), map[string]any{
 				"status":     "genesis_failed",
 				"deleted_at": time.Now().Format(time.RFC3339),
 			})
@@ -117,7 +117,7 @@ func (s *GenesisService) DeleteProject(ctx context.Context, slug string) error {
 	}
 
 	// 2. Vault Tombstoning (Historical record of destruction)
-	_ = s.vault.WriteSecret(ctx, fmt.Sprintf("cascata/tenants/%s/config", slug), map[string]any{
+	_ = s.vault.WriteSecret(ctx, "cascata", fmt.Sprintf("tenants/%s/config", slug), map[string]any{
 		"deleted_at": time.Now().Format(time.RFC3339),
 		"status":     "deleted",
 	})
