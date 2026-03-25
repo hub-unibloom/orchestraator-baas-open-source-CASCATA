@@ -195,6 +195,10 @@ func (r *Repository) GetColumns(ctx context.Context, schema, table string) ([]Co
 		}
 		columns = append(columns, col)
 	}
+
+	return columns, nil
+}
+
 // FetchRows retrieves data from a specific table with dynamic row scanning into generic maps.
 func (r *Repository) FetchRows(ctx context.Context, table string, limit int) ([]map[string]interface{}, error) {
 	query := fmt.Sprintf("SELECT * FROM %q LIMIT %d", table, limit)
