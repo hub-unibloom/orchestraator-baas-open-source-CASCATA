@@ -1,23 +1,19 @@
 package api
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
-	internalDatabase "cascata/internal/database"
 	internalI18n "cascata/internal/i18n"
 	"cascata/internal/service"
-	"cascata/internal/ui/components"
 	dbUI "cascata/internal/ui/components/database"
 	"cascata/internal/ui/layouts"
 	"cascata/internal/ui/pages"
 
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
-	ni18n "github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // UIHandler manages the high-fidelity management cockpits.
