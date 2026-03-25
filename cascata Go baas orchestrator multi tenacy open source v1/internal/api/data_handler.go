@@ -71,7 +71,7 @@ func (h *DataHandler) HandleProjectOverview(w http.ResponseWriter, r *http.Reque
 	// 1. Resolve Project (Ensure RLS context)
 	p, err := h.projectSvc.Resolve(ctx, slug)
 	if err != nil {
-		SendError(w, r, http.StatusNotFound, domain.ErrNotFound, "Project not found")
+		SendError(w, r, http.StatusNotFound, "NOT_FOUND", "Project not found", err.Error())
 		return
 	}
 
@@ -88,10 +88,10 @@ func (h *DataHandler) HandleProjectOverview(w http.ResponseWriter, r *http.Reque
 		FROM pg_stat_user_tables 
 		WHERE schemaname = $1
 	`
-	_ = h.projectSvc.Repo().Pool.QueryRow(ctx, sqlStats, slug).Scan(&stats.TotalTables, &stats.SchemaSize)
+	_ = h.projectSvc.Repo().Pool().QueryRow(ctx, sqlStats, slug).Scan(&stats.TotalTables, &stats.SchemaSize)
 
 	// 3. Inventory Table Names (The "Real" List)
-	rows, _ := h.projectSvc.Repo().Pool.Query(ctx, "SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_type = 'BASE TABLE'", slug)
+	rows, _ := h.projectSvc.Repo().Pool().Query(ctx, "SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_type = 'BASE TABLE'", slug)
 	if rows != nil {
 		defer rows.Close()
 		for rows.Next() {
@@ -104,7 +104,7 @@ func (h *DataHandler) HandleProjectOverview(w http.ResponseWriter, r *http.Reque
 
 	// 4. Query Resident Count
 	sqlUsers := fmt.Sprintf("SELECT count(*)::int FROM %s.residents", slug)
-	_ = h.projectSvc.Repo().Pool.QueryRow(ctx, sqlUsers).Scan(&stats.TotalUsers)
+	_ = h.projectSvc.Repo().Pool().QueryRow(ctx, sqlUsers).Scan(&stats.TotalUsers)
 
 	h.respond(w, r, stats)
 }

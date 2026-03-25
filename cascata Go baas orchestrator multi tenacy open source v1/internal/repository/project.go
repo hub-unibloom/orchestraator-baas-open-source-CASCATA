@@ -21,6 +21,11 @@ func NewProjectRepository(repo *database.Repository) *ProjectRepository {
 	return &ProjectRepository{repo: repo}
 }
 
+// Pool returns the underlying database pool for metrics/inventory queries.
+func (r *ProjectRepository) Pool() *database.Pool {
+	return r.repo.Pool
+}
+
 // Create inserts a new project metadata record.
 func (r *ProjectRepository) Create(ctx context.Context, p *domain.Project) error {
 	const sql = `

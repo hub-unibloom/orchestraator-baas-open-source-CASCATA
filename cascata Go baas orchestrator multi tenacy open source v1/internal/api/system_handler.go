@@ -180,7 +180,7 @@ func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Reque
 	// 2. Genesis Execution
 	if err := h.genesisSvc.CreateProject(r.Context(), p); err != nil {
 		slog.Error("system: failed to birth project", "slug", req.Slug, "err", err)
-		SendError(w, r, http.StatusInternalServerError, domain.ErrGenesisFailure, "GENESIS_FAILED", err.Error())
+		SendError(w, r, http.StatusInternalServerError, ErrGenesisFailure, "GENESIS_FAILED", err.Error())
 		return
 	}
 
@@ -216,7 +216,7 @@ func (h *SystemHandler) HandleListProjects(w http.ResponseWriter, r *http.Reques
 	projects, err := h.ProjectRepo.List(r.Context())
 	if err != nil {
 		slog.Error("system: project listing failed", "err", err)
-		SendError(w, r, http.StatusInternalServerError, domain.ErrInternalError, "LIST_FAILED")
+		SendError(w, r, http.StatusInternalServerError, ErrInternalError, "LIST_FAILED", err.Error())
 		return
 	}
 
