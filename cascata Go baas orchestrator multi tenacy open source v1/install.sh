@@ -97,7 +97,7 @@ collect_worner_credentials() {
 collect_language_preference() {
     log_step "Experiência de Uso: Internacionalização Soberana"
     
-    local LANG_DIR="${TARGET_DIR}/languages"
+    local LANG_DIR="${TARGET_DIR}/${V1_SUBPATH}/languages"
     if [[ ! -d "$LANG_DIR" ]]; then
         mkdir -p "$LANG_DIR"
         log_warn "Diretório de idiomas vazio. Prosseguindo com fallback en_US."
@@ -107,7 +107,12 @@ collect_language_preference() {
 
     echo -e "  ${C_DIM}Selecione o idioma principal do Cascata Orchestrator:${C_RESET}\n"
     
-    local langs=($(ls "$LANG_DIR"/*.json | xargs -n 1 basename | sed 's/\.json$//'))
+    local langs=()
+    for f in "$LANG_DIR"/*.json; do
+        [[ -e "$f" ]] || continue
+        langs+=("$(basename "$f" .json)")
+    done
+
     if [[ ${#langs[@]} -eq 0 ]]; then
         DEFAULT_LANG="en-US"
         log_warn "Nenhum arquivo de tradução encontrado. Fallback en-US ativo."
@@ -534,8 +539,8 @@ show_final() {
 print_banner
 check_privileges
 collect_worner_credentials
-collect_language_preference
 sync_repository
+collect_language_preference
 ensure_dependencies
 apply_tuning
 secure_bootstrap

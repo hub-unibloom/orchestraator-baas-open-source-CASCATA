@@ -98,9 +98,9 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	fsStatic := http.FileServer(http.Dir("internal/ui/static"))
 	router.Handle("/static/*", http.StripPrefix("/static/", fsStatic))
 
-	// SOVEREIGN UI ROUTES (Templ + HTMX)
-	router.Get("/", s.UIH.ServeIndex)
-	router.Get("/system", s.UIH.ServeSystemDashboard)
+	// SOVEREIGN UI ROUTES (Unprotected Entry Points)
+	router.Get("/login", s.UIH.ServeLogin)
+	router.Post("/system/auth/login", s.SystemH.HandleLogin)
 
 	// Static i18n & Themes Sovereignty
 	fsLangs := http.FileServer(http.Dir("languages"))
@@ -111,6 +111,9 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	// 2. PROTECTED SYSTEM ROUTES (Dashboard/Members)
 	router.Group(func(r chi.Router) {
 		r.Use(s.MemberMiddle.EnforceMemberSession)
+
+		r.Get("/", s.UIH.ServeIndex)
+		r.Get("/system", s.UIH.ServeSystemDashboard)
 		
 		r.Route("/system/projects", func(r chi.Router) {
 			r.Get("/", s.SystemH.HandleListProjects)

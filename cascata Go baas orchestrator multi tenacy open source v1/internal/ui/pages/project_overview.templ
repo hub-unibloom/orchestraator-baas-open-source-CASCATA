@@ -15,61 +15,78 @@ type ProjectUIStats struct {
 }
 
 templ ProjectOverview(slug string, loc *i18n.Localizer, stats ProjectUIStats) {
-	<div class="max-w-7xl mx-auto space-y-12 pb-20 animate-fade-in">
-		<!-- GRID DE MÉTRICAS RÁPIDAS -->
+	<div class="max-w-[1400px] mx-auto space-y-12 pb-24 animate-fade-in relative z-10">
+		<!-- GRID DE MÉTRICAS RÁPIDAS - ALTA FIDELIDADE -->
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-			@MetricCard("Status Operacional", stats.Status, "text-accent-success", "pulse")
-			@MetricCard("Membros Totais", fmt.Sprintf("%d", stats.TotalUsers), "text-accent-primary", "users")
-			@MetricCard("Entidades", fmt.Sprintf("%d", stats.TotalTables), "text-accent-secondary", "database")
-			@MetricCard("Tráfego", stats.TrafficRate, "text-white", "activity")
+			@MetricCard("Métrica de Status", stats.Status, "text-accent-success", "pulse")
+			@MetricCard("Membros_ID", fmt.Sprintf("%d", stats.TotalUsers), "text-accent-primary", "users")
+			@MetricCard("Entidades_Data", fmt.Sprintf("%d", stats.TotalTables), "text-accent-secondary", "database")
+			@MetricCard("Net_Traffic", stats.TrafficRate, "text-white", "activity")
 		</div>
 
 		<!-- DETALHES DE STORAGE E INVENTÁRIO -->
-		<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-			<div class="lg:col-span-2 glass-panel p-8 rounded-3xl border border-white/5 bg-surface-raised/40 relative overflow-hidden">
-				<div class="absolute top-0 right-0 w-64 h-64 bg-accent-primary/5 blur-[120px] -mr-32 -mt-32"></div>
-				<h3 class="text-xl font-bold flex items-center gap-3 text-white mb-10 relative z-10">
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-accent-primary"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>
-					Inventário do Database
-				</h3>
-				<div class="space-y-4 relative z-10">
+		<div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+			<div class="lg:col-span-2 glass-panel p-10 rounded-[48px] border border-white/5 bg-surface-raised/20 relative overflow-hidden group">
+				<div class="absolute -top-10 -right-10 w-64 h-64 bg-accent-primary/5 blur-[100px] rounded-full group-hover:bg-accent-primary/10 transition-all duration-700"></div>
+				
+				<div class="flex items-center justify-between mb-12 relative z-10">
+					<h3 class="text-xl font-black flex items-center gap-4 text-white uppercase italic tracking-widest">
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-accent-primary"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>
+						Inventário de Entidades
+					</h3>
+					<span class="text-[9px] font-mono text-content-muted uppercase tracking-[0.4em] italic bg-surface-pit/50 px-4 py-2 rounded-full border border-white/5">DB_VER_NODE_1.0</span>
+				</div>
+
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
 					for _, name := range stats.TableNames {
-						<div class="flex items-center justify-between p-5 rounded-2xl bg-black/20 border border-white/5 hover:border-white/10 transition-all group">
-							<div class="flex items-center gap-4">
-								<div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-content-muted group-hover:text-accent-secondary transition-colors">
-									<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"></path><path d="M3 9h18"></path><path d="M3 15h18"></path><path d="M9 3v18"></path><path d="M15 3v18"></path></svg>
+						<div class="flex items-center justify-between p-5 rounded-[22px] bg-surface-pit/40 border border-white/5 hover:border-accent-primary/30 transition-all duration-300 group/item hover:scale-[1.02]">
+							<div class="flex items-center gap-5">
+								<div class="w-10 h-10 rounded-xl bg-surface-pit border border-white/10 flex items-center justify-center text-content-muted group-hover/item:text-accent-primary transition-colors">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"></path><path d="M3 9h18"></path><path d="M9 3v18"></path></svg>
 								</div>
-								<span class="font-mono text-sm text-white uppercase italic font-bold">{ name }</span>
+								<span class="font-mono text-sm text-white font-bold tracking-tight italic">{ name }</span>
 							</div>
-							<span class="text-[10px] text-accent-success uppercase font-black px-4 py-1.5 bg-accent-success/5 border border-accent-success/10 rounded-full italic">SECURE_MPC</span>
+							<div class="flex items-center gap-2">
+							    <span class="w-1.5 h-1.5 rounded-full bg-accent-success/50"></span>
+							    <span class="text-[8px] text-content-muted uppercase font-black tracking-widest italic opacity-40">MPC_SEC</span>
+							</div>
 						</div>
 					}
 					if len(stats.TableNames) == 0 {
-						<div class="text-center py-20 opacity-30 italic font-black uppercase tracking-widest text-xs">
-							Nenhum Esquema Detectado no Inquilino
+						<div class="col-span-full text-center py-20 bg-surface-pit/20 rounded-[32px] border border-dashed border-white/5">
+							<p class="italic font-black uppercase tracking-[0.4em] text-[10px] text-content-muted/40 animate-pulse">
+                                Nenhum Esquema Detectado no Inquilino
+                            </p>
 						</div>
 					}
 				</div>
 			</div>
 
-			<!-- MONITOR DE QUOTA -->
+			<!-- MONITOR DE CONSUMO -->
 			<div class="space-y-8">
-				<div class="glass-panel p-8 rounded-3xl border border-white/5 bg-surface-raised/40 relative overflow-hidden">
-					<h3 class="text-lg font-black mb-8 flex items-center gap-3 italic uppercase">
-						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-accent-secondary"><path d="M12 2v8"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="M2 12h8"></path><path d="m13.07 13.07 1.41 1.41"></path><path d="M22 22l-6-6"></path><path d="m15 7 5 5-5 5-5-5 5-5z"></path></svg>
-						Monitor de Quota
+				<div class="glass-panel p-10 rounded-[48px] border border-white/5 bg-surface-raised/20 relative overflow-hidden group">
+				    <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-accent-secondary/5 blur-[80px] rounded-full group-hover:bg-accent-secondary/10 transition-all duration-700"></div>
+					<h3 class="text-lg font-black mb-10 flex items-center gap-4 italic uppercase tracking-widest text-white relative z-10">
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-accent-secondary"><path d="M12 2v8"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="M22 22l-6-6"></path><path d="m15 7 5 5-5 5-5-5 5-5z"></path></svg>
+						Usage Metrics
 					</h3>
-					<div class="space-y-6">
-						<div>
-							<div class="flex justify-between text-[10px] font-black uppercase tracking-widest text-content-muted mb-3 italic">
-								<span>Usage</span>
-								<span>{ fmt.Sprintf("%.2f MB", float64(stats.SchemaSizeBytes)/1024/1024) }</span>
+					<div class="space-y-10 relative z-10">
+						<div class="space-y-4">
+							<div class="flex justify-between text-[10px] font-black uppercase tracking-[0.3em] text-content-muted italic">
+								<span>DATA STORAGE</span>
+								<span class="text-white font-mono">{ fmt.Sprintf("%.2f MB", float64(stats.SchemaSizeBytes)/1024/1024) }</span>
 							</div>
-							<div class="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-								<div class="h-full bg-gradient-to-r from-accent-primary to-accent-secondary opacity-60" style="width: 45%;"></div>
+							<div class="h-3 w-full bg-surface-pit rounded-full overflow-hidden border border-white/5">
+								<div class="h-full bg-gradient-to-r from-accent-primary to-accent-secondary shadow-glow animate-pulse" style="width: 48%;"></div>
 							</div>
 						</div>
-						<p class="text-[10px] text-content-muted leading-relaxed font-bold uppercase tracking-wider opacity-60">Isolamento físico e lógico ativo conforme padrões Cascata MPC.</p>
+						
+						<div class="p-6 bg-surface-pit/40 rounded-3xl border border-white/5 space-y-3">
+						    <p class="text-[9px] font-black text-white italic uppercase tracking-[0.2em]">Engine Integrity Status</p>
+						    <p class="text-[9px] text-content-muted font-bold uppercase tracking-widest leading-relaxed opacity-40 italic">
+						        Isolamento físico e lógico ativo conforme padrões Cascata Zero-Trust v1.
+						    </p>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -78,14 +95,15 @@ templ ProjectOverview(slug string, loc *i18n.Localizer, stats ProjectUIStats) {
 }
 
 templ MetricCard(label, value, color, icon string) {
-	<div class="glass-panel p-8 rounded-3xl border border-white/5 bg-surface-raised/30 hover:bg-surface-elevated transition-all group overflow-hidden relative">
-		<div class={ "absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity", color }>
-			<!-- Icon Logic Simplified to keep Templ clean -->
-			<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+	<div class="glass-panel p-10 rounded-[48px] border border-white/5 bg-surface-raised/20 hover:bg-surface-elevated/40 transition-all duration-500 group overflow-hidden relative active:scale-95 cursor-default">
+		<!-- Aura Effect -->
+		<div class={ "absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-all duration-700 translate-x-4 group-hover:translate-x-0", color }>
+			<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="rotate-12"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
 		</div>
-		<div class="relative z-10 flex flex-col gap-1">
-			<span class="text-[10px] font-black uppercase tracking-[0.2em] text-content-muted italic">{ label }</span>
-			<span class={ "text-3xl font-black tracking-tighter font-mono italic uppercase tabular-nums", color }>{ value }</span>
+		
+		<div class="relative z-10 flex flex-col gap-4">
+			<span class="text-[10px] font-black uppercase tracking-[0.4em] text-content-muted italic leading-none">{ label }</span>
+			<span class={ "text-4xl font-black tracking-tightest font-mono italic uppercase tabular-nums leading-none", color }>{ value }</span>
 		</div>
 	</div>
 }

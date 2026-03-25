@@ -56,19 +56,42 @@ func NewMemberAuthMiddleware(sessionSvc *auth.SessionManager) *MemberAuthMiddlew
 }
 
 // EnforceMemberSession ensures the request comes from an authenticated system operator.
-// Restricts access to the Dashboard and configuration tools.
 func (m *MemberAuthMiddleware) EnforceMemberSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var token string
+
+		// 1. Try Authorization Header
 		authHeader := r.Header.Get("Authorization")
-		if !strings.HasPrefix(authHeader, "Bearer ") {
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+
+		// 2. Try Secure Cookie (Browser Sovereignty)
+		if token == "" {
+			if cookie, err := r.Cookie("cascata_token"); err == nil {
+				token = cookie.Value
+			}
+		}
+
+		// 3. Rejection / Redirect Strategy
+		if token == "" {
+			// If it's a browser navigation request for a system page, redirect to login
+			if r.Method == http.MethodGet && !strings.Contains(r.Header.Get("Accept"), "application/json") && r.Header.Get("HX-Request") != "true" {
+				http.Redirect(w, r, "/login", http.StatusSeeOther)
+				return
+			}
 			SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, "AUTHENTICATION_REQUIRED")
 			return
 		}
 
-		token := strings.TrimPrefix(authHeader, "Bearer ")
 		authCtx, err := m.sessionSvc.ValidateSession(r.Context(), token)
 		if err != nil {
 			slog.Warn("member.auth: session validation failed", "error", err)
+			// On expired session in browser, redirect to login
+			if r.Method == http.MethodGet && r.Header.Get("HX-Request") != "true" {
+				http.Redirect(w, r, "/login", http.StatusSeeOther)
+				return
+			}
 			SendError(w, r, http.StatusUnauthorized, ErrUnauthorized, string(domain.IdentityMember), "SESSION_EXPIRED_OR_INVALID")
 			return
 		}

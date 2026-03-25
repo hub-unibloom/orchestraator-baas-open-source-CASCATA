@@ -1,0 +1,95 @@
+package pages
+
+import (
+	"cascata/internal/ui/layouts"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
+)
+
+templ Login(loc *i18n.Localizer) {
+	@layouts.Base("Acesso Soberano", loc) {
+		<div class="flex items-center justify-center min-h-screen relative overflow-hidden bg-surface-base">
+			<!-- Background Aura -->
+			<div class="glow-orb" style="top: -100px; left: -100px;"></div>
+			<div class="glow-orb" style="bottom: -100px; right: -100px; background: rgba(var(--accent-secondary-rgb), 0.1);"></div>
+			<div class="space-background"></div>
+
+			<div class="glass-panel w-full max-w-[480px] p-12 rounded-[48px] shadow-2xl animate-fade-in relative z-10 border border-white/5">
+				<!-- Brand Header -->
+				<header class="text-center mb-12">
+					<div class="inline-flex items-center justify-center w-20 h-20 bg-accent-primary rounded-3xl rotate-12 shadow-glow mb-8 group transition-all duration-500 hover:rotate-0">
+						<svg class="w-10 h-10 text-white fill-current" viewBox="0 0 24 24">
+							<path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z"/>
+						</svg>
+					</div>
+					<h1 class="text-5xl font-black italic text-gradient tracking-tightest mb-2">
+                        CASCATA <span class="text-accent-primary">v1</span>
+                    </h1>
+					<p class="text-content-muted font-mono uppercase tracking-widest text-xs italic">
+                        Baas Orchestrator Sovereign Engine
+                    </p>
+				</header>
+
+				<!-- Auth Shield -->
+				<form 
+                    hx-post="/system/auth/login" 
+                    hx-target="#login-error" 
+                    hx-indicator="#auth-loader"
+                    class="space-y-6"
+                >
+					<div class="space-y-2">
+						<label class="block font-mono text-[10px] uppercase tracking-widest text-content-muted px-4 italic">
+                            Identidade Administrativa
+                        </label>
+						<input 
+                            type="email" 
+                            name="email" 
+                            placeholder="E-mail" 
+                            required 
+                            class="input-sovereign focus:scale-[1.01]"
+                        />
+					</div>
+
+					<div class="space-y-2">
+						<label class="block font-mono text-[10px] uppercase tracking-widest text-content-muted px-4 italic">
+                            Chave Privada
+                        </label>
+						<input 
+                            type="password" 
+                            name="password" 
+                            placeholder="••••••••••••" 
+                            required 
+                            class="input-sovereign focus:scale-[1.01]"
+                        />
+					</div>
+
+					<div id="login-error" class="text-accent-danger text-center font-mono text-xs italic px-4"></div>
+
+					<button type="submit" class="btn-sovereign w-full group relative overflow-hidden">
+                        <span id="auth-loader" class="htmx-indicator absolute inset-0 bg-accent-primary flex items-center justify-center z-20">
+                            <svg class="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span>
+                        <span class="relative z-10 flex items-center gap-4 group-hover:gap-6 transition-all duration-300">
+                            EFETUAR LOGIN SOBERANO
+                            <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                                <path d="M14 5L12.59 6.41L17.17 11H4V13H17.17L12.59 17.59L14 19L21 12L14 5Z"/>
+                            </svg>
+                        </span>
+					</button>
+				</form>
+
+				<footer class="mt-12 text-center">
+					<p class="text-[10px] font-mono text-content-muted uppercase tracing-[0.3em]">
+                        Zero-Trust Mesh | Node Verified: 172.26.7.197
+                    </p>
+				</footer>
+			</div>
+
+            <!-- Side Aesthetic Accents -->
+            <div class="absolute top-1/2 -right-40 w-80 h-[1px] bg-gradient-to-l from-accent-primary/50 to-transparent rotate-45"></div>
+            <div class="absolute top-1/2 -left-40 w-80 h-[1px] bg-gradient-to-r from-accent-primary/50 to-transparent -rotate-45"></div>
+		</div>
+	}
+}

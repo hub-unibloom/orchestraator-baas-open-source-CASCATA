@@ -23,17 +23,28 @@ func NewUIHandler(systemH *SystemHandler) *UIHandler {
 	}
 }
 
-// ServeIndex renders the main entry point with the correct localization.
+// ServeIndex renders the main entry point (Authenticated Dashboard).
 func (h *UIHandler) ServeIndex(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
-	component := layouts.Base(i18n.T(loc, "dashboard_title"), loc)
-	templ.Handler(component).ServeHTTP(w, r)
+	// Wrap Dashboard inside Base layout
+	title := i18n.T(loc, "dashboard_title")
+	component := layouts.Base(title, loc)
+	
+	// Inject pages.Dashboard as children of layout.Base
+	w.Header().Set("Content-Type", "text/html")
+	templ.Handler(component, templ.WithChildren(pages.Dashboard(loc))).ServeHTTP(w, r)
 }
 
-// ServeSystemDashboard returns the dashboard fragment.
-func (h *UIHandler) ServeSystemDashboard(w http.ResponseWriter, r *http.Request) {
+// ServeLogin renders the sovereign authentication portal.
+func (h *UIHandler) ServeLogin(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
+	templ.Handler(pages.Login(loc)).ServeHTTP(w, r)
+}
+
+// ServeSystemDashboard returns the dashboard fragment for HTMX requests.
+func (h *UIHandler) ServeSystemDashboard(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("HX-Request") == "true" {
+		loc := i18n.GetLocalizer(r)
 		templ.Handler(pages.Dashboard(loc)).ServeHTTP(w, r)
 		return
 	}
@@ -94,7 +105,12 @@ func (h *UIHandler) HandleUIProjectDashboard(w http.ResponseWriter, r *http.Requ
 		templ.Handler(pages.ProjectDashboard(slug, loc)).ServeHTTP(w, r)
 		return
 	}
-	h.ServeIndex(w, r)
+
+	// Full Page Reload Synergy
+	title := "Project: " + slug
+	component := layouts.Base(title, loc)
+	w.Header().Set("Content-Type", "text/html")
+	templ.Handler(component, templ.WithChildren(pages.ProjectDashboard(slug, loc))).ServeHTTP(w, r)
 }
 
 // HandleUIProjectOverview returns the stats fragment for the cockpit.

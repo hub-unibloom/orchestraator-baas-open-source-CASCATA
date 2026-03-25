@@ -88,9 +88,20 @@ func (h *SystemHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		SendError(w, r, http.StatusBadRequest, ErrInvalidRequest, "Invalid request body")
-		return
+	contentType := r.Header.Get("Content-Type")
+
+	if strings.Contains(contentType, "application/x-www-form-urlencoded") {
+		if err := r.ParseForm(); err != nil {
+			SendError(w, r, http.StatusBadRequest, ErrInvalidRequest, "Invalid form data")
+			return
+		}
+		req.Email = r.FormValue("email")
+		req.Password = r.FormValue("password")
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			SendError(w, r, http.StatusBadRequest, ErrInvalidRequest, "Invalid request body")
+			return
+		}
 	}
 
 	// 1. Pre-auth Firewall (Lockout Check)
@@ -109,7 +120,7 @@ func (h *SystemHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Issue Session (15 Minutes Ephemeral)
+	// 3. Issue Session (15 Minutes Ephemeral as per Phase 3 Philosophy)
 	token, err := h.sessionSvc.IssueSessionToken(r.Context(), member)
 	if err != nil {
 		slog.Error("system.login: session issuance failed", "error", err)
@@ -117,15 +128,32 @@ func (h *SystemHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 4. Persistence (Browser Sovereignty)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "cascata_token",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Set to true in prod with TLS
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   900, // 15 minutes
+	})
+
 	slog.Info("system.login: session established", "email", member.Email, "role", member.Role)
 	
+	// 5. Response Strategy (HX-Sinergy)
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("HX-Redirect", "/system")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	resp := LoginResponse{
 		Token:      token,
 		ExpiresAt:  time.Now().Add(15 * time.Minute),
 		MemberName: member.Email,
 		MFAStatus:  "passed",
 	}
-
 	SendJSON(w, r, http.StatusOK, resp)
 }
 
