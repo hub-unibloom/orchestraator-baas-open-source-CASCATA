@@ -271,8 +271,8 @@ You may need to set the following environment variables:
 The unseal key and root token are displayed below in case you want to
 seal/unseal the Vault or re-authenticate.
 
-Unseal Key: biP9AKAPLO0jmONY1L38RgJ8hEP60bEukdIAfUPxYIY=
-Root Token: hvs.1L8CG0wDX88CjqRQcaG4fV98
+Unseal Key: [REDACTED_FOR_SECURITY_BY_CASCATA]
+Root Token: [REDACTED_FOR_SECURITY_BY_CASCATA]
 
 Development mode should NOT be used in production installations!
 
