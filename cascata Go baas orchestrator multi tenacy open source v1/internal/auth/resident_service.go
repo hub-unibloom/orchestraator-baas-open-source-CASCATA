@@ -13,7 +13,6 @@ import (
 	"cascata/internal/communication"
 	"cascata/internal/crypto"
 	"cascata/internal/security"
-	"strings"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 )
