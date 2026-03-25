@@ -7,17 +7,17 @@ import (
 	"strconv"
 	"strings"
 
-	"cascata/internal/database"
-	"cascata/internal/i18n"
+	internalDatabase "cascata/internal/database"
+	internalI18n "cascata/internal/i18n"
 	"cascata/internal/service"
 	"cascata/internal/ui/components"
-	"cascata/internal/ui/components/database"
+	dbUI "cascata/internal/ui/components/database"
 	"cascata/internal/ui/layouts"
 	"cascata/internal/ui/pages"
 
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	ni18n "github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // UIHandler manages the high-fidelity management cockpits.
@@ -33,7 +33,7 @@ func NewUIHandler(projectSvc service.ProjectService) *UIHandler {
 
 // HandleUIRoot serves the main sovereign entry point.
 func (h *UIHandler) HandleUIRoot(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	title := "Cascata Orchestrator"
 
 	if r.Header.Get("HX-Request") == "true" {
@@ -52,7 +52,7 @@ func (h *UIHandler) HandleUIRoot(w http.ResponseWriter, r *http.Request) {
 
 // HandleUIProjects renders the global project matrix.
 func (h *UIHandler) HandleUIProjects(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	title := "Project Hub"
 
 	if r.Header.Get("HX-Request") == "true" {
@@ -71,10 +71,13 @@ func (h *UIHandler) HandleUIProjects(w http.ResponseWriter, r *http.Request) {
 
 // HandleUIProjectOverview renders the pulse dashboard for a specific node.
 func (h *UIHandler) HandleUIProjectOverview(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	path := r.URL.Path
-	slug := strings.TrimPrefix(path, "/system/projects/")
-	slug = strings.TrimSuffix(slug, "/overview")
+	slug := chi.URLParam(r, "slug")
+	if slug == "" {
+		slug = strings.TrimPrefix(path, "/system/projects/")
+		slug = strings.TrimSuffix(slug, "/overview")
+	}
 
 	if r.Header.Get("HX-Request") == "true" {
 		w.Header().Set("Content-Type", "text/html")
@@ -127,7 +130,7 @@ func (h *UIHandler) HandleUIDatabaseAddColumn(w http.ResponseWriter, r *http.Req
 
 // HandleUIDatabaseExplorer renders the management cockpit for database operations.
 func (h *UIHandler) HandleUIDatabaseExplorer(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	slug := chi.URLParam(r, "slug")
 
 	if r.Header.Get("HX-Request") == "true" {
@@ -150,7 +153,7 @@ func (h *UIHandler) HandleUIDatabaseExplorer(w http.ResponseWriter, r *http.Requ
 
 // HandleUIDatabaseTables returns the list of tables for a specific schema.
 func (h *UIHandler) HandleUIDatabaseTables(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	slug := chi.URLParam(r, "slug")
 
 	// 1. Resolve Project
@@ -178,7 +181,7 @@ func (h *UIHandler) HandleUIDatabaseTables(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	if err := database.TableList(slug, tables, loc).Render(r.Context(), w); err != nil {
+	if err := dbUI.TableList(slug, tables, loc).Render(r.Context(), w); err != nil {
 		slog.Error("ui: failed to render table list", "slug", slug, "err", err)
 	}
 }
@@ -218,7 +221,7 @@ func (h *UIHandler) HandleUIDatabaseRows(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	if err := database.TablePanel(slug, "public", table, cols, data, 1, 100).Render(r.Context(), w); err != nil {
+	if err := dbUI.TablePanel(slug, "public", table, cols, data, 1, 100).Render(r.Context(), w); err != nil {
 		slog.Error("ui: failed to render table panel", "slug", slug, "err", err)
 	}
 }
@@ -226,10 +229,10 @@ func (h *UIHandler) HandleUIDatabaseRows(w http.ResponseWriter, r *http.Request)
 // HandleUIDatabaseConsole serves the Sovereign SQL Authority Terminal.
 func (h *UIHandler) HandleUIDatabaseConsole(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	
 	w.Header().Set("Content-Type", "text/html")
-	_ = database.SqlConsole(slug, loc).Render(r.Context(), w)
+	_ = dbUI.SqlConsole(slug, loc).Render(r.Context(), w)
 }
 
 // HandleUIDatabaseModals serves various management modals (Extensions, Delete, etc).
@@ -242,14 +245,11 @@ func (h *UIHandler) HandleUIDatabaseModals(w http.ResponseWriter, r *http.Reques
 	case "extensions":
 		installed := []string{"pgcrypto", "uuid-ossp"}
 		available := []string{"pgcrypto", "uuid-ossp", "pg_vector", "postgis", "pg_cron", "pg_audit"}
-		_ = database.ExtensionsModal(slug, installed, available).Render(r.Context(), w)
+		_ = dbUI.ExtensionsModal(slug, installed, available).Render(r.Context(), w)
 	case "delete-table":
 		table := r.URL.Query().Get("table")
-		_ = database.DeleteTableConfirm(slug, table, "public").Render(r.Context(), w)
+		_ = dbUI.DeleteTableConfirm(slug, table, "public").Render(r.Context(), w)
 	case "add-column":
-		table := r.URL.Query().Get("table")
-		// For now we serve the simple confirm or a drawer if we had it.
-		// Let's assume we use a simpler modal for now.
 		w.Write([]byte(`<div class="p-10 text-white font-black italic">ADD_COLUMN_WORK_IN_PROGRESS</div>`))
 	}
 }
@@ -267,12 +267,12 @@ func (h *UIHandler) HandleUIDatabaseContextMenu(w http.ResponseWriter, r *http.R
 	y, _ := strconv.Atoi(yStr)
 
 	w.Header().Set("Content-Type", "text/html")
-	_ = database.TableContextMenu(slug, schema, table, x, y).Render(r.Context(), w)
+	_ = dbUI.TableContextMenu(slug, schema, table, x, y).Render(r.Context(), w)
 }
 
 // HandleUIEdgeFunctions renders the Sovereign Edge & Logic IDE.
 func (h *UIHandler) HandleUIEdgeFunctions(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	slug := chi.URLParam(r, "slug")
 
 	// Bring-Up Assets
@@ -297,7 +297,7 @@ func (h *UIHandler) HandleUIEdgeFunctions(w http.ResponseWriter, r *http.Request
 
 // HandleUIAPIDocs renders the Sovereign API Gateway & Docs cockpit.
 func (h *UIHandler) HandleUIAPIDocs(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	slug := chi.URLParam(r, "slug")
 
 	if r.Header.Get("HX-Request") == "true" {
@@ -315,7 +315,7 @@ func (h *UIHandler) HandleUIAPIDocs(w http.ResponseWriter, r *http.Request) {
 
 // HandleUIIntelligence renders the Sovereign Neural Core (AI Governance) cockpit.
 func (h *UIHandler) HandleUIIntelligence(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	slug := chi.URLParam(r, "slug")
 
 	tables := []string{"profiles", "transactions"}
@@ -336,7 +336,7 @@ func (h *UIHandler) HandleUIIntelligence(w http.ResponseWriter, r *http.Request)
 
 // HandleUIBackups renders the Sovereign Time Machine cockpit.
 func (h *UIHandler) HandleUIBackups(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	slug := chi.URLParam(r, "slug")
 
 	snapshots := []pages.Snapshot{{Name: "GENESIS", Size: "1.2 GB", CreatedAt: "2024-03-25"}}
@@ -358,7 +358,7 @@ func (h *UIHandler) HandleUIBackups(w http.ResponseWriter, r *http.Request) {
 
 // HandleUICommCenter renders the Sovereign Communication Hub.
 func (h *UIHandler) HandleUICommCenter(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	slug := chi.URLParam(r, "slug")
 
 	if r.Header.Get("HX-Request") == "true" {
@@ -374,9 +374,25 @@ func (h *UIHandler) HandleUICommCenter(w http.ResponseWriter, r *http.Request) {
 	_ = component.Render(ctx, w)
 }
 
+// HandleUICommSubSection serves the inner fragments of the Comm Center.
+func (h *UIHandler) HandleUICommSubSection(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	subType := chi.URLParam(r, "type")
+
+	w.Header().Set("Content-Type", "text/html")
+	switch subType {
+	case "push":
+		_ = pages.PushEngine(slug).Render(r.Context(), w)
+	case "connectors":
+		w.Write([]byte(`<div class="p-20 text-center text-[10px] font-black uppercase tracking-[0.5em] text-content-muted italic opacity-20">CONNECT_HUBS_AWAITING_PULSE...</div>`))
+	case "config":
+		w.Write([]byte(`<div class="p-20 text-center text-[10px] font-black uppercase tracking-[0.5em] text-content-muted italic opacity-20">CONFIG_PARAMETERS_OFFLINE...</div>`))
+	}
+}
+
 // HandleUISecurityLab renders the Sovereign Authentication & RLS Designer.
 func (h *UIHandler) HandleUISecurityLab(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	slug := chi.URLParam(r, "slug")
 
 	if r.Header.Get("HX-Request") == "true" {
@@ -394,7 +410,7 @@ func (h *UIHandler) HandleUISecurityLab(w http.ResponseWriter, r *http.Request) 
 
 // HandleUIStorageExplorer renders the Sovereign File & Blob Orchestrator.
 func (h *UIHandler) HandleUIStorageExplorer(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	slug := chi.URLParam(r, "slug")
 
 	if r.Header.Get("HX-Request") == "true" {
@@ -412,7 +428,7 @@ func (h *UIHandler) HandleUIStorageExplorer(w http.ResponseWriter, r *http.Reque
 
 // HandleUILedgeLedger renders the Sovereign Event & Log Trace Orchestrator.
 func (h *UIHandler) HandleUILedgeLedger(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	slug := chi.URLParam(r, "slug")
 
 	if r.Header.Get("HX-Request") == "true" {
@@ -430,7 +446,7 @@ func (h *UIHandler) HandleUILedgeLedger(w http.ResponseWriter, r *http.Request) 
 
 // HandleUISettings renders the Sovereign Node Configuration page.
 func (h *UIHandler) HandleUISettings(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	slug := chi.URLParam(r, "slug")
 
 	if r.Header.Get("HX-Request") == "true" {
@@ -445,16 +461,17 @@ func (h *UIHandler) HandleUISettings(w http.ResponseWriter, r *http.Request) {
 	ctx := templ.WithChildren(r.Context(), pages.ProjectSettingsPage(slug, loc))
 	_ = component.Render(ctx, w)
 }
+
 // HandleUIOnboarding serves the high-fidelity project genesis sequence.
 func (h *UIHandler) HandleUIOnboarding(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	w.Header().Set("Content-Type", "text/html")
 	_ = pages.OnboardingPage(loc).Render(r.Context(), w)
 }
 
 // HandleUIServeLogin serves the identity gateway entry point.
 func (h *UIHandler) HandleUIServeLogin(w http.ResponseWriter, r *http.Request) {
-	loc := i18n.GetLocalizer(r)
+	loc := internalI18n.GetLocalizer(r)
 	w.Header().Set("Content-Type", "text/html")
 	_ = pages.LoginPage(loc).Render(r.Context(), w)
 }
