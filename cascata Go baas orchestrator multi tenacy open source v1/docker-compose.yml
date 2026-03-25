@@ -86,11 +86,11 @@ services:
       - VAULT_ADDR=http://127.0.0.1:8200
     cap_add:
       - IPC_LOCK
-    command: server -config=/vault/config/cascata-vault.hcl
+    # O Vault carregará automaticamente este arquivo sem precisar de comandos redundantes
     networks:
       - cascata-net
     volumes:
-      - ./deployments/vault-config.hcl:/vault/config/cascata-vault.hcl:ro
+      - ./deployments/vault-config.hcl:/vault/config/local.json:ro
       - cascata-vault-data:/vault/file
     ports:
       - "8207:8200"
