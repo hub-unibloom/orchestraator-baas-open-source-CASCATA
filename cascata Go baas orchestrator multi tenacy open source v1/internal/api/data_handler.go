@@ -71,7 +71,7 @@ func (h *DataHandler) HandleProjectOverview(w http.ResponseWriter, r *http.Reque
 	// 1. Resolve Project (Ensure RLS context)
 	p, err := h.projectSvc.Resolve(ctx, slug)
 	if err != nil {
-		SendError(w, r, http.StatusNotFound, ErrNotFound, "Project not found")
+		SendError(w, r, http.StatusNotFound, domain.ErrNotFound, "Project not found")
 		return
 	}
 

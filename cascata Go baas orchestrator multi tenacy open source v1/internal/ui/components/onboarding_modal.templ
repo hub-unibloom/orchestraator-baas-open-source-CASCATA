@@ -1,6 +1,8 @@
 package components
 
-templ OnboardingModal() {
+import "github.com/nicksnyder/go-i18n/v2/i18n"
+
+templ OnboardingModal(loc *i18n.Localizer) {
 	<div 
 		x-data="{ step: 1, name: '', slug: '', loading: false }"
 		class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-surface-pit/80 backdrop-blur-xl animate-fade-in"

@@ -57,3 +57,8 @@ func (s *ProjectService) UpdateHealth(ctx context.Context, slug string, status s
 	slog.Info("project health update", "slug", slug, "status", status)
 	return nil
 }
+
+// Repo returns the underlying metadata repository. 
+func (s *ProjectService) Repo() *repository.ProjectRepository {
+	return s.repo
+}

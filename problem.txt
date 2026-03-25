@@ -1,12 +1,20 @@
- => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                      72.6s 
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                      71.8s 
 ------                                                                                                                                   
  > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                  
-55.40 # cascata/internal/ui/components                                                                                                   
-55.40 internal/ui/components/project_card_templ.go:193:6: OnboardingModal redeclared in this block                                       
-55.40 	internal/ui/components/onboarding_modal_templ.go:11:6: other declaration of OnboardingModal
+59.07 # cascata/internal/api                                                                                                             
+59.07 internal/api/data_handler.go:74:40: undefined: ErrNotFound                                                                         
+59.07 internal/api/data_handler.go:91:19: h.projectSvc.Repo undefined (type *service.ProjectService has no field or method Repo, but does have unexported field repo)                                                                                                             
+59.07 internal/api/data_handler.go:94:26: h.projectSvc.Repo undefined (type *service.ProjectService has no field or method Repo, but does have unexported field repo)
+59.07 internal/api/data_handler.go:107:19: h.projectSvc.Repo undefined (type *service.ProjectService has no field or method Repo, but does have unexported field repo)
+59.07 internal/api/system_handler.go:188:16: h.authSvc.LogAudit undefined (type *auth.SystemAuthService has no field or method LogAudit)
+59.07 internal/api/system_handler.go:205:18: cannot use int(p.MaxStorageMB) (value of type int) as int64 value in struct literal
+59.07 internal/api/system_handler.go:216:21: h.projectRepo undefined (type *SystemHandler has no field or method projectRepo, but does have field ProjectRepo)
+59.07 internal/api/ui_handler.go:82:43: too many arguments in call to components.OnboardingModal
+59.07 	have (*"github.com/nicksnyder/go-i18n/v2/i18n".Localizer)
+59.07 	want ()
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                             86.6s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                             90.9s
 Dockerfile.backend:23
 
 --------------------

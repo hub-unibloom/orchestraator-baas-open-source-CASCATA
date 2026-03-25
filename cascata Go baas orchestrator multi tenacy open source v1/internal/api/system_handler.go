@@ -180,7 +180,7 @@ func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Reque
 	// 2. Genesis Execution
 	if err := h.genesisSvc.CreateProject(r.Context(), p); err != nil {
 		slog.Error("system: failed to birth project", "slug", req.Slug, "err", err)
-		SendError(w, r, http.StatusInternalServerError, ErrGenesisFailure, "GENESIS_FAILED", err.Error())
+		SendError(w, r, http.StatusInternalServerError, domain.ErrGenesisFailure, "GENESIS_FAILED", err.Error())
 		return
 	}
 
@@ -202,7 +202,7 @@ func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Reque
 			Status:       p.Status,
 			MaxUsers:     p.MaxUsers,
 			MaxConns:     p.MaxConns,
-			MaxStorageMB: int(p.MaxStorageMB),
+			MaxStorageMB: p.MaxStorageMB,
 		}
 		templ.Handler(components.ProjectCard(uiProject, loc)).ServeHTTP(w, r)
 		return
@@ -213,10 +213,10 @@ func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Reque
 
 // HandleListProjects returns all projects currently managed by the Orquestrador.
 func (h *SystemHandler) HandleListProjects(w http.ResponseWriter, r *http.Request) {
-	projects, err := h.projectRepo.List(r.Context())
+	projects, err := h.ProjectRepo.List(r.Context())
 	if err != nil {
 		slog.Error("system: project listing failed", "err", err)
-		SendError(w, r, http.StatusInternalServerError, ErrInternalError, "LIST_FAILED")
+		SendError(w, r, http.StatusInternalServerError, domain.ErrInternalError, "LIST_FAILED")
 		return
 	}
 

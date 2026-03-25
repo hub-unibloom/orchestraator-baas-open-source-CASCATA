@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"fmt"
 )
 
 // Auditor defines the contract for immutable logging and system state tracking (Phase 19).
@@ -25,3 +26,10 @@ type AIInquisitor interface {
 type PhantomGuardian interface {
 	InvokeFunction(ctx context.Context, projectSlug, functionName string, binary []byte, params map[string]interface{}) ([]byte, error)
 }
+
+// Global Error Contract (Standardized Phase 1)
+var (
+	ErrNotFound       = fmt.Errorf("resource not found")
+	ErrGenesisFailure = fmt.Errorf("genesis engine failure")
+	ErrInternalError  = fmt.Errorf("internal processing error")
+)
