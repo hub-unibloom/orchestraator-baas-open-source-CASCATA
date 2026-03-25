@@ -1,1 +1,28 @@
-Nada a declarar, bugs de compilação foram resolvidos.
+=> [builder  8/10] RUN templ generate                                                                                               0.6s 
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                       74.2s 
+------                                                                                                                                    
+ > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                   
+56.25 # cascata/internal/ui/components                                                                                                    
+56.25 internal/ui/components/project_card_templ.go:12:2: "cascata/internal/i18n" imported as internalI18n and not used                    
+------
+[+] up 0/1
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                              90.3s
+Dockerfile.backend:23
+
+--------------------
+
+  21 |     
+
+  22 |     # Fazer o build do orchestrator e do provisionador CLI
+
+  23 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
+
+  24 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
+
+  25 |     
+
+--------------------
+
+failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
+
+ubuntu@ip-172-26-7-197:~$ 
