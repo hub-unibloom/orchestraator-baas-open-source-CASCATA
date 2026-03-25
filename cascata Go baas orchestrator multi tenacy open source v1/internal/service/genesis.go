@@ -48,15 +48,14 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 	defer func() {
 		if !success {
 			slog.Warn("genesis: rolling back project creation due to failure", "slug", p.Slug)
-			
 			// 1. Purge DB Schema
 			_ = s.tenantRepo.DropSchema(context.Background(), p.Slug)
-			
-			// 2. Clear Metadata in DB (already handled by transaction if we use one)
+			// 2. Clear Metadata in DB (Only if it was created)
+			_ = s.projectRepo.Delete(context.Background(), p.Slug)
 		}
 	}()
 
-	// 2. Initialize Secrets in Native Security Engine (AES-256-GCM)
+	// 2. Initialize and Encrypt Secrets in Native Security Engine (AES-256-GCM)
 	if p.JWTSecret == "" {
 		p.JWTSecret = s.generateRandomKey(32)
 	}
@@ -67,14 +66,7 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 		p.ServiceKey = "sk_" + s.generateRandomKey(32)
 	}
 
-	// 3. Apply Initial Schema & Hardening (Phase 15 Sinergy)
-	if err := s.initializeSchema(ctx, p.Slug); err != nil {
-		return fmt.Errorf("genesis: schema initialization failed: %w", err)
-	}
-
-	// 3.5. Transit Encryption of Sensitive Metadata (Sovereignty Layer)
-	
-	// Encrypt Core Credentials (JWT, Anon, Service)
+	// Encrypt Core Credentials BEFORE registration
 	if encryptedJWT, err := s.security.Encrypt(ctx, p.JWTSecret); err == nil {
 		p.JWTSecret = encryptedJWT
 	}
@@ -85,17 +77,22 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 		p.ServiceKey = encryptedService
 	}
 
-	// Encrypt Secondary Secret (Agency Mode) - If provided from Onboarding Modal
+	// Encrypt Secondary Secret (Agency Mode)
 	if p.SecondarySecretHash != "" {
 		if encryptedSec, err := s.security.Encrypt(ctx, p.SecondarySecretHash); err == nil {
 			p.SecondarySecretHash = encryptedSec
 		}
 	}
 
-	// 4. System Metadata Registration
+	// 3. System Metadata Registration (Must exist for Migration Engine to resolve)
 	if err := s.projectRepo.Create(ctx, p); err != nil {
 		slog.Error("genesis: failed to register project metadata", "slug", p.Slug, "err", err)
 		return fmt.Errorf("genesis: metadata registration failed: %w", err)
+	}
+
+	// 4. Apply Initial Schema & Hardening (Phase 15 Sinergy)
+	if err := s.initializeSchema(ctx, p.Slug); err != nil {
+		return fmt.Errorf("genesis: schema initialization failed: %w", err)
 	}
 
 	success = true
