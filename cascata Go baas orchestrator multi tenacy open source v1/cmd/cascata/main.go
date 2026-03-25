@@ -22,6 +22,7 @@ import (
 	"cascata/internal/config"
 	"cascata/internal/cron"
 	"cascata/internal/database"
+	"cascata/internal/i18n"
 	"cascata/internal/logger"
 	"cascata/internal/phantom"
 	"cascata/internal/privacy"

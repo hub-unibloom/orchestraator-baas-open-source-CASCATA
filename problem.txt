@@ -1,16 +1,11 @@
- => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                      72.4s 
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                      74.3s 
 ------                                                                                                                                   
  > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                  
-59.33 # cascata/internal/api                                                                                                             
-59.33 internal/api/data_handler.go:74:40: cannot use domain.ErrNotFound (variable of interface type error) as string value in argument to SendError                                                                                                                               
-59.33 internal/api/data_handler.go:91:26: h.projectSvc.Repo().Pool undefined (type *repository.ProjectRepository has no field or method Pool)
-59.33 internal/api/data_handler.go:94:33: h.projectSvc.Repo().Pool undefined (type *repository.ProjectRepository has no field or method Pool)
-59.33 internal/api/data_handler.go:107:26: h.projectSvc.Repo().Pool undefined (type *repository.ProjectRepository has no field or method Pool)
-59.33 internal/api/system_handler.go:183:51: cannot use domain.ErrGenesisFailure (variable of interface type error) as string value in argument to SendError
-59.33 internal/api/system_handler.go:219:51: cannot use domain.ErrInternalError (variable of interface type error) as string value in argument to SendError
+73.96 # command-line-arguments                                                                                                           
+73.96 cmd/cascata/main.go:46:2: undefined: i18n                                                                                          
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                             86.5s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                             89.1s
 Dockerfile.backend:23
 
 --------------------
