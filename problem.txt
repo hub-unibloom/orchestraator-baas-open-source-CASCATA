@@ -1,12 +1,19 @@
-=> [builder  8/10] RUN templ generate                                                                                               0.6s 
- => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                       74.2s 
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                       73.2s 
 ------                                                                                                                                    
  > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                   
-56.25 # cascata/internal/ui/components                                                                                                    
-56.25 internal/ui/components/project_card_templ.go:12:2: "cascata/internal/i18n" imported as internalI18n and not used                    
+60.65 # cascata/internal/api                                                                                                              
+60.65 internal/api/system_handler.go:93:5: undefined: strings                                                                             
+60.65 internal/api/ui_handler.go:35:27: cannot use templ.WithChildren(pages.Dashboard(loc)) (value of interface type context.Context) as func(*templ.ComponentHandler) value in argument to templ.Handler                                                                           
+60.65 internal/api/ui_handler.go:35:46: not enough arguments in call to templ.WithChildren
+60.65 	have (templ.Component)
+60.65 	want (context.Context, templ.Component)
+60.65 internal/api/ui_handler.go:113:27: cannot use templ.WithChildren(pages.ProjectDashboard(slug, loc)) (value of interface type context.Context) as func(*templ.ComponentHandler) value in argument to templ.Handler
+60.65 internal/api/ui_handler.go:113:46: not enough arguments in call to templ.WithChildren
+60.65 	have (templ.Component)
+60.65 	want (context.Context, templ.Component)
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                              90.3s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                              85.4s
 Dockerfile.backend:23
 
 --------------------

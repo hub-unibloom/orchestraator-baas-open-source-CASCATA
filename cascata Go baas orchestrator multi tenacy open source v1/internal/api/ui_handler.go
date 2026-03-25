@@ -32,7 +32,7 @@ func (h *UIHandler) ServeIndex(w http.ResponseWriter, r *http.Request) {
 	
 	// Inject pages.Dashboard as children of layout.Base
 	w.Header().Set("Content-Type", "text/html")
-	templ.Handler(component, templ.WithChildren(pages.Dashboard(loc))).ServeHTTP(w, r)
+	templ.Handler(component, templ.WithChildren(r.Context(), pages.Dashboard(loc))).ServeHTTP(w, r)
 }
 
 // ServeLogin renders the sovereign authentication portal.
@@ -110,7 +110,7 @@ func (h *UIHandler) HandleUIProjectDashboard(w http.ResponseWriter, r *http.Requ
 	title := "Project: " + slug
 	component := layouts.Base(title, loc)
 	w.Header().Set("Content-Type", "text/html")
-	templ.Handler(component, templ.WithChildren(pages.ProjectDashboard(slug, loc))).ServeHTTP(w, r)
+	templ.Handler(component, templ.WithChildren(r.Context(), pages.ProjectDashboard(slug, loc))).ServeHTTP(w, r)
 }
 
 // HandleUIProjectOverview returns the stats fragment for the cockpit.

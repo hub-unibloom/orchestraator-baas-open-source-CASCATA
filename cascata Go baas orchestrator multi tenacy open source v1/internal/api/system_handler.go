@@ -19,6 +19,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"strconv"
+	"strings"
 )
 
 // SystemHandler handles management-level authentication and sessions.
