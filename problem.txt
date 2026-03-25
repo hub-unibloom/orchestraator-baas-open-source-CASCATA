@@ -1,0 +1,29 @@
+ => [builder  8/10] RUN templ generate                     1.2s 
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux g  71.3s 
+------                                                          
+ > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                         
+58.32 # cascata/internal/api                                    
+58.32 internal/api/ui_handler.go:268:53: cannot use x (variable of type string) as int value in argument to database.TableContextMenu
+58.32 internal/api/ui_handler.go:268:56: cannot use y (variable of type string) as int value in argument to database.TableContextMenu
+------
+[+] up 0/1
+ ⠙ Image cascatagobaasorchestratormultitenacyo... Building 91.2s
+Dockerfile.backend:23
+
+--------------------
+
+  21 |     
+
+  22 |     # Fazer o build do orchestrator e do provisionador CLI
+
+  23 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
+
+  24 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
+
+  25 |     
+
+--------------------
+
+failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
+
+ubuntu@ip-172-26-7-197:~$ 

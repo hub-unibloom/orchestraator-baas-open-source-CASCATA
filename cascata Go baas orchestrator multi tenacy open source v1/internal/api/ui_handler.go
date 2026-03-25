@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"strconv"
 	"cascata/internal/ui/layouts"
 	"cascata/internal/ui/pages"
 	"cascata/internal/i18n"
@@ -260,9 +261,13 @@ func (h *UIHandler) HandleUIDatabaseModals(w http.ResponseWriter, r *http.Reques
 func (h *UIHandler) HandleUIDatabaseContextMenu(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
 	table := chi.URLParam(r, "table")
-	x := r.URL.Query().Get("x")
-	y := r.URL.Query().Get("y")
 	schema := r.URL.Query().Get("schema")
+	
+	xStr := r.URL.Query().Get("x")
+	yStr := r.URL.Query().Get("y")
+	
+	x, _ := strconv.Atoi(xStr)
+	y, _ := strconv.Atoi(yStr)
 
 	w.Header().Set("Content-Type", "text/html")
 	_ = database.TableContextMenu(slug, schema, table, x, y).Render(r.Context(), w)
