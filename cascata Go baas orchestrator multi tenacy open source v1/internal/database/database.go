@@ -223,3 +223,10 @@ func (r *Repository) FetchRows(ctx context.Context, table string, limit int) ([]
 
 	return results, nil
 }
+// AddColumn adds a column to a table with a specific type.
+func (r *Repository) AddColumn(ctx context.Context, schema, table, colName, colType string) error {
+	// Simple DDL execution for structural expansion.
+	query := fmt.Sprintf("ALTER TABLE %q.%q ADD COLUMN %q %s", schema, table, colName, colType)
+	_, err := r.Pool.Exec(ctx, query)
+	return err
+}

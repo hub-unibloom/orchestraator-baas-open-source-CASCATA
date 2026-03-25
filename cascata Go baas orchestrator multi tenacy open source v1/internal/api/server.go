@@ -99,7 +99,7 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	router.Handle("/static/*", http.StripPrefix("/static/", fsStatic))
 
 	// SOVEREIGN UI ROUTES (Unprotected Entry Points)
-	router.Get("/login", s.UIH.ServeLogin)
+	router.Get("/login", s.UIH.HandleUIServeLogin)
 
 	// Static i18n & Themes Sovereignty
 	fsLangs := http.FileServer(http.Dir("languages"))
@@ -111,14 +111,14 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	router.Group(func(r chi.Router) {
 		r.Use(s.MemberMiddle.EnforceMemberSession)
 
-		r.Get("/", s.UIH.ServeIndex)
-		r.Get("/system", s.UIH.ServeSystemDashboard)
+		r.Get("/", s.UIH.HandleUIRoot)
+		r.Get("/system", s.UIH.HandleUIProjects)
 		
 		r.Route("/system/projects", func(r chi.Router) {
 			r.Get("/", s.SystemH.HandleListProjects)
-			r.Get("/list", s.UIH.HandleUIListProjects) 
+			r.Get("/list", s.UIH.HandleUIProjects) 
 			r.Get("/onboarding", s.UIH.HandleUIOnboarding) 
-			r.Get("/{slug}", s.UIH.HandleUIProjectDashboard)
+			r.Get("/{slug}", s.UIH.HandleUIProjectOverview)
 			r.Get("/{slug}/overview", s.UIH.HandleUIProjectOverview)
 			r.Get("/{slug}/api-docs", s.UIH.HandleUIAPIDocs)
 			r.Get("/{slug}/logic", s.UIH.HandleUIEdgeFunctions)
@@ -132,8 +132,8 @@ func (s *Server) Start(ctx context.Context, id int) error {
 			r.Get("/{slug}/ledger", s.UIH.HandleUILedgeLedger)
 			r.Get("/{slug}/settings", s.UIH.HandleUISettings)
 			r.Get("/{slug}/database/tables", s.UIH.HandleUIDatabaseTables)
-			r.Get("/{slug}/database/tables/search", s.UIH.HandleUIDatabaseTables) // Same for now
-			r.Get("/{slug}/database/tables/{table}/data", s.UIH.HandleUIDatabaseTableData)
+			r.Get("/{slug}/database/tables/{table}/data", s.UIH.HandleUIDatabaseRows)
+			r.Post("/{slug}/database/tables/{table}/columns", s.UIH.HandleUIDatabaseAddColumn)
 			r.Get("/{slug}/database/tables/{table}/context-menu", s.UIH.HandleUIDatabaseContextMenu)
 			r.Get("/{slug}/database/console", s.UIH.HandleUIDatabaseConsole)
 			r.Get("/{slug}/database/modals/{type}", s.UIH.HandleUIDatabaseModals)
