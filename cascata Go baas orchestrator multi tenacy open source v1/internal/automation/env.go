@@ -2,7 +2,6 @@ package automation
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"cascata/internal/database"

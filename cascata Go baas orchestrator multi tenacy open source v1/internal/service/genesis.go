@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
-	"time"
 )
 
 // GenesisService orchestrates the physical creation and initialization of new Tenants.
