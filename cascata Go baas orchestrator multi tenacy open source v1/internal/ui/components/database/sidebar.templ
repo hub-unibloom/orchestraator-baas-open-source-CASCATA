@@ -167,3 +167,8 @@ templ TableItem(slug string, schema string, name string, isSelected bool, isCore
         }
     </div>
 }
+templ TableList(slug string, tables []string, loc *i18n.Localizer) {
+    for _, table := range tables {
+        @TableItem(slug, "public", table, false, false)
+    }
+}

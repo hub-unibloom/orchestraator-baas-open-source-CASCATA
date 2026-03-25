@@ -1,5 +1,3 @@
-package api
-
 import (
 	"log/slog"
 	"net/http"
@@ -11,6 +9,7 @@ import (
 	"cascata/internal/ui/components"
 	"cascata/internal/ui/components/database"
 	"cascata/internal/domain"
+	"cascata/internal/service"
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 )
@@ -18,11 +17,13 @@ import (
 // UIHandler manages the sovereign web interface rendering with i18n support.
 type UIHandler struct {
 	SystemH *SystemHandler
+	projectSvc *service.ProjectService
 }
 
-func NewUIHandler(systemH *SystemHandler) *UIHandler {
+func NewUIHandler(systemH *SystemHandler, projectSvc *service.ProjectService) *UIHandler {
 	return &UIHandler{
 		SystemH: systemH,
+		projectSvc: projectSvc,
 	}
 }
 
@@ -170,6 +171,41 @@ func (h *UIHandler) HandleUIProjectOverview(w http.ResponseWriter, r *http.Reque
 	templ.Handler(pages.ProjectOverview(slug, loc, stats)).ServeHTTP(w, r)
 }
 
+// HandleUIDatabaseTables returns the list of tables for a specific schema.
+func (h *UIHandler) HandleUIDatabaseTables(w http.ResponseWriter, r *http.Request) {
+	loc := i18n.GetLocalizer(r)
+	slug := chi.URLParam(r, "slug")
+
+	// 1. Resolve Project
+	p, err := h.projectSvc.Resolve(r.Context(), slug)
+	if err != nil {
+		slog.Error("ui: project resolution failed", "slug", slug, "err", err)
+		http.Error(w, "Project not found", http.StatusNotFound)
+		return
+	}
+
+	// 2. Resolve Multi-tenant Connection Pool
+	pool, err := h.projectSvc.GetPool(r.Context(), p)
+	if err != nil {
+		slog.Error("ui: tenant pool failure", "slug", slug, "err", err)
+		http.Error(w, "Database connection failed", http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Introspect Schema (Sovereign discovery)
+	tables, err := pool.GetTables(r.Context(), "public")
+	if err != nil {
+		slog.Error("ui: schema introspection failure", "slug", slug, "err", err)
+		http.Error(w, "Failed to list tables", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	if err := database.TableList(slug, tables, loc).Render(r.Context(), w); err != nil {
+		slog.Error("ui: failed to render table list", "slug", slug, "err", err)
+	}
+}
+
 // HandleUIDatabaseExplorer renders the management cockpit for database operations.
 func (h *UIHandler) HandleUIDatabaseExplorer(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
@@ -215,23 +251,46 @@ func (h *UIHandler) HandleUIDatabaseTables(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// HandleUIDatabaseTableData renders the full Data Mesh for a specific table.
-func (h *UIHandler) HandleUIDatabaseTableData(w http.ResponseWriter, r *http.Request) {
+// HandleUIDatabaseRows returns the data rows for a specific table.
+func (h *UIHandler) HandleUIDatabaseRows(w http.ResponseWriter, r *http.Request) {
+	loc := i18n.GetLocalizer(r)
 	slug := chi.URLParam(r, "slug")
 	table := chi.URLParam(r, "table")
-	schema := r.URL.Query().Get("schema")
 
-	// Pre-requisites for the Grid Mesh
-	columns := []string{"id", "email", "status", "created_at", "last_pulse"}
-	data := []map[string]interface{}{
-		{"id": 1, "email": "admin@cascata.io", "status": "verified", "created_at": "2024-03-25", "last_pulse": "1s ago"},
-		{"id": 2, "email": "node_alpha@mesh.local", "status": "active", "created_at": "2024-03-24", "last_pulse": "12ms ago"},
+	// 1. Resolve Project and Pool (Sovereign isolation)
+	p, err := h.projectSvc.Resolve(r.Context(), slug)
+	if err != nil {
+		http.Error(w, "Project not found", http.StatusNotFound)
+		return
+	}
+
+	pool, err := h.projectSvc.GetPool(r.Context(), p)
+	if err != nil {
+		http.Error(w, "Database connection failed", http.StatusInternalServerError)
+		return
+	}
+
+	// 2. Introspect Schema for Columns (Metadata Pulse)
+	cols, err := pool.GetColumns(r.Context(), "public", table)
+	if err != nil {
+		slog.Error("ui: row fetch failed", "table", table, "err", err)
+		http.Error(w, "Failed to inspect table", http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Fetch Data Rows
+	data, err := pool.FetchRows(r.Context(), table, 100)
+	if err != nil {
+		slog.Error("ui: row fetch failed", "table", table, "err", err)
+		http.Error(w, "Failed to fetch data", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	_ = database.TablePanel(slug, schema, table, columns, data, 1, 100).Render(r.Context(), w)
+	if err := database.TablePanel(slug, "public", table, cols, data, 1, 100).Render(r.Context(), w); err != nil {
+		slog.Error("ui: failed to render table panel", "slug", slug, "err", err)
+	}
 }
-
 // HandleUIDatabaseConsole serves the Sovereign SQL Authority Terminal.
 func (h *UIHandler) HandleUIDatabaseConsole(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
@@ -281,4 +340,210 @@ func (h *UIHandler) HandleUIProjectSettings(w http.ResponseWriter, r *http.Reque
 	slug = strings.TrimSuffix(slug, "/settings")
 
 	templ.Handler(components.ProjectSettingsModal(slug, loc)).ServeHTTP(w, r)
+}
+
+// HandleUIEdgeFunctions renders the Sovereign Edge & Logic IDE.
+func (h *UIHandler) HandleUIEdgeFunctions(w http.ResponseWriter, r *http.Request) {
+	loc := i18n.GetLocalizer(r)
+	slug := chi.URLParam(r, "slug")
+
+	// Bring-Up Assets
+	assets := []pages.ProjectAsset{
+		{Name: "verify_user_pulse", Type: "rpc"},
+		{Name: "on_user_created", Type: "trigger"},
+		{Name: "core_logic", Type: "folder"},
+		{Name: "process_ledger", Type: "rpc"},
+	}
+
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("Content-Type", "text/html")
+		_ = pages.EdgeFunctionsPage(slug, assets, loc).Render(r.Context(), w)
+		return
+	}
+
+	title := "Edge Engine: " + slug
+	w.Header().Set("Content-Type", "text/html")
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
+	ctx := templ.WithChildren(r.Context(), pages.EdgeFunctionsPage(slug, assets, loc))
+	_ = component.Render(ctx, w)
+}
+
+// HandleUIAPIDocs renders the Sovereign API Gateway & Docs cockpit.
+func (h *UIHandler) HandleUIAPIDocs(w http.ResponseWriter, r *http.Request) {
+	loc := i18n.GetLocalizer(r)
+	slug := chi.URLParam(r, "slug")
+
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("Content-Type", "text/html")
+		_ = pages.APIDocPage(slug, loc).Render(r.Context(), w)
+		return
+	}
+
+	title := "API Gateway: " + slug
+	w.Header().Set("Content-Type", "text/html")
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
+	ctx := templ.WithChildren(r.Context(), pages.APIDocPage(slug, loc))
+	_ = component.Render(ctx, w)
+}
+
+// HandleUIIntelligence renders the Sovereign Neural Core (AI Governance) cockpit.
+func (h *UIHandler) HandleUIIntelligence(w http.ResponseWriter, r *http.Request) {
+	loc := i18n.GetLocalizer(r)
+	slug := chi.URLParam(r, "slug")
+
+	// Bring-Up Metadata
+	tables := []string{"profiles", "transactions", "wal_registry", "audit_log", "residents"}
+	rpcs := []string{"calculate_tax", "verify_resident_pulse", "drain_cache_pool", "sync_temporal_logs"}
+
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("Content-Type", "text/html")
+		_ = pages.IntelligencePage(slug, tables, rpcs, loc).Render(r.Context(), w)
+		return
+	}
+
+	title := "Neural Core: " + slug
+	w.Header().Set("Content-Type", "text/html")
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
+	ctx := templ.WithChildren(r.Context(), pages.IntelligencePage(slug, tables, rpcs, loc))
+	_ = component.Render(ctx, w)
+}
+
+// HandleUIBackups renders the Sovereign Time Machine cockpit.
+func (h *UIHandler) HandleUIBackups(w http.ResponseWriter, r *http.Request) {
+	loc := i18n.GetLocalizer(r)
+	slug := chi.URLParam(r, "slug")
+
+	// Phase 10: Structural Bring-Up Data (Telemetry ready)
+	snapshots := []pages.Snapshot{
+		{Name: "GENESIS_RESTORE_POINT", Size: "1.24 GB", CreatedAt: "2024-03-25 04:00:21"},
+		{Name: "POST_SCHEMA_UPGRADE_15", Size: "1.26 GB", CreatedAt: "2024-03-25 09:12:44"},
+	}
+	policies := []pages.BackupPolicy{
+		{Name: "PRIMARY_GDRIVE_DRAIN", Provider: "gdrive", Cron: "0 4 * * *"},
+		{Name: "S3_DISASTER_NODE", Provider: "aws_s3", Cron: "0 0 * * 0"},
+	}
+	history := []pages.BackupHistory{
+		{Type: "FULL_CAF_UPLOAD", Timestamp: "12m ago", Duration: "45.2s"},
+		{Type: "SNAPSHOT_PULSE_GEN", Timestamp: "4h ago", Duration: "1.8s"},
+	}
+
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("Content-Type", "text/html")
+		_ = pages.BackupsPage(slug, snapshots, policies, history, loc).Render(r.Context(), w)
+		return
+	}
+
+	title := "Time Machine: " + slug
+	w.Header().Set("Content-Type", "text/html")
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
+	ctx := templ.WithChildren(r.Context(), pages.BackupsPage(slug, snapshots, policies, history, loc))
+	_ = component.Render(ctx, w)
+}
+
+// HandleUICommCenter renders the Sovereign Communication Hub.
+func (h *UIHandler) HandleUICommCenter(w http.ResponseWriter, r *http.Request) {
+	loc := i18n.GetLocalizer(r)
+	slug := chi.URLParam(r, "slug")
+
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("Content-Type", "text/html")
+		_ = pages.CommCenter(slug, loc).Render(r.Context(), w)
+		return
+	}
+
+	title := "Comm Center: " + slug
+	w.Header().Set("Content-Type", "text/html")
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
+	ctx := templ.WithChildren(r.Context(), pages.CommCenter(slug, loc))
+	_ = component.Render(ctx, w)
+}
+
+// HandleUICommSubSection serves the inner fragments of the Comm Center.
+func (h *UIHandler) HandleUICommSubSection(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	subType := chi.URLParam(r, "type")
+
+	w.Header().Set("Content-Type", "text/html")
+	switch subType {
+	case "push":
+		_ = pages.PushEngine(slug).Render(r.Context(), w)
+	case "connectors":
+		// Placeholder for connectors grid
+		w.Write([]byte(`<div class="p-20 text-center text-[10px] font-black uppercase tracking-[0.5em] text-content-muted italic opacity-20">CONNECT_HUBS_AWAITING_PULSE...</div>`))
+	case "config":
+		// Placeholder for comm config
+		w.Write([]byte(`<div class="p-20 text-center text-[10px] font-black uppercase tracking-[0.5em] text-content-muted italic opacity-20">CONFIG_PARAMETERS_OFFLINE...</div>`))
+	}
+}
+
+// HandleUISecurityLab renders the Sovereign Authentication & RLS Designer.
+func (h *UIHandler) HandleUISecurityLab(w http.ResponseWriter, r *http.Request) {
+	loc := i18n.GetLocalizer(r)
+	slug := chi.URLParam(r, "slug")
+
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("Content-Type", "text/html")
+		_ = pages.SecurityLab(slug, loc).Render(r.Context(), w)
+		return
+	}
+
+	title := "Security Lab: " + slug
+	w.Header().Set("Content-Type", "text/html")
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
+	ctx := templ.WithChildren(r.Context(), pages.SecurityLab(slug, loc))
+	_ = component.Render(ctx, w)
+}
+
+// HandleUIStorageExplorer renders the Sovereign File & Blob Orchestrator.
+func (h *UIHandler) HandleUIStorageExplorer(w http.ResponseWriter, r *http.Request) {
+	loc := i18n.GetLocalizer(r)
+	slug := chi.URLParam(r, "slug")
+
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("Content-Type", "text/html")
+		_ = pages.StorageExplorer(slug, loc).Render(r.Context(), w)
+		return
+	}
+
+	title := "Storage Explorer: " + slug
+	w.Header().Set("Content-Type", "text/html")
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
+	ctx := templ.WithChildren(r.Context(), pages.StorageExplorer(slug, loc))
+	_ = component.Render(ctx, w)
+}
+
+// HandleUILedgeLedger renders the Sovereign Event & Log Trace Orchestrator.
+func (h *UIHandler) HandleUILedgeLedger(w http.ResponseWriter, r *http.Request) {
+	loc := i18n.GetLocalizer(r)
+	slug := chi.URLParam(r, "slug")
+
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("Content-Type", "text/html")
+		_ = pages.LedgeLedger(slug, loc).Render(r.Context(), w)
+		return
+	}
+
+	title := "Ledge Ledger: " + slug
+	w.Header().Set("Content-Type", "text/html")
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
+	ctx := templ.WithChildren(r.Context(), pages.LedgeLedger(slug, loc))
+	_ = component.Render(ctx, w)
+}
+
+// HandleUISettings renders the Sovereign Node Configuration page.
+func (h *UIHandler) HandleUISettings(w http.ResponseWriter, r *http.Request) {
+	loc := i18n.GetLocalizer(r)
+	slug := chi.URLParam(r, "slug")
+
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("Content-Type", "text/html")
+		_ = pages.ProjectSettingsPage(slug, loc).Render(r.Context(), w)
+		return
+	}
+
+	title := "Node Settings: " + slug
+	w.Header().Set("Content-Type", "text/html")
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
+	ctx := templ.WithChildren(r.Context(), pages.ProjectSettingsPage(slug, loc))
+	_ = component.Render(ctx, w)
 }

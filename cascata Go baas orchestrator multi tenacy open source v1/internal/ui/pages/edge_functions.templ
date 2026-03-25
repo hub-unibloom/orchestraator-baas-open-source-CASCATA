@@ -1,0 +1,164 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
+)
+
+// EdgeFunctionsPage: Sovereign Execution Nexus & Logic Orchestrator (v1.0.0.0 Alpha).
+templ EdgeFunctionsPage(slug string, assets []ProjectAsset, loc *i18n.Localizer) {
+	@PageSkeleton(slug, "Logic_Edge_Engine", "Sovereign_Compute_Orchestrator", EdgeIcon(), loc) {
+		
+        <div class="grid grid-cols-12 gap-10 w-full max-w-[1600px] mx-auto py-8 h-[calc(100vh-280px)] animate-in slide-in-from-bottom-5 duration-1000">
+            
+            <!-- Left: Asset Matrix (Hierarchy) -->
+            <div class="col-span-3 flex flex-col gap-6 h-full overflow-hidden">
+                <div class="bg-surface-raised/40 border border-white/5 rounded-[48px] p-10 h-full flex flex-col gap-8 italic shadow-glow-sm overflow-hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-[10px] font-black text-content-muted uppercase tracking-[0.4em] opacity-40 italic">ASSET_HIERARCHY</h4>
+                        <button class="w-10 h-10 rounded-xl bg-accent-primary text-white flex items-center justify-center shadow-glow hover:scale-110 active:scale-90 transition-all">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-2">
+                        for _, asset := range assets {
+                            @AssetItem(asset)
+                        }
+                    </div>
+
+                    <!-- Environment & Secrets Portal -->
+                    <div class="pt-6 border-t border-white/5">
+                        <button class="w-full bg-white/5 border border-white/5 rounded-2xl py-4 px-6 flex items-center justify-between group hover:bg-white/10 transition-all italic">
+                            <div class="flex items-center gap-4">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="text-amber-500"><path d="M21 21-4.3-4.3"/><circle cx="11" cy="11" r="8"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>
+                                <span class="text-[9px] font-black text-content-muted group-hover:text-white uppercase tracking-widest transition-all">GLOBAL_SECRETS</span>
+                            </div>
+                            <span class="w-5 h-5 rounded-md bg-amber-500/10 text-amber-500 flex items-center justify-center text-[8px] font-black italic shadow-glow-sm">12</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Code Workspace & Terminal -->
+            <div class="col-span-9 flex flex-col gap-8 h-full overflow-hidden">
+                
+                <!-- Editor Header & Actions -->
+                <div class="bg-surface-raised/40 border border-white/5 rounded-[40px] px-12 py-6 flex items-center justify-between italic shadow-glow-sm">
+                    <div class="flex items-center gap-8">
+                        <div class="w-12 h-12 rounded-2xl bg-surface-base border border-white/10 flex items-center justify-center text-accent-primary shadow-glow-sm">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-black text-white uppercase tracking-widest mb-1 italic">VERIFY_USER_PULSE</h3>
+                            <div class="flex items-center gap-4">
+                                <span class="px-3 py-1 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/10 text-[8px] font-black uppercase tracking-widest italic shadow-glow-sm">ACTIVE_RPC</span>
+                                <span class="text-[9px] font-mono text-content-muted opacity-40">last_updated: 12m_ago</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <button class="bg-white/5 border border-white/5 text-content-muted px-8 py-3.5 rounded-[24px] font-black text-[9px] uppercase tracking-widest hover:text-white transition-all italic">DISCARD_CHANGES</button>
+                        <button class="bg-accent-primary text-white px-10 py-3.5 rounded-[24px] font-black text-[9px] uppercase tracking-widest shadow-glow hover:scale-[1.03] active:scale-95 transition-all italic group">
+                             <div class="flex items-center gap-4">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="group-hover:translate-y-0.5 transition-transform"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                <span>COMMIT_DEPLOY</span>
+                             </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Code Workspace -->
+                <div class="flex-1 bg-surface-base border border-white/5 rounded-[48px] overflow-hidden flex flex-col shadow-inner italic">
+                    <!-- Editor Gutter & Content -->
+                    <div class="flex-1 flex overflow-hidden">
+                        <div class="w-16 bg-surface-pit flex flex-col items-center py-8 gap-4 border-r border-white/5 opacity-40 text-[9px] font-mono leading-relaxed select-none">
+                            for i := 1; i <= 24; i++ {
+                                <div>{ fmt.Sprintf("%02d", i) }</div>
+                            }
+                        </div>
+                        <div class="flex-1 p-10 overflow-y-auto custom-scrollbar font-mono text-[11px] leading-relaxed text-emerald-500/80">
+                            <pre>
+CREATE OR REPLACE FUNCTION verify_user_pulse(user_id uuid)
+RETURNS jsonb AS $$
+DECLARE
+  v_status text;
+BEGIN
+  -- Sovereign Identity Verification Logic
+  SELECT status INTO v_status 
+  FROM auth_profiles 
+  WHERE id = user_id;
+
+  RETURN jsonb_build_object(
+    'verification_id', crypto.gen_random_uuid(),
+    'pulse_status', COALESCE(v_status, 'unknown'),
+    'temporal_trace', now()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+                            </pre>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Integrated Terminal/Runner -->
+                    <div class="h-80 bg-surface-pit border-t border-white/5 p-10 flex flex-col gap-6 italic shadow-glow">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-8">
+                                @TerminalTab("EXECUTION_MATRIX", true)
+                                @TerminalTab("PAYLOAD_SCHEMA", false)
+                                @TerminalTab("TEMPORAL_LOGS", false)
+                            </div>
+                            <button class="bg-emerald-500 text-white px-8 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-glow-sm hover:scale-[1.05] transition-all italic flex items-center gap-3">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 3 14 9-14 9V3z"/></svg>
+                                <span>EXECUTE_PULSE</span>
+                            </button>
+                        </div>
+                        <div class="flex-1 bg-surface-base/40 border border-white/5 rounded-3xl p-8 font-mono text-[10px] text-content-muted leading-relaxed overflow-y-auto custom-scrollbar shadow-inner">
+                            <div class="flex gap-4 opacity-40 mb-2">
+                                <span class="text-emerald-500 font-black tracking-widest">[EXEC]</span>
+                                <span>Initializing isolation container for "verify_user_pulse"...</span>
+                            </div>
+                            <div class="flex gap-4 opacity-40 mb-4">
+                                <span class="text-emerald-500 font-black tracking-widest">[EXEC]</span>
+                                <span>Loading temporal trace context V.1.0.0.0...</span>
+                            </div>
+                            <div class="text-white bg-white/5 p-4 rounded-xl border border-white/5">
+                                { "verification_id": "550e8400-e29b-41d4-a716-446655440000", "pulse_status": "verified", "temporal_trace": "2024-03-25T14:12:44Z" }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+	}
+}
+
+templ AssetItem(asset ProjectAsset) {
+    <div class="group flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all cursor-pointer italic">
+        <div class="flex items-center gap-4">
+            <div class="p-2.5 rounded-xl bg-surface-base border border-white/5 text-content-muted group-hover:text-accent-primary transition-all shadow-glow-sm">
+                if asset.Type == "rpc" {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                } else if asset.Type == "trigger" {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                } else {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                }
+            </div>
+            <span class="text-[9px] font-black text-content-muted group-hover:text-white uppercase tracking-widest transition-all truncate max-w-[140px] italic">{ asset.Name }</span>
+        </div>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="text-content-muted opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all"><path d="m9 18 6-6-6-6"/></svg>
+    </div>
+}
+
+templ TerminalTab(label string, active bool) {
+    <div class={ "text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all italic border-b-2 py-2 px-2", templ.KV("text-white border-accent-primary", active), templ.KV("text-content-muted border-transparent opacity-40 hover:opacity-100", !active) }>
+        { label }
+    </div>
+}
+
+templ EdgeIcon() {
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>
+}
+
+type ProjectAsset struct { Name string; Type string }

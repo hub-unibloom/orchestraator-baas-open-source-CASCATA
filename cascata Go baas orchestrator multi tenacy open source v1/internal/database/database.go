@@ -118,3 +118,108 @@ func isTransientError(err error) bool {
 	// Check for pgx standard connection errors
 	return false 
 }
+
+// GetTables retrieves the list of base tables in the specified schema.
+func (r *Repository) GetTables(ctx context.Context, schema string) ([]string, error) {
+	if schema == "" {
+		schema = "public"
+	}
+
+	rows, err := r.Pool.Query(ctx, `
+		SELECT table_name 
+		FROM information_schema.tables 
+		WHERE table_schema = $1 
+		AND table_type = 'BASE TABLE'
+		ORDER BY table_name
+	`, schema)
+	if err != nil {
+		return nil, fmt.Errorf("database.GetTables: %w", err)
+	}
+	defer rows.Close()
+
+	var tables []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		tables = append(tables, name)
+	}
+	return tables, nil
+}
+
+// ColumnMetadata defines the structural pulse of a database column.
+type ColumnMetadata struct {
+	Name         string      `json:"name"`
+	Type         string      `json:"type"`
+	IsNullable   bool        `json:"is_nullable"`
+	DefaultValue interface{} `json:"default_value"`
+	IsPrimaryKey bool        `json:"is_primary_key"`
+}
+
+// GetColumns retrieves the structural definition of a table's columns.
+func (r *Repository) GetColumns(ctx context.Context, schema, table string) ([]ColumnMetadata, error) {
+	if schema == "" {
+		schema = "public"
+	}
+
+	query := `
+		SELECT 
+			c.column_name, 
+			c.udt_name, 
+			c.is_nullable = 'YES',
+			c.column_default,
+			EXISTS (
+				SELECT 1 FROM information_schema.key_column_usage kcu
+				JOIN information_schema.table_constraints tc ON kcu.constraint_name = tc.constraint_name
+				WHERE kcu.table_name = c.table_name 
+				AND kcu.column_name = c.column_name 
+				AND tc.constraint_type = 'PRIMARY KEY'
+			) as is_pk
+		FROM information_schema.columns c
+		WHERE c.table_schema = $1 AND c.table_name = $2
+		ORDER BY c.ordinal_position
+	`
+
+	rows, err := r.Pool.Query(ctx, query, schema, table)
+	if err != nil {
+		return nil, fmt.Errorf("database.GetColumns: %w", err)
+	}
+	defer rows.Close()
+
+	var columns []ColumnMetadata
+	for rows.Next() {
+		var col ColumnMetadata
+		if err := rows.Scan(&col.Name, &col.Type, &col.IsNullable, &col.DefaultValue, &col.IsPrimaryKey); err != nil {
+			return nil, err
+		}
+		columns = append(columns, col)
+	}
+// FetchRows retrieves data from a specific table with dynamic row scanning into generic maps.
+func (r *Repository) FetchRows(ctx context.Context, table string, limit int) ([]map[string]interface{}, error) {
+	query := fmt.Sprintf("SELECT * FROM %q LIMIT %d", table, limit)
+
+	rows, err := r.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("database.FetchRows: %w", err)
+	}
+	defer rows.Close()
+
+	fieldDescriptions := rows.FieldDescriptions()
+	var results []map[string]interface{}
+
+	for rows.Next() {
+		values, err := rows.Values()
+		if err != nil {
+			return nil, err
+		}
+
+		entry := make(map[string]interface{})
+		for i, fd := range fieldDescriptions {
+			entry[string(fd.Name)] = values[i]
+		}
+		results = append(results, entry)
+	}
+
+	return results, nil
+}

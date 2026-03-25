@@ -188,8 +188,8 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	// --- 8. API Layer Dispatch (The Gateway) ---
 	interceptor := api.NewInterceptor(repo, projectRepo, phantomSvc, eventQueue, workflowEngine, auditService)
 	
-	systemH := api.NewSystemHandler(systemAuth, sessionSvc, rlEngine, genesisSvc, projectRepo, storage.NewBackupService(projectService, repo))
-	uiH := api.NewUIHandler(systemH)
+	systemH := api.NewSystemHandler(systemAuth, sessionSvc, rlEngine, genesisSvc, projectRepo, projectService, storage.NewBackupService(projectService, repo))
+	uiH := api.NewUIHandler(systemH, projectService)
 	
 	srv := api.NewServer(
 		cfg, 
