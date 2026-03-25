@@ -30,7 +30,6 @@ type SystemHandler struct {
 	ratelimit   *ratelimit.AdaptiveEngine
 	genesisSvc  *service.GenesisService
 	ProjectRepo *repository.ProjectRepository
-	ProjectSvc  *service.ProjectService
 	backupSvc   *storage.BackupService
 }
 
@@ -39,18 +38,16 @@ func NewSystemHandler(
 	sessionSvc *auth.SessionManager, 
 	rl *ratelimit.AdaptiveEngine,
 	genesis *service.GenesisService,
-	repo *repository.ProjectRepository,
-	projSvc *service.ProjectService,
-	backup *storage.BackupService,
+	projectRepo *repository.ProjectRepository,
+	backupSvc *storage.BackupService,
 ) *SystemHandler {
 	return &SystemHandler{
 		authSvc:     authSvc,
 		sessionSvc:  sessionSvc,
 		ratelimit:   rl,
 		genesisSvc:  genesis,
-		ProjectRepo: repo,
-		ProjectSvc:  projSvc,
-		backupSvc:   backup,
+		ProjectRepo: projectRepo,
+		backupSvc:   backupSvc,
 	}
 }
 

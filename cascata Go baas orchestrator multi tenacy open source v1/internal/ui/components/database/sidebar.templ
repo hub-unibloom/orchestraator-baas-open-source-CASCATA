@@ -2,7 +2,7 @@ package database
 
 import (
     "fmt"
-    ni18n "github.com/nicksnyder/go-i18n/v2/i18n"
+    "github.com/nicksnyder/go-i18n/v2/i18n"
     internalI18n "cascata/internal/i18n"
 )
 
@@ -11,7 +11,7 @@ script openContextMenu(slug string, name string, schema string) {
     htmx.ajax('GET', `/system/projects/${slug}/database/tables/${name}/context-menu?x=${event.clientX}&y=${event.clientY}&schema=${schema}`, '#database-context-menu-portal');
 }
 
-templ Sidebar(slug string, loc *ni18n.Localizer) {
+templ Sidebar(slug string, loc *i18n.Localizer) {
     <aside class="w-80 flex-shrink-0 flex flex-col bg-surface-base border-r border-white/5 z-20 shadow-2xl relative transition-all duration-300 transform" id="database-sidebar">
         <!-- Schema Hub (Context Switcher) -->
         <header class="p-8 border-b border-white/5 bg-surface-pit/10 backdrop-blur-md relative group">
@@ -166,9 +166,4 @@ templ TableItem(slug string, schema string, name string, isSelected bool, isCore
             <div class="absolute inset-x-0 bottom-0 h-1 bg-white/20 blur-sm"></div>
         }
     </div>
-}
-templ TableList(slug string, tables []string, loc *ni18n.Localizer) {
-    for _, table := range tables {
-        @TableItem(slug, "public", table, false, false)
-    }
 }
