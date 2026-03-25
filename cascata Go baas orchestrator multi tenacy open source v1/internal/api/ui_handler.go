@@ -8,8 +8,10 @@ import (
 	"cascata/internal/ui/pages"
 	"cascata/internal/i18n"
 	"cascata/internal/ui/components"
+	"cascata/internal/ui/components/database"
 	"cascata/internal/domain"
 	"github.com/a-h/templ"
+	"github.com/go-chi/chi/v5"
 )
 
 // UIHandler manages the sovereign web interface rendering with i18n support.
