@@ -29,6 +29,7 @@ type Project struct {
 	MaxConns            int                    `json:"max_conns"`
 	MaxStorageMB        int64                  `json:"max_storage_mb"`
 	MaxDBWeightMB       int64                  `json:"max_db_weight_mb"`
+	MaxDataRows         int64                  `json:"max_data_rows"`
 
 	RolloverAt          *time.Time             `json:"rollover_at,omitempty"`
 	Blocklist           []string               `json:"blocklist"`

@@ -29,7 +29,7 @@ func (h *UIHandler) ServeIndex(w http.ResponseWriter, r *http.Request) {
 	title := i18n.T(loc, "dashboard_title")
 	
 	w.Header().Set("Content-Type", "text/html")
-	component := layouts.Base(title, loc)
+	component := layouts.Base(title, loc, false)
 	
 	// Canonical Templ Child Injection in Go code
 	ctx := templ.WithChildren(r.Context(), pages.Dashboard(loc))
@@ -121,7 +121,7 @@ func (h *UIHandler) HandleUIProjectDashboard(w http.ResponseWriter, r *http.Requ
 	// Full Page Reload Synergy (Canonical Render)
 	title := "Project: " + slug
 	w.Header().Set("Content-Type", "text/html")
-	component := layouts.Base(title, loc)
+	component := layouts.Base(title, loc, false)
 	ctx := templ.WithChildren(r.Context(), pages.ProjectDashboard(slug, loc))
 	if err := component.Render(ctx, w); err != nil {
 		slog.Error("ui: failed to render project dashboard page", "slug", slug, "err", err)

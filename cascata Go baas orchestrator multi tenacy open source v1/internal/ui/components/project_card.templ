@@ -14,6 +14,7 @@ type Project struct {
 	MaxUsers     int
 	MaxConns     int
 	MaxStorageMB int64
+	MaxDataRows  int64
 }
 
 templ ProjectCard(p Project, loc *i18n.Localizer) {
@@ -57,24 +58,30 @@ templ ProjectCard(p Project, loc *i18n.Localizer) {
 			</div>
 		</div>
 
-		<div class="grid grid-cols-3 gap-8 pt-10 border-t border-white/5 relative z-10">
+		<div class="grid grid-cols-2 gap-x-12 gap-y-10 pt-10 border-t border-white/5 relative z-10 font-bold italic">
 			<div class="space-y-3">
 				<p class="text-[9px] font-black uppercase tracking-[0.4em] text-content-muted flex items-center gap-2 italic">
-					USERS
+					CONCURRENT
 				</p>
 				<p class="text-xl font-mono text-white tabular-nums font-black tracking-tighter">{ fmt.Sprintf("%d", p.MaxUsers) }</p>
 			</div>
 			<div class="space-y-3">
 				<p class="text-[9px] font-black uppercase tracking-[0.4em] text-content-muted flex items-center gap-2 italic">
-					CONNS
+					DATA_LIMIT
 				</p>
-				<p class="text-xl font-mono text-white tabular-nums font-black tracking-tighter">{ fmt.Sprintf("%d", p.MaxConns) }</p>
+				<p class="text-xl font-mono text-white tabular-nums font-black tracking-tighter">{ fmt.Sprintf("%dK", p.MaxDataRows / 1000) }</p>
 			</div>
 			<div class="space-y-3">
 				<p class="text-[9px] font-black uppercase tracking-[0.4em] text-content-muted flex items-center gap-2 italic">
 					STORAGE
 				</p>
 				<p class="text-xl font-mono text-white tabular-nums font-black tracking-tighter">{ fmt.Sprintf("%.1fGB", float64(p.MaxStorageMB)/1024) }</p>
+			</div>
+			<div class="space-y-3">
+				<p class="text-[9px] font-black uppercase tracking-[0.4em] text-content-muted flex items-center gap-2 italic">
+					STATUS
+				</p>
+				<p class="text-xl font-mono text-accent-success tabular-nums font-black tracking-tighter">SEC_OK</p>
 			</div>
 		</div>
 

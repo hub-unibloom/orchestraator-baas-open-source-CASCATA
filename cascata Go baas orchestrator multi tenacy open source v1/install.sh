@@ -381,7 +381,7 @@ vault_bootstrap() {
         docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault login "$ROOT_TOKEN" >/dev/null 2>&1
         
         log_info "Habilitando Engines Base (Transit e Secrets)..."
-        docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault secrets enable -path=secret kv-v2 >/dev/null 2>&1 || true
+        docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault secrets enable -path=cascata kv-v2 >/dev/null 2>&1 || true
         docker exec -e VAULT_ADDR="http://127.0.0.1:8207" "$VAULT_CONTAINER" vault secrets enable transit >/dev/null 2>&1 || true
         
         log_info "Configurando Soberania: Criando chave Transit 'cascata-pepper'..."
@@ -392,7 +392,7 @@ vault_bootstrap() {
         # Uso do docker cp para evitar silent fails em pipes bash herdados:
         local POLICY_TMP="/tmp/cascata_policy.hcl"
         cat <<EOF > "$POLICY_TMP"
-path "secret/*" { capabilities = ["create", "read", "update", "delete", "list"] }
+path "cascata/*" { capabilities = ["create", "read", "update", "delete", "list"] }
 path "transit/*" { capabilities = ["create", "read", "update"] }
 path "sys/health" { capabilities = ["read"] }
 path "auth/token/renew-self" { capabilities = ["update"] }

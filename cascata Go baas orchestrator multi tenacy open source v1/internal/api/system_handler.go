@@ -78,6 +78,7 @@ type CreateProjectRequest struct {
 	MaxConns        int    `json:"max_conns"`
 	MaxStorageMB    int64  `json:"max_storage_mb"`
 	MaxDBWeightMB   int64  `json:"max_db_weight_mb"`
+	MaxDataRows     int64  `json:"max_data_rows"`
 	SecondarySecret string `json:"secondary_secret,omitempty"`
 }
 
@@ -144,7 +145,7 @@ func (h *SystemHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	
 	// 5. Response Strategy (HX-Sinergy)
 	if r.Header.Get("HX-Request") == "true" {
-		w.Header().Set("HX-Redirect", "/system")
+		w.Header().Set("HX-Redirect", "/")
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -170,6 +171,7 @@ func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Reque
 		req.Region = "SOVEREIGN_NODE" // Default for Phase 1
 		req.MaxUsers, _ = strconv.Atoi(r.FormValue("max_users"))
 		req.MaxStorageMB, _ = strconv.ParseInt(r.FormValue("max_storage_mb"), 10, 64)
+		req.MaxDataRows, _ = strconv.ParseInt(r.FormValue("max_data_rows"), 10, 64)
 	} else {
 		// Standard JSON API support
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -192,10 +194,11 @@ func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Reque
 		Status:              "active",
 		Region:              req.Region,
 		TimeZone:            req.TimeZone,
-		MaxUsers:            req.MaxUsers,
+		MaxUsers:            req.MaxUsers, // Concurrent Users
 		MaxConns:            req.MaxConns,
 		MaxStorageMB:        req.MaxStorageMB,
 		MaxDBWeightMB:       req.MaxDBWeightMB,
+		MaxDataRows:         req.MaxDataRows,
 		SecondarySecretHash: req.SecondarySecret, // Hashing happens in service
 		Metadata:            map[string]interface{}{"created_by": "worner_dashboard"},
 		LogRetentionDays:    30,
@@ -232,6 +235,7 @@ func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Reque
 			MaxUsers:     p.MaxUsers,
 			MaxConns:     p.MaxConns,
 			MaxStorageMB: p.MaxStorageMB,
+			MaxDataRows:  p.MaxDataRows,
 		}
 		templ.Handler(components.ProjectCard(uiProject, loc)).ServeHTTP(w, r)
 		return

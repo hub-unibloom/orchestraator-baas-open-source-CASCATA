@@ -5,7 +5,7 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-templ Base(title string, loc *i18n.Localizer) {
+templ Base(title string, loc *i18n.Localizer, hideNav bool) {
 	<!DOCTYPE html>
 	<html lang="en" class="dark">
 		<head>
@@ -61,11 +61,15 @@ templ Base(title string, loc *i18n.Localizer) {
 			<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet"/>
 		</head>
 		<body class="bg-surface-base text-content-primary font-sans selection:bg-accent-primary/30 h-screen overflow-hidden flex flex-col uppercase italic font-bold">
-			@components.Navigation(loc)
+			if !hideNav {
+				@components.Navigation(loc)
+			}
 			<main id="main-content" class="flex-1 overflow-hidden relative">
 				{ children... }
 			</main>
-			@components.SystemStatus(loc)
+			if !hideNav {
+				@components.SystemStatus(loc)
+			}
 		</body>
 	</html>
 }

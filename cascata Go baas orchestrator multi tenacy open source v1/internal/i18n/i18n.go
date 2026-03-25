@@ -2,6 +2,7 @@ package i18n
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -15,19 +16,28 @@ func Init() {
 	bundle = i18n.NewBundle(language.Portuguese)
 	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
 	
-	// Explicit loading to avoid any assignment mismatch on different i18n versions
-	msgFilePT, errPT := bundle.LoadMessageFile("languages/pt-BR.json")
-	_ = msgFilePT
-	_ = errPT
+	if _, err := bundle.LoadMessageFile("languages/pt-BR.json"); err != nil {
+		slog.Error("i18n: failed to load pt-BR messages", "err", err)
+	}
 
-	msgFileEN, errEN := bundle.LoadMessageFile("languages/en-US.json")
-	_ = msgFileEN
-	_ = errEN
+	if _, err := bundle.LoadMessageFile("languages/en-US.json"); err != nil {
+		slog.Error("i18n: failed to load en-US messages", "err", err)
+	}
 }
 
-// GetLocalizer returns a localizer based on the Accept-Language header.
+// GetLocalizer returns a localizer based on cookie or Accept-Language header.
 func GetLocalizer(r *http.Request) *i18n.Localizer {
-	lang := r.Header.Get("Accept-Language")
+	// Priority 1: User Cookie Sovereignty
+	lang := ""
+	if cookie, err := r.Cookie("cascata_lang"); err == nil {
+		lang = cookie.Value
+	}
+
+	// Priority 2: Browser Context fallback
+	if lang == "" {
+		lang = r.Header.Get("Accept-Language")
+	}
+
 	return i18n.NewLocalizer(bundle, lang)
 }
 

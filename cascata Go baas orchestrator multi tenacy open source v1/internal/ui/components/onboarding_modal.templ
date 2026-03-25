@@ -87,14 +87,18 @@ templ OnboardingModal(loc *i18n.Localizer) {
 			                        <p class="text-[10px] text-content-muted font-bold uppercase tracking-widest leading-relaxed">Estabeleça os limites de expansão do nó de dados.</p>
 			                    </div>
 
-			                    <div class="grid grid-cols-2 gap-10">
+			                    <div class="grid grid-cols-2 gap-x-10 gap-y-8">
 			                        <div class="space-y-4">
-			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">Max_Users</label>
+			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">Max_Concurrent_Users</label>
 			                            <input type="number" name="max_users" value="1000" class="w-full h-18 bg-surface-pit border border-white/5 rounded-[20px] px-8 text-white font-mono font-black italic focus:border-accent-secondary/50 outline-none transition-all" />
 			                        </div>
 			                        <div class="space-y-4">
-			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">Storage_MB</label>
+			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">Storage_Limit (MB)</label>
 			                            <input type="number" name="max_storage_mb" value="512" class="w-full h-18 bg-surface-pit border border-white/5 rounded-[20px] px-8 text-white font-mono font-black italic focus:border-accent-secondary/50 outline-none transition-all" />
+			                        </div>
+			                        <div class="space-y-4 col-span-2">
+			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">Data_Limit (Rows/Records)</label>
+			                            <input type="number" name="max_data_rows" value="100000" class="w-full h-18 bg-surface-pit border border-white/5 rounded-[20px] px-8 text-white font-mono font-black italic focus:border-accent-secondary/50 outline-none transition-all" />
 			                        </div>
 			                    </div>
 			                </div>
