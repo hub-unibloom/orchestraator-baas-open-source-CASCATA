@@ -5,7 +5,7 @@ import (
 	internalI18n "cascata/internal/i18n"
 )
 
-templ Navigation(loc *i18n.Localizer) {
+templ Navigation(loc *i18n.Localizer, ctxNav templ.Component) {
 	<header class="h-24 flex-shrink-0 border-b border-white/5 bg-surface-base/80 backdrop-blur-[32px] flex items-center justify-between px-16 z-50 shadow-2xl relative overflow-hidden">
 		<!-- Dynamic Background Glow -->
 		<div class="absolute -top-40 -left-40 w-96 h-96 bg-accent-primary/10 blur-[100px] rounded-full animate-pulse"></div>
@@ -22,40 +22,24 @@ templ Navigation(loc *i18n.Localizer) {
 			</div>
 		</div>
 
-		<nav class="flex items-center gap-2 bg-surface-pit/50 border border-white/5 p-1.5 rounded-[24px] relative z-10 font-bold backdrop-blur-xl">
+		<!-- Contextual Smart Nav Slot -->
+		<div id="sub-navigation-slot" class="flex-1 flex justify-center px-12 relative z-10">
+			if ctxNav != nil {
+				@ctxNav
+			}
+		</div>
+
+		<nav class="flex items-center gap-2 bg-surface-pit/50 border border-white/5 p-1.5 rounded-[24px] relative z-10 font-bold backdrop-blur-xl shrink-0">
 			<a href="/" hx-get="/system" hx-target="#main-content" hx-push-url="true" class="px-8 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-widest bg-accent-primary text-white transition-all shadow-glow italic">System Hub</a>
 			<a href="/security" hx-get="/security" hx-target="#main-content" hx-push-url="true" class="px-8 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-widest text-content-muted hover:text-white hover:bg-white/5 transition-all italic">Security Lab</a>
 			<a href="/audit" hx-get="/audit" hx-target="#main-content" hx-push-url="true" class="px-8 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-widest text-content-muted hover:text-white hover:bg-white/5 transition-all italic">Ledge Ledger</a>
+			<a href="/settings" hx-get="/settings" hx-target="#main-content" hx-push-url="true" class="px-8 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-widest text-content-muted hover:text-white hover:bg-white/5 transition-all italic">settings</a>
 		</nav>
 
-		<div class="flex items-center gap-6 relative z-10" x-data="{ open: false }">
-			<!-- Member Identity Badge -->
-			<button @click="open = !open" class="flex items-center gap-4 bg-surface-raised/40 border border-white/5 pl-4 pr-1.5 py-1.5 rounded-[22px] hover:border-accent-primary/30 transition-all group active:scale-95">
-				<span class="text-[10px] font-mono font-black text-content-muted uppercase tracing-[0.2em] group-hover:text-white transition-colors italic">Identity Verified</span>
-				<div class="w-10 h-10 rounded-[16px] bg-accent-primary/20 flex items-center justify-center text-accent-primary border border-accent-primary/30 shadow-inner">
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-				</div>
-			</button>
-		</div>
+		<div class="w-12 h-10 opacity-0 relative z-10"></div>
 	</header>
 }
 
 templ SystemStatus(loc *i18n.Localizer) {
-	<footer class="h-12 border-t border-white/5 px-16 flex items-center justify-between text-[10px] font-mono tracking-[0.3em] uppercase bg-surface-pit relative z-50">
-		<div class="flex items-center gap-5">
-			<div class="flex items-center gap-3 bg-accent-success/5 px-4 py-2 rounded-full border border-accent-success/10">
-				<div class="w-2 h-2 rounded-full bg-accent-success animate-pulse shadow-[0_0_10px_rgba(var(--accent-success-rgb),0.8)]"></div>
-				<span class="text-accent-success font-black italic">MESH_ACTIVE: <span class="text-white ml-2">{ internalI18n.T(loc, "sync_neural") }</span></span>
-			</div>
-			<div class="h-4 w-[1px] bg-white/10"></div>
-			<span class="text-content-muted font-bold opacity-40 italic">Cascata_Core: node.verified.ok</span>
-		</div>
-		<div class="flex items-center gap-8 text-content-muted/40 font-black italic">
-			<span class="hover:text-accent-primary transition-colors cursor-help">NODE_ALPHA_v1.0.0.0</span>
-			<span class="text-accent-primary/50 flex items-center gap-2">
-			    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-			    SOVEREIGN_ENCRYPTION_ACTIVE
-			</span>
-		</div>
-	</footer>
+	<!-- Footer content removed by user request -->
 }

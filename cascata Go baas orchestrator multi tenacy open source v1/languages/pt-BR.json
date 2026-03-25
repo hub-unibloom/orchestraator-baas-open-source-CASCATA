@@ -23,5 +23,12 @@
   "operation_name": "Nome da Operação",
   "computed_slug": "Slug_Computado (Automático)",
   "infrastructure_genesis": "Gênese de Infraestrutura",
-  "execute_provision": "EXECUTAR PROVISÃO"
+  "execute_provision": "EXECUTAR PROVISÃO",
+  "db_explorer": "Explorador de Dados",
+  "schema_context": "Contexto do Schema",
+  "table_registry": "Registro de Tabelas",
+  "search_tables": "Pesquisar Tabelas...",
+  "sql_console": "Console SQL",
+  "select_table_to_explore": "Selecione uma tabela para explorar",
+  "sovereign_data_v1": "Orquestração de Dados Soberana v1.0.0.0"
 }

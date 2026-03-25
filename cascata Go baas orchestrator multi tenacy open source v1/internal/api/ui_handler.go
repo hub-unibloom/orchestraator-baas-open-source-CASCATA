@@ -29,7 +29,7 @@ func (h *UIHandler) ServeIndex(w http.ResponseWriter, r *http.Request) {
 	title := i18n.T(loc, "dashboard_title")
 	
 	w.Header().Set("Content-Type", "text/html")
-	component := layouts.Base(title, loc, false)
+	component := layouts.Base(title, loc, false, nil)
 	
 	// Canonical Templ Child Injection in Go code
 	ctx := templ.WithChildren(r.Context(), pages.Dashboard(loc))
@@ -121,7 +121,7 @@ func (h *UIHandler) HandleUIProjectDashboard(w http.ResponseWriter, r *http.Requ
 	// Full Page Reload Synergy (Canonical Render)
 	title := "Project: " + slug
 	w.Header().Set("Content-Type", "text/html")
-	component := layouts.Base(title, loc, false)
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
 	ctx := templ.WithChildren(r.Context(), pages.ProjectDashboard(slug, loc))
 	if err := component.Render(ctx, w); err != nil {
 		slog.Error("ui: failed to render project dashboard page", "slug", slug, "err", err)
@@ -165,6 +165,105 @@ func (h *UIHandler) HandleUIProjectOverview(w http.ResponseWriter, r *http.Reque
 	}
 
 	templ.Handler(pages.ProjectOverview(slug, loc, stats)).ServeHTTP(w, r)
+}
+
+// HandleUIDatabaseExplorer renders the management cockpit for database operations.
+func (h *UIHandler) HandleUIDatabaseExplorer(w http.ResponseWriter, r *http.Request) {
+	loc := i18n.GetLocalizer(r)
+	path := r.URL.Path
+	slug := strings.TrimPrefix(path, "/system/projects/")
+	slug = strings.TrimSuffix(slug, "/database")
+
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("Content-Type", "text/html")
+		if err := pages.DatabaseExplorer(slug, loc).Render(r.Context(), w); err != nil {
+			slog.Error("ui: failed to render database explorer fragment", "slug", slug, "err", err)
+		}
+		return
+	}
+
+	// Full Page Reload
+	title := "Database Explorer: " + slug
+	w.Header().Set("Content-Type", "text/html")
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
+	ctx := templ.WithChildren(r.Context(), pages.DatabaseExplorer(slug, loc))
+	if err := component.Render(ctx, w); err != nil {
+		slog.Error("ui: failed to render database explorer page", "slug", slug, "err", err)
+	}
+}
+
+// HandleUIDatabaseTables returns the list of tables for a specific schema.
+func (h *UIHandler) HandleUIDatabaseTables(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	schema := r.URL.Query().Get("schema")
+	if schema == "" { schema = "public" }
+
+	// Mocking tables for initial UI bring-up (matching Sidebar expectations)
+	type Table struct { Name string; IsCore bool }
+	tables := []Table{
+		{Name: "residents", IsCore: true},
+		{Name: "auth_audit", IsCore: false},
+		{Name: "wal_registry", IsCore: true},
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	for _, t := range tables {
+		_ = database.TableItem(slug, schema, t.Name, false, t.IsCore).Render(r.Context(), w)
+	}
+}
+
+// HandleUIDatabaseTableData renders the full Data Mesh for a specific table.
+func (h *UIHandler) HandleUIDatabaseTableData(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	table := chi.URLParam(r, "table")
+	schema := r.URL.Query().Get("schema")
+
+	// Pre-requisites for the Grid Mesh
+	columns := []string{"id", "email", "status", "created_at", "last_pulse"}
+	data := []map[string]interface{}{
+		{"id": 1, "email": "admin@cascata.io", "status": "verified", "created_at": "2024-03-25", "last_pulse": "1s ago"},
+		{"id": 2, "email": "node_alpha@mesh.local", "status": "active", "created_at": "2024-03-24", "last_pulse": "12ms ago"},
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	_ = database.TablePanel(slug, schema, table, columns, data, 1, 100).Render(r.Context(), w)
+}
+
+// HandleUIDatabaseConsole serves the Sovereign SQL Authority Terminal.
+func (h *UIHandler) HandleUIDatabaseConsole(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	loc := i18n.GetLocalizer(r)
+	
+	w.Header().Set("Content-Type", "text/html")
+	_ = database.SqlConsole(slug, loc).Render(r.Context(), w)
+}
+
+// HandleUIDatabaseModals serves various management modals (Extensions, Delete, etc).
+func (h *UIHandler) HandleUIDatabaseModals(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	modalType := chi.URLParam(r, "type")
+
+	w.Header().Set("Content-Type", "text/html")
+	switch modalType {
+	case "extensions":
+		installed := []string{"pgcrypto", "uuid-ossp"}
+		available := []string{"pgcrypto", "uuid-ossp", "pg_vector", "postgis", "pg_cron", "pg_audit"}
+		_ = database.ExtensionsModal(slug, installed, available).Render(r.Context(), w)
+	case "delete-table":
+		// Serves confirm delete modal (placeholder logic)
+	}
+}
+
+// HandleUIDatabaseContextMenu serves the context menu portal.
+func (h *UIHandler) HandleUIDatabaseContextMenu(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	table := chi.URLParam(r, "table")
+	x := r.URL.Query().Get("x")
+	y := r.URL.Query().Get("y")
+	schema := r.URL.Query().Get("schema")
+
+	w.Header().Set("Content-Type", "text/html")
+	_ = database.TableContextMenu(slug, schema, table, x, y).Render(r.Context(), w)
 }
 
 // HandleUIProjectSettings returns the settings modal fragment for a project.

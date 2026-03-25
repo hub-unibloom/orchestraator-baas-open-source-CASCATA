@@ -120,6 +120,13 @@ func (s *Server) Start(ctx context.Context, id int) error {
 			r.Get("/onboarding", s.UIH.HandleUIOnboarding) 
 			r.Get("/{slug}", s.UIH.HandleUIProjectDashboard)
 			r.Get("/{slug}/overview", s.UIH.HandleUIProjectOverview)
+			r.Get("/{slug}/database", s.UIH.HandleUIDatabaseExplorer)
+			r.Get("/{slug}/database/tables", s.UIH.HandleUIDatabaseTables)
+			r.Get("/{slug}/database/tables/search", s.UIH.HandleUIDatabaseTables) // Same for now
+			r.Get("/{slug}/database/tables/{table}/data", s.UIH.HandleUIDatabaseTableData)
+			r.Get("/{slug}/database/tables/{table}/context-menu", s.UIH.HandleUIDatabaseContextMenu)
+			r.Get("/{slug}/database/console", s.UIH.HandleUIDatabaseConsole)
+			r.Get("/{slug}/database/modals/{type}", s.UIH.HandleUIDatabaseModals)
 			r.Post("/", s.SystemH.HandleCreateProject)
 			r.Delete("/{slug}", s.SystemH.HandleDeleteProject)
 			r.Get("/export", s.SystemH.HandleExportCAF)

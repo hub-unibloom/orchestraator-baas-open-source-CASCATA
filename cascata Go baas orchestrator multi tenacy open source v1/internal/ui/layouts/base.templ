@@ -5,7 +5,7 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-templ Base(title string, loc *i18n.Localizer, hideNav bool) {
+templ Base(title string, loc *i18n.Localizer, hideNav bool, ctxNav templ.Component) {
 	<!DOCTYPE html>
 	<html lang="en" class="dark">
 		<head>
@@ -39,6 +39,7 @@ templ Base(title string, loc *i18n.Localizer, hideNav bool) {
 									danger: 'rgb(244 63 94 / <alpha-value>)',
 									warning: 'rgb(245 158 11 / <alpha-value>)',
 									success: 'rgb(16 185 129 / <alpha-value>)',
+									overlay: 'rgb(30 38 55 / <alpha-value>)',
 								}
 							},
 							letterSpacing: {
@@ -62,7 +63,7 @@ templ Base(title string, loc *i18n.Localizer, hideNav bool) {
 		</head>
 		<body class="bg-surface-base text-content-primary font-sans selection:bg-accent-primary/30 h-screen overflow-hidden flex flex-col uppercase italic font-bold">
 			if !hideNav {
-				@components.Navigation(loc)
+				@components.Navigation(loc, ctxNav)
 			}
 			<main id="main-content" class="flex-1 overflow-hidden relative">
 				{ children... }
