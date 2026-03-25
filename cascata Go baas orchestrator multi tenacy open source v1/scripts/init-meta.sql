@@ -140,16 +140,16 @@ CREATE TABLE IF NOT EXISTS system.automations (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Project Environment Variables (Phase 10B)
-CREATE TABLE IF NOT EXISTS system.project_envs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_slug TEXT NOT NULL,
-    key TEXT NOT NULL,
-    value TEXT NOT NULL, -- Plain value if public, Vault path if secret
-    is_secret BOOLEAN DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(project_slug, key)
-);
+    -- Project Environment Variables (Phase 10B)
+    CREATE TABLE IF NOT EXISTS system.project_envs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        project_slug TEXT NOT NULL,
+        key TEXT NOT NULL,
+        value TEXT NOT NULL, -- Plain value if public, Encrypted value (cascata:base64) if secret
+        is_secret BOOLEAN DEFAULT false,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(project_slug, key)
+    );
 
 -- System Members (The highest level operators starting with the Worner)
 CREATE TABLE IF NOT EXISTS system.members (
@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS system.audit_ledger (
     payload JSONB DEFAULT '{}', -- Diff or metadata
     prev_hash TEXT, -- Chain pointer
     entry_hash TEXT NOT NULL UNIQUE, -- Cryptographic signature of this record
-    signature TEXT, -- Optional Vault Transit signature (Phase 24)
+    signature TEXT, -- Optional Native Security signature (Phase 24)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

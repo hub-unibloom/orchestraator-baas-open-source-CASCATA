@@ -21,7 +21,7 @@ type ProjectSummary struct {
 	Metadata     map[string]interface{}
 }
 
-// SystemSecrets holds the keys to be exported (mocked Vault decryption for Phase 19 structure).
+// SystemSecrets holds the keys to be exported (mocked Secure Engine decryption for Phase 19 structure).
 type SystemSecrets struct {
 	JWTSecret  string `json:"jwt_secret"`
 	AnonKey    string `json:"anon_key"`
@@ -60,7 +60,7 @@ func (g *CAFGenerator) StreamCAF(ctx context.Context, w io.Writer, project Proje
 		return err
 	}
 
-	// 2. SECRETS (Decrypted from Vault just in time to store in .caf)
+	// 2. SECRETS (Decrypted from Secure Engine just in time to store in .caf)
 	if err := g.addJSONFile(zWriter, "system/secrets.json", secrets); err != nil {
 		return err
 	}

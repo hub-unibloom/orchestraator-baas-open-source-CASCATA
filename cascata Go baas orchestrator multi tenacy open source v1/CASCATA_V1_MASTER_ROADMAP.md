@@ -27,8 +27,8 @@ O Berçário do Cascata. Serviço autônomo que provisiona fisicamente novos ban
 Comunicação reativa nativa no banco (Postgres `LISTEN/NOTIFY`), convertida pelo orquestrador em WebSockets / Server-Sent Events distribuído aos apps.
 **Fase 8: Phantom AI v1 (Blindagem Adaptativa)**
 Motor síncrono de IA (`Interceptor`) que lê cada SQL chegando (Intent Audit). Bloqueia DDL malicioso (DROP/TRUNCATE) e barra leituras destrutivas de disco (`LIMIT` injects).
-**Fase 9: Vault Transit Engine & Privacy Shield**
-A blindagem criptográfica baseada no Vault transit. Regras de colunas armazenam máscaras em memória. Inserts em dados vitais (PF/PJ sensível) são criptografados on-the-fly (`vault:v1:...`).
+**Fase 9: Native Security Engine & Privacy Shield**
+A blindagem criptográfica baseada em AES-GCM nativo. Regras de colunas armazenam máscaras em memória. Inserts em dados vitais (PF/PJ sensível) são criptografados on-the-fly (`cascata:v1:...`).
 **Fase 10: Asynchronous Workflow Engine**
 Dragonfly Streams centralizando o `EventQueue`. Motor rodando scripts em background (limite de 100 passos/nodes) ativado invisivelmente a cada commit transacional `PostgreSQL` sucedido.
 
@@ -42,7 +42,7 @@ Implementação real (não simulada) do fluxo de login para moradores (Residents
 **Fase 10.2: Resident Data Table & RBAC Schema Injection**
 Atualização do Genesis para provisionar a tabela `auth.users` e esquemas de permissões (RBAC) em cada banco físico de inquilino no momento do nascimento.
 **Fase 10.3: The Trinity Postman - SMTP & SMS Integrator Hub**
-Criação do hub central de comunicações transacionais para envio de OTPs e Magic Links, integrado ao cofre de segredos do Vault.
+Criação do hub central de comunicações transacionais para envio de OTPs e Magic Links, integrado ao motor de segredos nativo.
 **Fase 10.4: Webhook 'Trindade' & Graph Automation Consolidation**
 Refinamento do sistema de Webhooks para suporte a verificações HMAC SHA-256 e fluxos de automação baseados em grafos direcionados (DAGs).
 **Fase 10.5: Immutable Backup Architecture (.caf integration)**
@@ -94,7 +94,7 @@ Complemento do Gateway, fechando conexões socket longas permitindo escuta de mu
 **Fase 22: Intelligent Rate-Limiting & Billing Integration**
 Conectar limites de uso do API Gateway aos planos de assinatura via Stripe Metered Billing. Cortar acessos automaticamente de planos não pagos.
 **Fase 23: Tenant Secrets & Environment Manager**
-Painel onde o inquilino informa suas chaves (Stripe Key, SendGrid). Elas não ficam expostas no banco, vão para o Vault KV em seu nome e são acessíveis seguro no Edge Functions.
+Painel onde o inquilino informa suas chaves (Stripe Key, SendGrid). Elas não ficam expostas no banco, são encriptadas via Security Engine e são acessíveis de forma segura no Edge Functions.
 **Fase 24: Cron Jobs & Scheduled Workflows Distribuídos**
 Scheduler robusto não para trigar em interações DB, mas de relógio cronógico ("Todo dia às 00:00"). Protegido contra rajadas e execuções duplas (Leader Election Lock).
 **Fase 25: Phantom AI v2 (Autotuning Engine)**
@@ -108,7 +108,7 @@ Automação de configuração de proxy e certificados `Let's Encrypt`. Inquilino
 *Foco: Hardening do Orquestrador, I.A. Nativa de base, alta disponibilidade de zonas de disco e a Interface Final de comando.*
 
 **Fase 27: Zero-Trust Service Mesh (mTLS Internal)**
-Fechamento absoluto da rede interna. Vault, Workers, Postgres e DragonflyDB usarão mTLS criptográfico isolado. Zero chance de sniffing dentro das sub-redes nativas.
+Fechamento absoluto da rede interna. Workers, Postgres e DragonflyDB usarão mTLS criptográfico isolado. Zero chance de sniffing dentro das sub-redes nativas.
 **Fase 28: Self-Healing & Cluster Orchestration**
 Eleição Raft entre os Workers Cascata escalados horizontalmente. Se o servidor coordenador estourar e cair durante o pico Black Friday, outro worker em standby ou rodando paralemente absorve o tráfico milimetricamente.
 **Fase 29: Geosharding & Multi-Region Data Replication**
@@ -120,7 +120,7 @@ Editor de Política no Dashboard capaz de visualizar graficamente uma política 
 **Fase 32: Immutable Backup & Restore Engine (PITR)**
 Motor ativado pelos Worners para provisão de "Point-in-Time Recovery", permitindo voltar a base exata do Inquilino "081" (só ele) para as "ontem, 16h45" de modo indolor e transparente no dashboard.
 **Fase 33: Chaos Engineering & E2E Resilience Suite**
-Injeção controlada de colapsos. Matar o DragonflyDB subitamente, exaurir as conexões do Postgres ou derrubar a API de Vault e testemunhar as garras e os "Fail-Closed" da programação Go Sênior segurar 100% da integridade da malha.
+Injeção controlada de colapsos. Matar o DragonflyDB subitamente, exaurir as conexões do Postgres ou derrubar a API de Segurança e testemunhar as garras e os "Fail-Closed" da programação Go Sênior segurar 100% da integridade da malha.
 **Fase 34: Admin Dashboard & Dev Portal V1 (A Cúpula Real)**
 A interface do Santos Graal finalizada, construída de modo impecável no modelo React (Typescript + Tailwind), sendo o painel do Inquilino para reger seu império tecnológico ancorado nas engrenagens das Fases passadas.
 **Fase 35: Golden Master Release (V1.0.0.0 Deployment)**

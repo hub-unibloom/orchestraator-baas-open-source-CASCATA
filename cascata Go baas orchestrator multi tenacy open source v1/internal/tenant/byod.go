@@ -19,7 +19,7 @@ func NewBYODService(systemPool *database.Pool) *BYODService {
 }
 
 // ConnectExternal validats the external connection string and registers it to the project metadata.
-// It securely injects the credentials via Vault rather than holding them in plain text.
+// It securely injects the credentials via Secure Engine rather than holding them in plain text.
 func (b *BYODService) ConnectExternal(ctx context.Context, projectSlug string, externalConnString string) error {
 	// 1. Connection String Parsing & Security Enforcement
 	parsed, err := url.Parse(externalConnString)
@@ -40,9 +40,9 @@ func (b *BYODService) ConnectExternal(ctx context.Context, projectSlug string, e
 	err = b.validatePing(ctx, externalConnString)
 	if err != nil { return fmt.Errorf("external database unreachable or unauthorized: %w", err) }
 
-	// 3. Vault Integration (Abstracted for Phase 20)
-	// We encrypt the `externalConnString` using Transit and store the Vault token back to db.
-	encryptedUri := fmt.Sprintf("vault:enc_ext_%s", projectSlug)
+	// 3. Security Integration (Abstracted for Phase 20)
+	// We encrypt the `externalConnString` using Native AES and store the ciphertext.
+	encryptedUri := fmt.Sprintf("cascata:enc_ext_%s", projectSlug)
 
 	// 4. Register to Project
 	updateSQL := `

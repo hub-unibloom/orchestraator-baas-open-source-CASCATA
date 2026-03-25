@@ -81,8 +81,8 @@ func keyRotate(cfg CommandConfig, args []string) {
 	// 1. Authenticate internally with parsed password
 	// authContext, err := verifyAdminPassword(slug, password)
 
-	// 2. Trigger RPC/REST endpoint forcing generation of new keys via Vault Transit
-	// newKeyStr := rotateVaultKeyRPC(ctx, authContext)
+	// 2. Trigger RPC/REST endpoint forcing generation of new keys via Native Security Engine
+	// newKeyStr := rotateNativeKeyRPC(ctx, authContext)
 
 	// For demonstration in CLI binary mock:
 	newKeyStr := fmt.Sprintf("sk_v1_%s_rolled_over", *keyType)

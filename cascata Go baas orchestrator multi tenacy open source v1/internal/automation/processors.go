@@ -23,7 +23,7 @@ func (e *WorkflowEngine) ProcessNode(ctx context.Context, execCtx *ExecutionCont
 	}
 
 	// Resolve variables in the node's config properties (Foundation Phase 10)
-	props := e.ResolveObject(node.Config, execCtx.Vars).(map[string]interface{})
+	props := e.ResolveObject(ctx, node.Config, execCtx.Vars).(map[string]interface{})
 
 	switch node.Type {
 	case domain.NodeHTTP:
@@ -120,6 +120,31 @@ func (e *WorkflowEngine) ProcessNode(ctx context.Context, execCtx *ExecutionCont
 		// Real JS Execution (Modo Padrão - Phase 12)
 		return e.phantomSvc.InvokeJS(ctx, execCtx.ProjectSlug, source, execCtx.Vars)
 
+	case domain.NodeSecurity:
+		// Sovereignty Engine Transformation (Native AES)
+		action, _ := props["action"].(string) // "encrypt" or "decrypt"
+		data, _ := props["data"].(string)
+		
+		if data == "" {
+			return nil, fmt.Errorf("security: missing data for transformation")
+		}
+
+		var result string
+		var err error
+		if action == "encrypt" {
+			result, err = e.security.Encrypt(ctx, data)
+		} else if action == "decrypt" {
+			result, err = e.security.Decrypt(ctx, data)
+		} else {
+			return nil, fmt.Errorf("security: unknown action %s", action)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("security: transformation failed: %w", err)
+		}
+
+		return map[string]string{"status": "processed", "result": result}, nil
+
 	default:
 		return nil, fmt.Errorf("unknown node type: %s", node.Type)
 	}
@@ -175,14 +200,14 @@ func (e *WorkflowEngine) executeSql(ctx context.Context, execCtx *ExecutionConte
 // executeHttp performs an outbound request with JSON payload resolution.
 func (e *WorkflowEngine) executeHttp(ctx context.Context, execCtx *ExecutionContext, node *domain.WorkflowNode) (interface{}, error) {
 	targetUrl, _ := node.Config["url"].(string)
-	targetUrl = ResolveVariables(targetUrl, execCtx.Vars)
+	targetUrl = e.ResolveVariables(ctx, targetUrl, execCtx.Vars)
 
 	if targetUrl == "" { return nil, fmt.Errorf("missing target URL") }
 
 	method, _ := node.Config["method"].(string)
 	if method == "" { method = "POST" }
 
-	body, _ := json.Marshal(e.ResolveObject(node.Config["body"], execCtx.Vars))
+	body, _ := json.Marshal(e.ResolveObject(ctx, node.Config["body"], execCtx.Vars))
 	
 	req, err := http.NewRequestWithContext(ctx, method, targetUrl, bytes.NewBuffer(body))
 	if err != nil { return nil, err }

@@ -4,7 +4,7 @@ import (
 	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/repository"
-	"cascata/internal/vault"
+	"cascata/internal/security"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -20,19 +20,17 @@ type GenesisService struct {
 	projectRepo  *repository.ProjectRepository
 	tenantRepo   *repository.TenantRepository
 	poolMgr      *database.TenantPoolManager
-	vault        *vault.VaultService
-	transit      *vault.TransitService
+	security     *security.SecurityService
 	migrationSvc *MigrationService
 }
 
-func NewGenesisService(repo *database.Repository, projectRepo *repository.ProjectRepository, tenantRepo *repository.TenantRepository, poolMgr *database.TenantPoolManager, vault *vault.VaultService, transit *vault.TransitService, migrationSvc *MigrationService) *GenesisService {
+func NewGenesisService(repo *database.Repository, projectRepo *repository.ProjectRepository, tenantRepo *repository.TenantRepository, poolMgr *database.TenantPoolManager, security *security.SecurityService, migrationSvc *MigrationService) *GenesisService {
 	return &GenesisService{
 		repo:         repo,
 		projectRepo:  projectRepo,
 		tenantRepo:   tenantRepo,
 		poolMgr:      poolMgr,
-		vault:        vault,
-		transit:      transit,
+		security:     security,
 		migrationSvc: migrationSvc,
 	}
 }
@@ -55,17 +53,19 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 			// 1. Purge DB Schema
 			_ = s.tenantRepo.DropSchema(context.Background(), p.Slug)
 			
-			// 2. Purge/Tombstone Vault Secrets to prevent orphan configurations
-			_ = s.vault.WriteSecret(context.Background(), "cascata", fmt.Sprintf("tenants/%s/config", p.Slug), map[string]any{
-				"status":     "genesis_failed",
-				"deleted_at": time.Now().Format(time.RFC3339),
-			})
+			// 2. Clear Metadata in DB (already handled by transaction if we use one)
 		}
 	}()
 
-	// 2. Initialize Secrets in HashiCorp Vault (Phase 4)
-	if err := s.vault.ProvisionTenantVault(ctx, p.Slug); err != nil {
-		return fmt.Errorf("genesis: vault provisioning failed: %w", err)
+	// 2. Initialize Secrets in Native Security Engine (AES-256-GCM)
+	if p.JWTSecret == "" {
+		p.JWTSecret = s.generateRandomKey(32)
+	}
+	if p.AnonKey == "" {
+		p.AnonKey = "ak_" + s.generateRandomKey(24)
+	}
+	if p.ServiceKey == "" {
+		p.ServiceKey = "sk_" + s.generateRandomKey(32)
 	}
 
 	// 3. Apply Initial Schema & Hardening (Phase 15 Sinergy)
@@ -74,16 +74,21 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 	}
 
 	// 3.5. Transit Encryption of Sensitive Metadata (Sovereignty Layer)
-	transitKey := "cascata-master-key"
 	
-	// Encrypt JWT Secret
-	if encryptedJWT, err := s.transit.Encrypt(ctx, transitKey, p.JWTSecret); err == nil {
+	// Encrypt Core Credentials (JWT, Anon, Service)
+	if encryptedJWT, err := s.security.Encrypt(ctx, p.JWTSecret); err == nil {
 		p.JWTSecret = encryptedJWT
+	}
+	if encryptedAnon, err := s.security.Encrypt(ctx, p.AnonKey); err == nil {
+		p.AnonKey = encryptedAnon
+	}
+	if encryptedService, err := s.security.Encrypt(ctx, p.ServiceKey); err == nil {
+		p.ServiceKey = encryptedService
 	}
 
 	// Encrypt Secondary Secret (Agency Mode) - If provided from Onboarding Modal
 	if p.SecondarySecretHash != "" {
-		if encryptedSec, err := s.transit.Encrypt(ctx, transitKey, p.SecondarySecretHash); err == nil {
+		if encryptedSec, err := s.security.Encrypt(ctx, p.SecondarySecretHash); err == nil {
 			p.SecondarySecretHash = encryptedSec
 		}
 	}
@@ -102,7 +107,7 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 // DeleteProject performs the final "Death" process:
 // 1. Drop Physical PostgreSQL Database.
 // 2. Cleanup System Metadata.
-// 3. Vault Cleanup (Tombstoning) - Phase 4.
+// 3. Historical Record via Audit Ledger.
 func (s *GenesisService) DeleteProject(ctx context.Context, slug string) error {
 	p, err := s.projectRepo.GetByIdentifier(ctx, slug)
 	if err != nil {
@@ -116,13 +121,7 @@ func (s *GenesisService) DeleteProject(ctx context.Context, slug string) error {
 		slog.Warn("genesis: drop schema failed during deletion (might already be gone)", "schema", p.Slug, "err", err)
 	}
 
-	// 2. Vault Tombstoning (Historical record of destruction)
-	_ = s.vault.WriteSecret(ctx, "cascata", fmt.Sprintf("tenants/%s/config", slug), map[string]any{
-		"deleted_at": time.Now().Format(time.RFC3339),
-		"status":     "deleted",
-	})
-
-	// 3. System Metadata Purge
+	// 2. System Metadata Purge
 	err = s.projectRepo.Delete(ctx, slug)
 	
 	slog.Info("genesis: project deleted successfully", "slug", slug)

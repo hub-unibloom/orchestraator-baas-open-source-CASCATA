@@ -69,6 +69,6 @@ func (e *Engine) ExecuteWithContext(ctx context.Context, slug string, config Pro
 		"system_prompt_len", len(systemPrompt))
 	
 	// Simulated response for architectural Phase 28 demonstration
-	// In Phase 29/30, this will be the REAL API call using the Tenant's Vault keys.
+	// In Phase 29/30, this will be the REAL API call using the Tenant's encrypted keys.
 	return fmt.Sprintf("AI response: Contextually aware of schema with %d bytes of instructions.", len(systemPrompt)), nil
 }

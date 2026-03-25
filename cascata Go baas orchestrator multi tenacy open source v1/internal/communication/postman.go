@@ -19,7 +19,7 @@ type Dispatcher interface {
 }
 
 // TrinityPostman is the central hub for all transactional messages (Phase 10.3).
-// Integrated with Vault for secure credential retrieval.
+// Integrated with Secure Engine for credential protection.
 type TrinityPostman struct {
 	smtpHost     string
 	smtpPort     string
@@ -66,7 +66,7 @@ func (p *TrinityPostman) SendEmail(ctx context.Context, to, subject, body string
 
 // SendWhatsApp dispatches a message via a high-performance WhatsApp API provider.
 func (p *TrinityPostman) SendWhatsApp(ctx context.Context, to, message string) error {
-	// REAL API Integration (Twilio/Meta) pending Vault credentials in Phase 10.3
+	// REAL API Integration (Twilio/Meta) pending secure credentials in Phase 10.3
 	return fmt.Errorf("postman.SendWhatsApp: not implemented")
 }
 

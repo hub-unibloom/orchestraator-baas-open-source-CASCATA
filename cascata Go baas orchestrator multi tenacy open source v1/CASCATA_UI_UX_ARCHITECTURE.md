@@ -35,7 +35,7 @@ Navegar quebra o contexto. Para mitigar isso:
 ### 2.2 Database Explorer & Modeler (A Ferramenta de Poder)
 O coração do BaaS. Muito mais do que um visualizador de tabelas.
 - **Table Impact & Column Impact Scanners:** Diferencial arquitetônico maciço. Antes de alterar o tipo de uma coluna ou renomear algo, o "Cascata Dependency Scanner" é acionado. Se o usuário renomear "users" para "clientes", todos os RPCs estritos serão detectados, e um Modal de "Cascade Overwrite" é gerado.
-- **Injeção do Cadeado Universal (Column Security):** Controle de RLS e ofuscação (`Hide`, `Blur`, `Mask`, `Encrypt` via Vault) gerido diretamente na malha visual das tabelas.
+- **Injeção do Cadeado Universal (Column Security):** Controle de RLS e ofuscação (`Hide`, `Blur`, `Mask`, `Encrypt` via Native Security) gerido diretamente na malha visual das tabelas.
 - **Table Creator Drawer:** Ao criar ou importar tabelas de CSVs/JSONs massivos (Grip & Drop Global), a engine infere automaticamente os tipos primitivos e os apresenta em um *Slide Drawer* na direita, liberando o espaço principal.
 
 ### 2.3 RPC, Logic & Edge Manager (Automação Integrada)
@@ -68,7 +68,7 @@ Unificamos `RPC` (PosgreSQL Functions), `Triggers`, `Cron Jobs` e `Edge Function
 Para atingir a sensação de ferramenta *High-End* exigida:
 1. **Atalhos Embutidos:** Pressionar `Ctrl+S` no RPC Manager não abre o menu "Salvar" do Browser, mas invoca a detecção de Diff, checa sintaxe via Postgres Error Translator e consolida a Query nativa. `Esc` possui um despachante global (Global Esc Handler) que desmonta modais pela ordem Z-Index perfeita (Popups de Deleção -> Options -> Drawers -> Quick Peek).
 2. **Postgres Error Translator:** Erros ruidosos ("42P01", "22P02", "23505") não batem crus no front-end. O utilitário intercepta os erros PG nativos e os torna dicas de UI amigáveis vermelhas ou amarelas (Toast sem encobrir texto vital).
-3. **Gerador de cURL Híbrido:** O atalho de Cópia Inteligente muda dependendo se sua função é "Edge" ou "RPC", adequando Headers (`apikey: anon_key`) via projeto extraído das chaves "Vault". Tudo ao alcance de um clique para o desenvolvedor compartilhar.
+3. **Gerador de cURL Híbrido:** O atalho de Cópia Inteligente muda dependendo se sua função é "Edge" ou "RPC", adequando Headers (`apikey: anon_key`) via projeto extraído das chaves do Security Engine. Tudo ao alcance de um clique para o desenvolvedor compartilhar.
 
 ## 4. Próxima Fase
 

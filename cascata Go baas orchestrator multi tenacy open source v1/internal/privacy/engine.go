@@ -8,18 +8,18 @@ import (
 	"strings"
 
 	"cascata/internal/domain"
-	"cascata/internal/vault"
+	"cascata/internal/security"
 )
 
-// Engine handles data transformation according to the privacy policy (Phase 9 - Vault Transit).
+// Engine handles data transformation according to the privacy policy (Phase 9 - Native AES).
 // It acts as the "Blindagem de Dados" (Shielding), ensuring sensitive information is encrypted in DB
 // and only revealed to authorized identities on-the-fly.
 type Engine struct {
-	transit *vault.TransitService
+	security *security.SecurityService
 }
 
-func NewEngine(t *vault.TransitService) *Engine {
-	return &Engine{transit: t}
+func NewEngine(s *security.SecurityService) *Engine {
+	return &Engine{security: s}
 }
 
 // Regex patterns for PII detection (Phase 24)
@@ -29,7 +29,7 @@ var (
 )
 
 // ApplyMasking processes search results to obfuscate or reveal sensitive data.
-// It uses the Transit Engine to decrypt values if the user has the 'service_role' (Admin) permission.
+// It uses the Security Engine to decrypt values if the user has the 'service_role' (Admin) permission.
 func (e *Engine) ApplyMasking(ctx context.Context, authCtx *domain.AuthContext, cfg ProjectPrivacyConfig, tableName string, rows []map[string]interface{}) ([]map[string]interface{}, error) {
 	if len(rows) == 0 {
 		return rows, nil
@@ -59,13 +59,12 @@ func (e *Engine) ApplyMasking(ctx context.Context, authCtx *domain.AuthContext, 
 			// 1. Admin/Service Bypass & Transparent Decryption
 			if isAdmin {
 				if (mask == HybridEnc || mask == HyperEnc) && val != nil {
-					if s, ok := val.(string); ok && strings.HasPrefix(s, VaultFormatPrefix) {
-						// On-demand decryption via Transit Engine
-						dec, err := e.transit.Decrypt(ctx, authCtx.ProjectSlug, s)
+					if s, ok := val.(string); ok && security.IsSovereign(s) {
+						// On-demand decryption via Security Engine
+						dec, err := e.security.Decrypt(ctx, s)
 						if err == nil {
 							rows[i][col] = dec
 						} else {
-							// If decryption fails, we leave it as [ENCRYPTED] to avoid data leak.
 							rows[i][col] = "[DECRYPT_FAILED]"
 						}
 					}
@@ -128,7 +127,7 @@ func (e *Engine) SanitizeWrite(ctx context.Context, authCtx *domain.AuthContext,
 		}
 	}
 
-	// 2. Project-Wide Transparent Encryption (Phase 9 Bridge)
+	// 2. Project-Wide Transparent Encryption (Native AES Bridge)
 	// Any column marked as HybridEnc or HyperEnc is automatically encrypted before storage.
 	if tableMasks, ok := cfg.MaskedColumns[tableName]; ok {
 		for col, mask := range tableMasks {
@@ -138,13 +137,13 @@ func (e *Engine) SanitizeWrite(ctx context.Context, authCtx *domain.AuthContext,
 			}
 
 			if mask == HybridEnc || mask == HyperEnc {
-				// We don't re-encrypt if it already looks like a vault ciphertext.
-				if s, ok := val.(string); ok && strings.HasPrefix(s, VaultFormatPrefix) {
+				// We don't re-encrypt if it already looks like a security ciphertext.
+				if s, ok := val.(string); ok && security.IsSovereign(s) {
 					continue
 				}
 
-				// Encrypt via Vault Transit using the project-specific key.
-				enc, err := e.transit.Encrypt(ctx, authCtx.ProjectSlug, fmt.Sprintf("%v", val))
+				// Encrypt via Security Engine using the Master Key.
+				enc, err := e.security.Encrypt(ctx, fmt.Sprintf("%v", val))
 				if err != nil {
 					return nil, fmt.Errorf("privacy: failed to encrypt sensitive column %s: %w", col, err)
 				}

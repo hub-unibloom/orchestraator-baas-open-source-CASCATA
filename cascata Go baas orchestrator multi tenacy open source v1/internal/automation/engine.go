@@ -13,6 +13,7 @@ import (
 	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/phantom"
+	"cascata/internal/security"
 	"cascata/internal/service"
 )
 
@@ -40,9 +41,10 @@ type WorkflowEngine struct {
 	aiEngine   *ai.Engine
 	realtime   Broadcaster
 	phantomSvc *phantom.PhantomService
+	security   *security.SecurityService
 }
 
-func NewWorkflowEngine(repo *database.Repository, projectSvc *service.ProjectService, poolMgr *database.TenantPoolManager, postman communication.Dispatcher, aiEngine *ai.Engine, realtime Broadcaster, phantomSvc *phantom.PhantomService) *WorkflowEngine {
+func NewWorkflowEngine(repo *database.Repository, projectSvc *service.ProjectService, poolMgr *database.TenantPoolManager, postman communication.Dispatcher, aiEngine *ai.Engine, realtime Broadcaster, phantomSvc *phantom.PhantomService, security *security.SecurityService) *WorkflowEngine {
 	return &WorkflowEngine{
 		repo:       repo,
 		projectSvc: projectSvc,
@@ -51,6 +53,7 @@ func NewWorkflowEngine(repo *database.Repository, projectSvc *service.ProjectSer
 		aiEngine:   aiEngine,
 		realtime:   realtime,
 		phantomSvc: phantomSvc,
+		security:   security,
 	}
 }
 
@@ -59,14 +62,24 @@ func NewWorkflowEngine(repo *database.Repository, projectSvc *service.ProjectSer
 var varRegex = regexp.MustCompile(`\{\{([^}]+)\}\}`)
 
 // ResolveVariables replaces {{path}} in a template string using dot-notation lookup.
-func ResolveVariables(template string, vars map[string]interface{}) string {
+func (e *WorkflowEngine) ResolveVariables(ctx context.Context, template string, vars map[string]interface{}) string {
 	return varRegex.ReplaceAllStringFunc(template, func(match string) string {
 		path := strings.Trim(match[2:len(match)-2], " ")
 		val := GetValueByPath(path, vars)
 		if val == nil {
 			return ""
 		}
-		return fmt.Sprintf("%v", val)
+		
+		strVal := fmt.Sprintf("%v", val)
+		
+		// Auto-decrypt secrets if they have the sovereign prefix
+		if strings.HasPrefix(strVal, "cascata:") {
+			if decrypted, err := e.security.Decrypt(ctx, strVal); err == nil {
+				return decrypted
+			}
+		}
+ 
+ 		return strVal
 	})
 }
 
@@ -85,20 +98,20 @@ func GetValueByPath(path string, vars map[string]interface{}) interface{} {
 }
 
 // ResolveObject recursively resolves all string fields within a structure using the vars map.
-func (e *WorkflowEngine) ResolveObject(source interface{}, vars map[string]interface{}) interface{} {
+func (e *WorkflowEngine) ResolveObject(ctx context.Context, source interface{}, vars map[string]interface{}) interface{} {
 	switch v := source.(type) {
 	case string:
-		return ResolveVariables(v, vars)
+		return e.ResolveVariables(ctx, v, vars)
 	case map[string]interface{}:
 		res := make(map[string]interface{})
 		for k, val := range v {
-			res[k] = e.ResolveObject(val, vars)
+			res[k] = e.ResolveObject(ctx, val, vars)
 		}
 		return res
 	case []interface{}:
 		res := make([]interface{}, len(v))
 		for i, val := range v {
-			res[i] = e.ResolveObject(val, vars)
+			res[i] = e.ResolveObject(ctx, val, vars)
 		}
 		return res
 	default:

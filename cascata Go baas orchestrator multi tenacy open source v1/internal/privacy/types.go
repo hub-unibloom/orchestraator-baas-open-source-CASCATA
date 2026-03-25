@@ -13,8 +13,8 @@ const (
 	HyperEnc     MaskingTier = "hyper_encrypt"
 )
 
-// VaultFormatPrefix is the mandatory header for data encrypted via the Vault Transit Engine.
-const VaultFormatPrefix = "vault:v1:"
+// CascataFormatPrefix is the mandatory header for data encrypted via the Native Security Engine.
+const CascataFormatPrefix = "cascata:"
 
 // LockLevel defines write-access restrictions on columns.
 type LockLevel string

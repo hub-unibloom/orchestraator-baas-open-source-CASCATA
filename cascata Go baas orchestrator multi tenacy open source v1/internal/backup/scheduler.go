@@ -19,7 +19,7 @@ type Policy struct {
 	ScheduleCron   string `json:"schedule_cron"`
 	RetentionCount int    `json:"retention_count"`
 	Type           string `json:"type"`     // full, schema_only, data_only
-	Config         string `json:"config"`   // Credentials mapped inside Vault
+	Config         string `json:"config"`   // Credentials mapped inside Secure Engine
 }
 
 type Scheduler struct {
@@ -34,14 +34,14 @@ func NewScheduler(repo *database.Repository) *Scheduler {
 	}
 }
 
-// ExecutePolicy reads the configuration, fetches tokens from Vault, 
+// ExecutePolicy reads the configuration, fetches tokens from Secure Engine, 
 // initiates CAF streaming, and pipes it straight to the cloud provider.
 func (s *Scheduler) ExecutePolicy(ctx context.Context, p Policy) error {
 	slog.Info("backup: starting policy", "id", p.ID, "project", p.ProjectSlug)
 	
 	// 1. Resolve Project Info
 	// projectSummary := ...
-	// secrets := ... (Decrypt from Vault)
+	// secrets := ... (Decrypt from Secure Engine)
 
 	// 2. Open HTTP pipe to Cloud Provider
 	// pr, pw := io.Pipe()

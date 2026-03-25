@@ -28,10 +28,10 @@ import (
 	"cascata/internal/privacy"
 	"cascata/internal/ratelimit"
 	"cascata/internal/repository"
+	"cascata/internal/security"
 	"cascata/internal/service"
 	"cascata/internal/storage"
 	"cascata/internal/telemetry"
-	"cascata/internal/vault"
 	"cascata/internal/webhook"
 )
 
@@ -124,17 +124,19 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	defer repo.Close()
 	defer dfly.Close()
 
-	vaultSvc, err := vault.NewVaultService(cfg.VaultAddr, cfg.VaultToken)
-	if err != nil { slog.Warn("worker: vault unreachable", "error", err) }
-	
 	// --- 2. Security & Strategy (Base Services) ---
+	secSvc, err := security.NewSecurityService(cfg.MasterKey)
+	if err != nil {
+		slog.Error("worker: security engine failed to initialize", "error", err)
+		os.Exit(1)
+	}
+
 	auditService := service.NewAuditService(repo)
 	poolManager := database.NewTenantPoolManager(repo, otelEngine, auditService)
 	go poolManager.CleanupTask(ctx, 5*time.Minute)
 	go poolManager.CheckPoolHealth(ctx)
 
-	transitSvc := vault.NewTransitService(vaultSvc.GetClient())
-	pEngine := privacy.NewEngine(transitSvc)
+	pEngine := privacy.NewEngine(secSvc)
 	sessionSvc := auth.NewSessionManager(cfg.SystemJWTSecret)
 	govSvc := auth.NewGovernanceService()
 	
@@ -155,7 +157,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	cacheMgr := database.NewCacheManager(dfly)
 	postman := communication.NewTrinityPostman(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom)
 
-	residentAuthSvc := auth.NewResidentAuthService(projectService, resRepo, sessionSvc, otpMgr, postman, govSvc, auditService, transitSvc)
+	residentAuthSvc := auth.NewResidentAuthService(projectService, resRepo, sessionSvc, otpMgr, postman, govSvc, auditService, secSvc)
 	externalAuthSvc := auth.NewExternalAuthService(projectService, resRepo, residentAuthSvc)
 	systemAuth := auth.NewSystemAuthService(memberRepo, auditService)
 	
@@ -164,7 +166,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	migrationService := service.NewMigrationService(cfg, projectService, auditService)
 	
 	realtimeHub := api.NewRealtimeHub(projectService, pEngine, repo)
-	workflowEngine := automation.NewWorkflowEngine(repo, projectService, poolManager, postman, aiEngine, realtimeHub, phantomSvc)
+	workflowEngine := automation.NewWorkflowEngine(repo, projectService, poolManager, postman, aiEngine, realtimeHub, phantomSvc, secSvc)
 	eventQueue := automation.NewEventQueue(dfly)
 	webhookService := webhook.NewService(repo, eventQueue, auditService, otelEngine)
 	
@@ -177,7 +179,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	}()
 
 	// --- 7. Provisioning & Storage (Phase 2 & 8) ---
-	genesisSvc := service.NewGenesisService(repo, projectRepo, tenantRepo, poolManager, vaultSvc, transitSvc, migrationService)
+	genesisSvc := service.NewGenesisService(repo, projectRepo, tenantRepo, poolManager, secSvc, migrationService)
 	indexer := storage.NewIndexer(repo)
 	storageSvc := storage.NewService(cfg.StoragePath, dfly, repo, indexer)
 	

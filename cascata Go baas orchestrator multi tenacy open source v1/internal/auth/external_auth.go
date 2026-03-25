@@ -33,7 +33,7 @@ func (s *ExternalAuthService) AuthorizeProvider(ctx context.Context, slug, provi
 	slog.Info("external.auth: generating authorization link", "slug", slug, "provider", provider, "redirect", redirectTo)
 	
 	// In Production-Grade:
-	// 1. Fetch provider config from Tenant's Vault (Phase 23)
+	// 1. Fetch provider config from Tenant Metadata (Phase 23)
 	// 2. Generate and store CSRF 'state' in DragonflyDB (Phase 3B)
 	// 3. Build OAuth URL (Google, Apple, Microsoft)
 	

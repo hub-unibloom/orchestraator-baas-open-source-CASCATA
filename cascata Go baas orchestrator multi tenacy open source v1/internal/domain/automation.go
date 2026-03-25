@@ -17,9 +17,9 @@ type NodeType string
 const (
 	NodeHTTP   NodeType = "http_request"
 	NodeScript NodeType = "js_script"
-	NodeEmail  NodeType = "send_email"
-	NodeVault  NodeType = "vault_access"
-	NodeDB     NodeType = "db_operation"
+	NodeEmail    NodeType = "send_email"
+	NodeSecurity NodeType = "security_access"
+	NodeDB       NodeType = "db_operation"
 )
 
 // WorkflowNode is an individual step in the automation graph.

@@ -15,7 +15,7 @@ type AuditEntry struct {
 	Timestamp    time.Time    `json:"timestamp"`
 	PrevHash     string       `json:"prev_hash"` // Pointer to the previous entry in the chain
 	EntryHash    string       `json:"hash"`      // Calculated hash of this entry (including prev_hash)
-	Signature    string       `json:"signature"` // Optional signature from the Vault Transit key
+	Signature    string       `json:"signature"` // Optional signature from the Native Security key
 }
 
 // AuditLedgerDDL is the schema for the immutable audit store (Phase 19).

@@ -22,7 +22,7 @@ Este plano documenta a construção do Cascata v1 em Go. É o guia definitivo �
 - **Backend:** Go (Hyper-Cluster via Unix Socket IPC)
 - **Frontend:** React 19.1 + Vite
 - **Banco de dados:** PostgreSQL — Isolamento físico por tenant
-- **Segurança:** Zero-Trust, Triple-Mode Auth, RLS Claims Injection, HashiCorp Vault 1.15
+- **Segurança:** Zero-Trust, Triple-Mode Auth, RLS Claims Injection, Native Security Engine (Go + AES-GCM)
 - **Automação:** Engine de grafos com Interceptors síncronos e Cron nativo
 - **Edge Functions:** Engine Mode isolado com Go-V8 Bindings (modo padrão) e Wasmer/WASM (modo isolamento máximo)
 - **Cache & Filas:** DragonflyDB (Redis-compatible) — firewall de brute-force, rate limiting, pub/sub, token blacklist e quota de storage
@@ -44,7 +44,7 @@ Este plano documenta a construção do Cascata v1 em Go. É o guia definitivo �
 - É o caminho de menor atrito para adoção
 
 **Cascata Native SDK:**
-- Expõe todas as features exclusivas: Phantom Injection, Privacy Engine, API Interceptors, TOON output, Webhook Receivers, Vault operations, Neural Pulse
+- Expõe todas as features exclusivas: Phantom Injection, Privacy Engine, API Interceptors, TOON output, Webhook Receivers, Security Engine operations, Neural Pulse
 - Tipagem forte end-to-end — erros de tipo em tempo de compilação, não em produção
 - **Client-side Compression + Encryption no Upload:** antes de enviar, o SDK comprime (zstd) e cifra (AES-GCM com chave derivada do projeto) o arquivo em memória do cliente — o servidor nunca vê o conteúdo em claro. Configurável por bucket no painel (obrigatório / opcional / desabilitado)
 
@@ -98,10 +98,10 @@ O Cascata opera na premissa de que a camada em contato pode ter sido invadida/in
 ### Os Princípios
 
 **1. Nenhum componente confia no outro — nunca.**
-O processo Go não confia que o Nginx já validou o request. O Postgres não confia que o Go já aplicou RLS. O Vault não confia que quem está pedindo o segredo é legítimo apenas porque está na rede interna. Cada camada valida por conta própria, independentemente do que a camada anterior disse.
+O processo Go não confia que o Nginx já validou o request. O Postgres não confia que o Go já aplicou RLS. O Security Engine não confia que quem está pedindo o segredo é legítimo apenas porque está na rede interna. Cada camada valida por conta própria, independentemente do que a camada anterior disse.
 
 **2. Brecha contida não é brecha espalhada.**
-Se o Nginx for comprometido, o atacante encontra Unix Sockets — não portas TCP abertas para o Go. Se o container do banco for comprometido, o atacante encontra dados criptografados sem a chave do Vault. Se o Vault for comprometido sem a unseal key, ele está selado e ilegível. Cada camada é um cofre independente, não uma porta para o próximo.
+Se o Nginx for comprometido, o atacante encontra Unix Sockets — não portas TCP abertas para o Go. Se o container do banco for comprometido, o atacante encontra dados criptografados sem a chave mestra. Se a chave mestra estiver protegida fora do ambiente, os dados permanecem ilegíveis. Cada camada é um cofre independente, não uma porta para o próximo.
 
 **3A. O terminal é território sagrado.**
 Acesso ao sistema operacional host é o nível máximo de comprometimento possível. Qualquer comando privilegiado no host exige autenticação no nível do SO — não do software. PAM module com OTP gerado pelo instalador do Cascata: sem o código, o `sudo` ou qualquer outro comando é recusado pelo sistema operacional, independentemente de qualquer brecha na stack. Mesmo um atacante com shell no container não chega ao host sem esse fator.
@@ -128,15 +128,15 @@ O Cascata deve ser capaz de: revogar todas as chaves em segundos (Panic Mode), r
 | Camada comprometida | O atacante encontra | Contenção | O que ainda não resolve |
 |---|---|---|---|
 | Nginx | Unix Sockets, sem TCP exposto | Não consegue falar com Go sem o socket físico | Se tiver acesso ao socket, consegue enviar requests — por isso o Go valida tudo independentemente |
-| Container Go | Processo em execução, RAM acessível | Chaves de sessão efêmeras em RAM (15min), Vault selado, sem acesso ao host | Dump de memória pode expor chave ativa na janela de 15min — mitigado pela efemeridade, não eliminado |
-| Container Postgres | Dados em disco | Criptografia em repouso via Vault Transit; RLS impede leitura cruzada entre tenants | Se o Vault estiver deselado no momento, Transit pode ser chamado — por isso o Vault tem rate limiting interno |
-| Container Vault | Interface HTTP interna na `cascata_secure` | Seal/Unseal — sem a unseal key, completamente ilegível mesmo com acesso ao container | Unseal key precisa estar fora do servidor — se estiver no mesmo host, a contenção cai |
+| Container Go | Processo em execução, RAM acessível | Chaves de sessão efêmeras em RAM (15min), Sovereign Enclave, sem acesso ao host | Dump de memória pode expor chave ativa na janela de 15min — mitigado pela efemeridade, não eliminado |
+| Container Postgres | Dados em disco | Criptografia em repouso via Native Transit; RLS impede leitura cruzada entre tenants | Se o Security Engine estiver deselado no momento, o Transit pode ser chamado |
+| Segurança Nativa | Chave mestra em RAM ou Variável Protegida | Sem a chave mestra, os dados no DB (`cascata:`) são lixo binário | A chave mestra deve ser gerada e rotacionada pelo Worner; se vazada, todo o enclave cai — por isso a rotação é vital |
 | Painel (frontend) | Sessão autenticada no browser | mTLS com certificado cliente efêmero (15min, Web Crypto API, nunca em disco); JWT separado como segunda camada; revogação instantânea via Blacklist no Dragonfly | XSS avançado pode acessar chaves em memória do browser — mitigado por CSP estrito e ausência de `eval` |
 | Comunicação painel ↔ servidor | Tráfego HTTPS | mTLS bidirecional — sem certificado cliente válido a conexão não abre, JWT nem é avaliado | Se OTP não estiver configurado pelo operador, esta camada fica mais fraca |
 | Shell no container (qualquer) | Filesystem do container | Dados criptografados, sockets restritos, sem credenciais em disco | Escape de container via misconfiguration Docker (`--privileged`, volume `/`) leva ao host — containers rodam sem privilégios extras |
 | Shell no host | SO do servidor | PAM + OTP obrigatório para `sudo` e qualquer comando privilegiado — recusado pelo SO, não pelo software | Se o atacante tiver UID 0 por escape de container, PAM pode ser contornado — defesa aqui é impedir o escape antes |
 | Banco de um tenant | Dados daquele tenant físico | Isolamento físico — banco de outro tenant é outro processo Postgres, inacessível por definição | Nenhum — isolamento físico real não tem workaround lógico |
-| Rede interna (`cascata_secure`) | Containers internos visíveis entre si | Cada container valida a origem independentemente; SSRF bloqueado no Storage e no Automation Engine | Um container comprometido pode tentar falar com o Vault — mitigado por AppRole com políticas mínimas por serviço |
+| Rede interna (`cascata_secure`) | Containers internos visíveis entre si | Cada container valida a origem independentemente; SSRF bloqueado no Storage e no Automation Engine | Um container comprometido pode tentar falar com o Security Engine — mitigado por identificação nativa por serviço |
 
 ### O Que Nunca É Aceitável
 - Um componente com mais privilégios do que o necessário para sua função
@@ -223,7 +223,7 @@ O Cascata distingue três tipos de identidade completamente separados — confun
 - **`cascata.member`** — qualquer identidade com acesso ao dashboard do Cascata: humano gestor, humano dev, ou agente de IA. Gerenciado pelo Worner, com permissões granulares por domínio e por tenant. É quem gerencia o condomínio.
 - **`cascata.agent`** — identidade programática rastreável (IA ou automação). Tem `agent_id` registrado, audit trail próprio com timestamp e identificador do agente, e escopos definidos pelo Worner — pode ter desde acesso mínimo até God Mode, conforme o operador configurar. Agentes são cidadãos de primeira classe no Cascata, não cidadãos de segunda.
 
-> **Por que isso importa para segurança:** de nada adianta toda a granularidade de RLS, column locks e Vault se qualquer um que obtiver uma senha via engenharia social puder usar MCP para manipular a plataforma sem deixar rastro. Todo acesso ao dashboard — humano ou agente — é rastreável, auditável e revogável individualmente.
+> **Por que isso importa para segurança:** de nada adianta toda a granularidade de RLS, column locks e Native Security se qualquer um que obtiver uma senha via engenharia social puder usar MCP para manipular a plataforma sem deixar rastro. Todo acesso ao dashboard — humano ou agente — é rastreável, auditável e revogável individualmente.
 
 **Hierarquia de Acesso ao Dashboard (cascata.members e cascata.agents)**
 
@@ -234,7 +234,7 @@ O Worner (dono da instalação) tem passe livre em todos os tenants e toda a ins
 |---|---|
 | **Tenants** | criar projeto, excluir projeto, ver todos os projetos |
 | **Membros** | convidar membro, atribuir papel, revogar acesso, ver audit log global |
-| **Infraestrutura** | alterar max connections global, configurar Vault global, gerenciar certificados |
+| **Infraestrutura** | alterar max connections global, configurar Chave Mestra global, gerenciar certificados |
 | **Agentes** | registrar agent_id, definir escopos de agente, revogar agente |
 | **Acesso cross-tenant** | entrar em qualquer tenant sem permissão explícita (exclusivo do Worner por padrão) |
 
@@ -269,7 +269,7 @@ Cada domínio tem 4 níveis: `none` / `read` / `write` / `admin` — mas dentro 
 
 **Project Resolution (middleware `resolveProject`):**
 - Detecção do projeto via **Custom Domain** (Host header) ou **Slug** (URL path)
-- Recuperação de credenciais do Vault e inicialização do pool de conexões do tenant (`cascata_db_slug`)
+- Recuperação de credenciais do motor de segurança e inicialização do pool de conexões do tenant (`cascata_db_slug`)
 - Injeção do objeto de contexto contendo segredos, metadados e configurações de segurança (bloqueio de IP, panic mode)
 
 **App Clients (Multiple Anon Keys — Roteamento Inteligente):**
@@ -301,7 +301,7 @@ Cada domínio tem 4 níveis: `none` / `read` / `write` / `admin` — mas dentro 
 - **Magic Link Hash:** tokens de login sem senha são hashados (SHA256) antes de persistir no banco — zero vazamento de token em texto plano
 - **Dynamic CORS:** middleware verifica origem permitida no banco a cada request, sem restart do servidor — CORS configurável por projeto em tempo real
 - Integração com DragonflyDB como firewall: bloqueio de brute-force por IP/identificador antes de atingir o PostgreSQL
-- Descriptografia de chaves on-the-fly via Vault (`vault:decrypt`)
+- Descriptografia de chaves on-the-fly via Security Engine (`cascata:decrypt`)
 
 **Identity Strategies (Filosofia de Soberania):**
 O Cascata não impõe nenhuma regra de autenticação — quem define tudo é o criador do projeto. O sistema fornece os mecanismos; o operador decide o que ativar:
@@ -368,7 +368,7 @@ O DragonflyDB é o sistema nervoso transversal de controle do Cascata. Redis-com
 - Toda query SQL executada: tenant, tabela, operação, duração, linhas afetadas
 - Toda ação no dashboard ou CLI: quem, o quê, quando, resultado
 - Toda execução de automação, edge function e webhook: input, output, duração, nó que falhou
-- Todo acesso ao Vault: qual segredo, quem pediu, quando
+- Todo acesso ao Security Engine: qual operação, quem pediu, quando
 - Todo evento de autenticação: login, logout, falha, OTP, rotação de chave
 - Todo evento de storage: upload, download, delete, quota atingida
 - Toda mudança de schema: create table, alter column, drop — com estado antes e depois
@@ -419,17 +419,17 @@ O DragonflyDB é o sistema nervoso transversal de controle do Cascata. Redis-com
 
 ---
 
-### Fase 4 — Pilar de Segurança II: Vault & Gestão de Chaves
+### Fase 4 — Pilar de Segurança II: Native Security & Gestão de Chaves
 **Escopo:**
-- Vault Integration: K/V, File Vaulting, Transit Encrypt/Decrypt
+- Native Security Integration: AES-GCM 256-bit, K/V Simulator
 - Rotação automática de chaves (Service Key, JWT Secret) — apenas se o administrador do tenant permitir no painel
-- UI de gestão do Vault: pastas, segredos, arquivos
+- UI de gestão de segredos: pastas, segredos, arquivos
 - **PGP Crypto (pgcrypto):** chaves de API criptografadas no banco via extensão `pgcrypto` (`pgp_sym_encrypt`) — camada adicional de proteção em repouso
 
 **Especificação de Implementação:**
-> O "Vault" aqui é o **HashiCorp Vault 1.15** em container dedicado na rede `cascata_secure` (`internal: true`) — invisível para a internet, sem acesso pela web, acessível apenas pelo backend. A integração Go usa o **SDK nativo do HashiCorp Vault**. A rotação de chaves a cada 3 meses é automatizada como job agendado (ver Fase 11) apenas se permitida pelo operador no painel. O modelo **seal/unseal** garante que, mesmo com acesso ao host, os segredos permanecem ilegíveis sem a unseal key — que jamais deve estar em texto plano no docker-compose.
+> O motor de segurança é um serviço nativo em Go que utiliza a `CASCATA_MASTER_KEY` injetada via ambiente. Não utiliza dependências externas como HashiCorp Vault para evitar overhead de rede e consumo de RAM excessivo em VPS de 2GB. A segurança reside na entropia da chave mestra e na implementação robusta do AES-GCM.
 
-**Critério de conclusão:** Rotação de chave registrada em log de auditoria; segredos recuperados apenas via Vault API, nunca em texto plano. Unseal key gerenciada fora do repositório.
+**Critério de conclusão:** Rotação de chave registrada em log de auditoria; segredos recuperados apenas via Security API, nunca em texto plano. Chave de desbloqueio gerenciada fora do repositório.
 
 ---
 
@@ -471,7 +471,7 @@ O DragonflyDB é o sistema nervoso transversal de controle do Cascata. Redis-com
 ### Fase 7 — Privacy Engine & Data Masking
 **Escopo:**
 - Portagem da lógica de privacidade: Blur, Mask, Semi-Mask, Hide, Encrypt
-- Transparent Data Encryption (TDE) para colunas específicas via Vault Transit
+- Transparent Data Encryption (TDE) para colunas específicas via Native AES Engine
 - Masking levels orientados por metadados (configuração por coluna/papel)
 - `applyMaskingTier` invocado nativamente em **todas** as queries — incluindo as do MCP — sem exceção nem bypass
 
@@ -482,7 +482,7 @@ O DragonflyDB é o sistema nervoso transversal de controle do Cascata. Redis-com
 - `semi-mask`: exibe apenas 25% do dado (ex: e-mail ou número de cartão)
 - `blur`: encurta o dado exibindo apenas as pontas
 - `hybrid_encrypt`: dado salvo criptografado, com descriptografia em tempo real se a chave do projeto estiver carregada — usado para integrações externas
-- `hyper_encrypt`: dado salvo criptografado como segredo de estado, armazenado no Vault, sem descriptografia externa — segredo eterno disponível apenas para validações (ex: número de cartão de crédito)
+- `hyper_encrypt`: dado salvo criptografado como segredo de estado, armazenado no Secure Registry, sem descriptografia externa — segredo eterno disponível apenas para validações (ex: número de cartão de crédito)
 
 **Column Locks — A "Lei das Colunas":**
 - `Normal`: dado comum sem locks — ideal para dados com muitas operações de Create e Update
@@ -570,11 +570,11 @@ habilitar RLS
 **Tipo C — Outbound Webhooks (HTTP Actions):**
 - Representado pelo nó `http` dentro do motor de automação
 - Suporte a GET, POST, PUT, PATCH, DELETE com retentativas automáticas (`maxRetries`)
-- Criptografia Just-in-Time: referência `vault://STRIPE_KEY` — Vault descriptografa apenas em memória no exato momento do disparo
+- Criptografia Just-in-Time: referência `cascata://STRIPE_KEY` — Security Engine descriptografa apenas em memória no exato momento do disparo
 - Proteção SSRF: automação não consegue acessar serviços da rede interna da VPS
 - Serve para comunicação externa sem sequestrar o fluxo — útil para Slack, alertas, notificações
 
-**Critério de conclusão:** Webhook externo recebido, assinatura verificada, roteado e processado no contexto do tenant correto. API Interceptor interceptando e modificando response em voo. Outbound Webhook disparando com credencial Vault sem expor segredo. Nenhum cruzamento de dados entre tenants.
+**Critério de conclusão:** Webhook externo recebido, assinatura verificada, roteado e processado no contexto do tenant correto. API Interceptor interceptando e modificando response em voo. Outbound Webhook disparando com credencial protegida sem expor segredo. Nenhum cruzamento de dados entre tenants.
 
 ---
 
@@ -586,7 +586,7 @@ habilitar RLS
 - **Trigger:** onde o evento começa — Webhook Receiver, Cron ou Evento de Banco
 - **Query (Hardened SQL):** executa SQL no banco do projeto com firewall de padrões proibidos (`FORBIDDEN_SQL_PATTERNS`: bloqueia `COPY`, `pg_read_file`, `DO $$` e similares); injeta claims do usuário via `SET LOCAL` — automação nunca acessa dados que o usuário original não veria
 - **Transform:** mapeamento de dados entre nós via sintaxe `{{node_id.campo}}` usando `resolveVariables` — suporta também variáveis do tenant: `{{tenant.support_email}}`, `{{tenant.logo}}`, `{{env.NOME_DA_VARIAVEL}}`
-- **HTTP Proxy:** chamadas externas com credenciais Vault Just-in-Time e proteção SSRF
+- **HTTP Proxy:** chamadas externas com credenciais Native Security Just-in-Time e proteção SSRF
 - **Conditional / Loop:** controle de fluxo
 - **RPC:** permite criar ou chamar uma RPC pré-criada no sistema
 - **Direct Logic evaluate:** execução de lógica inline sem precisar de edge function
@@ -622,8 +622,8 @@ habilitar RLS
 - Exemplos: `{{env.STORE_NAME}}`, `{{env.SUPPORT_EMAIL}}`, `{{env.PLAN}}`
 
 **Tipo Secreto:**
-- Funciona como mini-Vault por tenant
-- Nunca aparece em log, nunca retorna em texto plano, só é resolvida em memória no momento do uso — mesmo comportamento do `vault://` nos Outbound Webhooks
+- Funciona como mini-Enclave por tenant
+- Nunca aparece em log, nunca retorna em texto plano, só é resolvida em memória no momento do uso — mesmo comportamento do `cascata://` nos Outbound Webhooks
 - Exibido no painel como `••••••`
 - Exemplos: `{{env.PIX_KEY}}`, `{{env.PARTNER_API_TOKEN}}`
 
@@ -660,7 +660,7 @@ habilitar RLS
 **Modo Isolamento Máximo (Wasmer/WASM):**
 - Para funções marcadas pelo operador como críticas — sandbox WASM mais constrangido que V8, superfície de ataque menor
 - Requer que o código seja compilado para WebAssembly antes do deploy
-- Container dedicado dentro do Docker — segredos via Vault, não expostos ao processo
+- Container dedicado dentro do Docker — segredos via Security Engine, não expostos ao processo
 
 - Log completo de execução com captura de stdout/stderr em ambos os modos
 

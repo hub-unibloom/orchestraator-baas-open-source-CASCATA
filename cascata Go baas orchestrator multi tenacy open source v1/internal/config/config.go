@@ -7,15 +7,14 @@ import (
 
 // Config represents the orchestrator's global configuration.
 type Config struct {
-	Port         string
-	DatabaseURL  string
-	DflyURL      string
-	Environment  string
-	McpEnabled   bool
-	LogLevel     string
-	SocketDir    string
-	VaultAddr       string
-	VaultToken      string
+	Port            string
+	DatabaseURL     string
+	DflyURL         string
+	Environment     string
+	McpEnabled      bool
+	LogLevel        string
+	SocketDir       string
+	MasterKey       string
 	SystemJWTSecret string
 	SMTPHost        string
 	SMTPPort        string
@@ -28,15 +27,14 @@ type Config struct {
 // Load fetches configurations from environment variables and returns a Config object.
 func Load() *Config {
 	cfg := &Config{
-		Port:        getEnv("PORT", "8080"),
-		DatabaseURL: os.Getenv("DB_URL"),
-		DflyURL:    os.Getenv("DFLY_URL"),
-		Environment: getEnv("GO_ENV", "development"),
-		McpEnabled:  getEnv("MCP_ENABLED", "true") == "true",
-		LogLevel:    getEnv("LOG_LEVEL", "info"),
-		SocketDir:   getEnv("SOCKET_DIR", "/tmp/cascata_sockets"),
-		VaultAddr:       getEnv("VAULT_ADDR", "http://cascata-vault:8200"),
-		VaultToken:      getEnv("VAULT_TOKEN", "cascata_root_token"),
+		Port:            getEnv("PORT", "8080"),
+		DatabaseURL:     os.Getenv("DB_URL"),
+		DflyURL:         os.Getenv("DFLY_URL"),
+		Environment:     getEnv("GO_ENV", "development"),
+		McpEnabled:      getEnv("MCP_ENABLED", "true") == "true",
+		LogLevel:        getEnv("LOG_LEVEL", "info"),
+		SocketDir:       getEnv("SOCKET_DIR", "/tmp/cascata_sockets"),
+		MasterKey:       getEnv("CASCATA_MASTER_KEY", "cascata_default_master_key_32_chars"),
 		SystemJWTSecret: getEnv("SYSTEM_JWT_SECRET", "cascata_system_default_secret_32_chars"),
 		SMTPHost:        getEnv("SMTP_HOST", "localhost"),
 		SMTPPort:        getEnv("SMTP_PORT", "1025"),

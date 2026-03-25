@@ -6,38 +6,39 @@ import (
 	"strings"
 
 	"cascata/internal/database"
-	"cascata/internal/vault"
+	"cascata/internal/security"
 )
 
 // EnvManager handles public and secret environment variables for projects.
 type EnvManager struct {
-	repo    *database.Repository
-	transit *vault.TransitService
+	repo     *database.Repository
+	security *security.SecurityService
 }
 
-func NewEnvManager(repo *database.Repository, transit *vault.TransitService) *EnvManager {
+func NewEnvManager(repo *database.Repository, security *security.SecurityService) *EnvManager {
 	return &EnvManager{
-		repo:    repo,
-		transit: transit,
+		repo:     repo,
+		security: security,
 	}
 }
 
-// ResolveSecret resolves a Vault URI (vault://KEY) safely in memory.
+// ResolveSecret resolves an encrypted URI (cascata://ENCRYPTED_DATA) safely in memory.
 func (m *EnvManager) ResolveSecret(ctx context.Context, projectSlug, uri string) (string, error) {
-	if !strings.HasPrefix(uri, "vault://") {
-		return uri, nil
+	// 1. If it's already a full security-prefixed string, use it directly.
+	if strings.HasPrefix(uri, "cascata:") {
+		return m.security.Decrypt(ctx, uri)
 	}
-	
-	key := strings.TrimPrefix(uri, "vault://")
-	
-	// Transit-based secrets or vault secret engine? 
-	// As per Phase 4/7: ProjectSlug is the key namespace in transit.
-	decrypted, err := m.transit.Decrypt(ctx, projectSlug, key)
-	if err != nil {
-		return "", fmt.Errorf("env.ResolveSecret: %w", err)
+
+	// 2. If it's a URI-style pointer (cascata://ENCRYPTED_DATA), extract the payload.
+	if strings.HasPrefix(uri, "cascata://") {
+		payload := strings.TrimPrefix(uri, "cascata://")
+		// Ensure the payload has the required prefix for the security engine.
+		if !strings.HasPrefix(payload, "cascata:") {
+			payload = "cascata:" + payload
+		}
+		return m.security.Decrypt(ctx, payload)
 	}
-	
-	return decrypted, nil
+	return uri, nil
 }
 
 // FetchProjectEnvs loads all environment variables for a project.

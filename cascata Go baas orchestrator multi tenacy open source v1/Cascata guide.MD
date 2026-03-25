@@ -79,7 +79,7 @@ Para garantir a perfeição real e a consistência absoluta em todo o código, e
     - `/internal/telemetry`: Mesh de rastreamento (OpenTelemetry) para observabilidade transversal.
     - `/internal/automation`: Fila de eventos e engine de workflows via Dragonfly Streams.
     - `/internal/privacy`: Engine de masking, blur e criptografia em repouso.
-    - `/internal/config`: Gerenciamento de variáveis de ambiente e segredos via Vault.
+    - `/internal/config`: Gerenciamento de variáveis de ambiente e segredos via Security Engine.
 - `/deployments`: Manifestos Docker para orquestração local e de produção.
 
 ---

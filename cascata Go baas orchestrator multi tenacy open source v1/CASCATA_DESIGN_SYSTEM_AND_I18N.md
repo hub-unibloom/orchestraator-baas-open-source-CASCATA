@@ -512,7 +512,7 @@ const BREAKPOINTS = {
 } as const
 ```
 
-**Regra:** nenhuma feature é removida em mobile — é adaptada. Panic Mode, Vault, tudo acessível. A complexidade se adapta, não desaparece.
+**Regra:** nenhuma feature é removida em mobile — é adaptada. Panic Mode, Security Engine, tudo acessível. A complexidade se adapta, não desaparece.
 
 ---
 

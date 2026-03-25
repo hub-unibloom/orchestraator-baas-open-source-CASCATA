@@ -9,7 +9,7 @@
 ## 1. PRINCÍPIOS TRANSVERSAIS
 
 **Universal Synergy First (Holistic Excellence).**  
-Segurança não é um anexo; é um componente de uma sinergia maior. Tratamos **Segurança, Performance, Escalabilidade e Harmonia Arquitetural** como pilares inseparáveis e de igual prioridade. Focar apenas em um (ex: segurança) em detrimento de outro (ex: arquitetura correta) colapsa o sistema a longo prazo. Um código Cascata deve ser seguro porque é bem estruturado, e performático porque é inteligentee t rabalha corretamente com a arquritetura e versẽos das stacks como go, react, dragonfly, postgres, vault, opentelemetry, sdk's e etc.
+Segurança não é um anexo; é um componente de uma sinergia maior. Tratamos **Segurança, Performance, Escalabilidade e Harmonia Arquitetural** como pilares inseparáveis e de igual prioridade. Focar apenas em um (ex: segurança) em detrimento de outro (ex: arquitetura correta) colapsa o sistema a longo prazo. Um código Cascata deve ser seguro porque é bem estruturado, e performático porque é inteligente e trabalha corretamente com a arquitetura e versões das stacks como Go, React, Dragonfly, Postgres, Native Security Engine, OpenTelemetry, SDK's e etc.
 
 **Zero Mock.**  
 Não existem funções placeholder. A implementação é real ou retorna erro explícito de "não implementado". Nunca silenciar, nunca fingir.
@@ -33,17 +33,17 @@ Go não confia que o Nginx validou. O Postgres não confia que o Go aplicou RLS.
 
 **Nomenclatura de dados sensíveis.**  
 Nunca `password`, `key`, `token` puros em variáveis. Sempre o estado do dado no nome:
-- `hashedPassword`, `rawInputSecret`, `encryptedVaultKey`, `signedJWT`, `derivedSessionKey`
+- `hashedPassword`, `rawInputSecret`, `encryptedSovereignKey`, `signedJWT`, `derivedSessionKey`
 
 ---
 
 ## 2. GO — BACKEND
 
 ### 2.1 Estrutura de Pacotes
-- Nomes: minúsculos, palavra única, funcionais — `auth`, `vault`, `pool`, `phantom`, `storage`
+- Nomes: minúsculos, palavra única, funcionais — `auth`, `security`, `pool`, `phantom`, `storage`
 - **Proibido:** `utils`, `helpers`, `common`, `misc`
 - Funções e tipos exportados: `PascalCase`
-- Erros exportados: prefixo `Err` — `ErrProjectNotFound`, `ErrVaultSealed`, `ErrTenantIsolation`
+- Erros exportados: prefixo `Err` — `ErrProjectNotFound`, `ErrSecuritySealed`, `ErrTenantIsolation`
 
 **Go DAG Alignment (Acyclic Structure):**
 - A arquitetura do Cascata **DEVE** ser um Grafo Acíclico Dirigido (DAG).
@@ -70,7 +70,7 @@ Cruzando as Camadas (RLS Law):
 ```go
 // CORRETO
 if err != nil {
-    return fmt.Errorf("vault.DecryptKey: %w", err)
+    return fmt.Errorf("security.DecryptKey: %w", err)
 }
 
 // CORRETO — Saída de API com Rastro OTel
@@ -85,7 +85,7 @@ if err != nil {
 _ = riskyOperation()
 ```
 - `panic` é rigorosamente proibido fora de `main()`. Em runtime, use o middleware de resiliência `HandlePanic` no `server.go` para capturar falhas e transformá-las em Spans de erro no OTel.
-- `context.Context` é o primeiro parâmetro de toda função de I/O (DB, Dragonfly, Vault, FS, HTTP) e DEVE carregar o rastro OTel para propagação transversal.
+- `context.Context` é o primeiro parâmetro de toda função de I/O (DB, Dragonfly, Security Engine, FS, HTTP) e DEVE carregar o rastro OTel para propagação transversal.
 
 ### 2.5 Logging
 - **Proibido:** `fmt.Println`, `log.Print`, qualquer print não estruturado
@@ -94,7 +94,7 @@ _ = riskyOperation()
 - **Proibido em logs:** `Authorization`, `Cookie`, tokens, segredos — dados sensíveis removidos antes de persistir
 
 ### 2.6 Segurança no Código
-- Funções de criptografia e Vault isoladas em pacotes próprios e auditáveis
+- Funções de criptografia e Security Engine isoladas em pacotes próprios e auditáveis
 - Chaves nunca passadas como `string` pura entre funções — use tipos opacos ou structs dedicadas
 - RLS Fail-Closed: se a injeção de contexto falhar, `ROLLBACK` forçado — nunca executa query sem contexto de segurança estabelecido.
 - **Database Sinergy (Phase 22):** O padrão `WithRLS` deve implementar loop de **Retry para erros transientes** (conn reset) e injeção atômica por meio de `SET LOCAL search_path` e `SET LOCAL cascata.claims`.
@@ -108,7 +108,7 @@ _ = riskyOperation()
 ### 2.8 Docker & Arquivos
 - Todo novo serviço Go tem `Dockerfile.txt` otimizado para produção (distroless ou alpine)
 - Arquivos `.env`, `Dockerfile` permanecem com extensão `.txt` no ambiente de desenvolvimento
-- Segredos nunca em variáveis de ambiente no docker-compose — sempre via Vault
+- Segredos nunca em variáveis de ambiente no docker-compose — sempre via Native Security (cascata: prefix)
 
 ---
 
@@ -116,7 +116,7 @@ _ = riskyOperation()
 
 ### 3.1 Componentes
 - **Apenas functional components** — sem `Class Components`
-- Lógica complexa extraída para Custom Hooks: `useProjectVault`, `useTenantMetrics`, `useSSEChannel`
+- Lógica complexa extraída para Custom Hooks: `useProjectSecurity`, `useTenantMetrics`, `useSSEChannel`
 - Componente renderiza, hook orquestra — nunca misturar
 
 ### 3.2 Tipagem
@@ -175,7 +175,7 @@ Quando um algoritmo pode ser expresso matematicamente de forma mais eficiente, e
 Funções que executam milhares de vezes por segundo não alocam. Usam `sync.Pool` para reutilizar buffers. Usam `[]byte` em vez de `string` onde a conversão seria desnecessária. Usam structs pré-alocadas em vez de maps. O GC do Go é excelente — mas o melhor GC é o que não tem nada para coletar.
 
 **I/O nunca bloqueia o worker principal.**
-Toda operação de I/O — banco, Dragonfly, Vault, storage, HTTP externo — ocorre em goroutine própria ou com timeout explícito via context. O orquestrador nunca para para esperar. Cada operação de I/O deve abrir um sub-span no OTel.
+Toda operação de I/O — banco, Dragonfly, Security Engine, storage, HTTP externo — ocorre em goroutine própria ou com timeout explícito via context. O orquestrador nunca para para esperar. Cada operação de I/O deve abrir um sub-span no OTel.
 
 ### 7.2 Escala Horizontal como Objetivo de Design
 
@@ -249,7 +249,7 @@ return tx.Commit()
 
 - Toda falha gera log estruturado evidenciando: qual passo falhou, o contexto completo e o estado revertido
 - O log de falha é obrigatório mesmo quando o rollback foi bem-sucedido — a operação tentada deve ser rastreável
-- Operações distribuídas (Postgres + Dragonfly + Vault) usam compensação explícita: se o passo 3 falha, os passos 1 e 2 são desfeitos ativamente
+- Operações distribuídas (Postgres + Dragonfly + Security Engine) usam compensação explícita: se o passo 3 falha, os passos 1 e 2 são desfeitos ativamente
 
 ### 5.2 Código Defensivo (Resiliência sob Pressão)
 O código limpo e direto é o objetivo. A robustez existe nas bordas e transições — onde dados chegam, onde I/O ocorre, onde estado muda. Esses são os pontos onde bugs aparecem em produção sob carga real.
@@ -278,7 +278,7 @@ return project.Config.RateLimit, nil
 - Todo acesso a cache (pode estar vazio, expirado ou corrompido)
 - Todo I/O com timeout (pode não responder, pode responder parcialmente)
 - Toda operação concorrente (pode ter condição de corrida)
-- Toda integração externa (Vault, Dragonfly, Qdrant — podem estar temporariamente indisponíveis)
+- Toda integração externa (Security Engine, Dragonfly, Qdrant — podem estar temporariamente indisponíveis)
 
 **O que não fazer:**
 - Código defensivo no meio da lógica de negócio — isso é complexidade desnecessária
@@ -290,12 +290,12 @@ return project.Config.RateLimit, nil
 // Backoff exponencial com limite — não tenta para sempre
 const maxAttempts = 3
 for attempt := range maxAttempts {
-    err = vaultClient.GetSecret(ctx, key)
+    err = securitySvc.Decrypt(ctx, key)
     if err == nil {
         break
     }
     if attempt == maxAttempts-1 {
-        return fmt.Errorf("vault.GetSecret: %d tentativas esgotadas: %w", maxAttempts, err)
+        return fmt.Errorf("security.Decrypt: %d tentativas esgotadas: %w", maxAttempts, err)
     }
     time.Sleep(time.Duration(math.Pow(2, float64(attempt))) * 100 * time.Millisecond)
 }
