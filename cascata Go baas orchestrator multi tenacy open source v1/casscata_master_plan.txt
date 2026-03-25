@@ -427,7 +427,7 @@ O DragonflyDB é o sistema nervoso transversal de controle do Cascata. Redis-com
 - **PGP Crypto (pgcrypto):** chaves de API criptografadas no banco via extensão `pgcrypto` (`pgp_sym_encrypt`) — camada adicional de proteção em repouso
 
 **Especificação de Implementação:**
-> O motor de segurança é um serviço nativo em Go que utiliza a `CASCATA_MASTER_KEY` injetada via ambiente. Não utiliza dependências externas como HashiCorp Vault para evitar overhead de rede e consumo de RAM excessivo em VPS de 2GB. A segurança reside na entropia da chave mestra e na implementação robusta do AES-GCM.
+> O motor de segurança é um serviço nativo em Go que utiliza a `CASCATA_MASTER_KEY` injetada via ambiente. Não utiliza dependências externas para evitar overhead de rede e consumo de RAM excessivo em VPS de 2GB. A segurança reside na entropia da chave mestra e na implementação robusta do AES-GCM.
 
 **Critério de conclusão:** Rotação de chave registrada em log de auditoria; segredos recuperados apenas via Security API, nunca em texto plano. Chave de desbloqueio gerenciada fora do repositório.
 
@@ -799,7 +799,7 @@ Contêiner ZIP com compressão ZLib Nível 9 — portabilidade total, restauraç
 | Camada | Conteúdo |
 |---|---|
 | `manifest.json` | Versão do motor, timestamp, metadados do projeto, domínios |
-| `system/secrets.json` | JWT Secret, Anon Key, Service Key (criptografado via Vault) |
+| `system/secrets.json` | JWT Secret, Anon Key, Service Key (criptografado via Security API) |
 | `schema/structure.sql` | DDL completa: tabelas, views, triggers, RLS (`pg_dump --schema-only`) |
 | `data/*.csv` | Dados exportados via stream (`COPY TO STDOUT`) — alta velocidade, sem carregar em memória |
 | `vector/snapshot.qdrant` | Snapshot binário das coleções Qdrant (contexto do AI Architect) |
@@ -954,8 +954,8 @@ cascata agent logs <agent_id>         # audit trail filtrado por agente
 cascata key rotate <tenant> --type jwt    # exige senha interativa
 cascata key rotate <tenant> --type anon   # exige senha interativa
 cascata key rotate <tenant> --type service # exige senha interativa
-cascata vault seal                         # sela o Vault imediatamente
-cascata vault status
+cascata security seal                      # sela o Enclave imediatamente
+cascata security status
 cascata audit log [--tenant <slug>] [--agent <id>] [--from <data>]
 ```
 
@@ -973,7 +973,7 @@ cascata audit log [--tenant <slug>] [--agent <id>] [--from <data>]
 - Nginx Hardening: LUA-based pre-validation, Socket proxying para o Go
 - **Nginx Sidecar:** recarrega configs SSL dinamicamente sem derrubar conexões ativas
 - **Header Scrub:** logger remove `Authorization`, `Cookie` e sanitiza body sensível antes de persistir qualquer log — zero vazamento de credenciais em auditoria
-- Auditoria de segurança completa: SQL Injection, bypass de RLS, integridade do Vault
+- Auditoria de segurança completa: SQL Injection, bypass de RLS, integridade do Enclave Soberano
 - Ferramentas de migração de metadados do v0.1 para v1
 - Documentação técnica final
 - Deleção da pasta legacy `cascata` (v0.1)
@@ -1013,9 +1013,9 @@ cascata audit log [--tenant <slug>] [--agent <id>] [--from <data>]
 - Isolamento por papel de propósito (agentes com roles dedicados)
 - Column-level grants e views
 - Privacy Engine: Normal, Blur, Mask, Semi-Mask, Hide, Hybrid Encrypt, Hyper Encrypt
-- Transparent Data Encryption via Vault Transit
+- Transparent Data Encryption via Native Transit
 - Column Locks: `Normal`, `immutable`, `system_put`, `insert_only`, `otp_protected`
-- Vault: K/V, File Vaulting, Transit API (HashiCorp Vault 1.15)
+- Security Engine: Native K/V, File Protection, Native Transit API (AES-256-GCM)
 - PGP Crypto: chaves criptografadas no banco via `pgp_sym_encrypt`
 - Rotação automática de chaves (condicional à permissão do operador)
 - Universal Padlock (Global Lock de emergência)
@@ -1062,7 +1062,7 @@ cascata audit log [--tenant <slug>] [--agent <id>] [--from <data>]
 - Direct Table Insert/Update via Webhook sem passar pelo motor
 - Roteamento de webhook para engine de automações
 - Retry policies com backoff exponencial
-- Outbound Webhooks com credenciais Vault Just-in-Time
+- Outbound Webhooks com credenciais protegidas Just-in-Time
 - Cron / Repeatable Jobs com precisão <1s e timezone-aware
 - Async Dispatch via fila persistente no Dragonfly
 - SSE Batched Hydration com backpressure
@@ -1171,7 +1171,7 @@ cascata audit log [--tenant <slug>] [--agent <id>] [--from <data>]
 
 ### 12. Observabilidade & Logs
 - Log universal de baixo nível — toda ação de qualquer identidade capturada antes do handler de negócio
-- Cobertura: HTTP, SQL, dashboard, CLI, automações, edge functions, webhooks, Vault, auth, storage, schema
+- Cobertura: HTTP, SQL, dashboard, CLI, automações, edge functions, webhooks, Security Engine, auth, storage, schema
 - Substituição real de dados sensíveis nos logs: senhas → `[PASSWORD]`, tokens → `[TOKEN]`, chaves → `[KEY]`
 - Dados `hyper_encrypt` nunca entram em nenhum log
 - Logs imutáveis por design (append-only) — nenhuma identidade pode editar ou deletar entradas
@@ -1190,7 +1190,7 @@ cascata audit log [--tenant <slug>] [--agent <id>] [--from <data>]
 
 Cada fase concluída deve passar por:
 
-1. **Auditoria de Segurança:** Sem SQL Injection, sem bypass de RLS, integridade do Vault preservada
+1. **Auditoria de Segurança:** Sem SQL Injection, sem bypass de RLS, integridade do Enclave preservada
 2. **Benchmark de Performance:** Overhead do orquestrador abaixo de 10ms
 3. **Revisão Visual (fases de UI):** UX premium e responsivo — com tratamento especial para computadores, tablets e celulares
 4. **Teste de Resiliência:** Recovery gracioso após crash de processo

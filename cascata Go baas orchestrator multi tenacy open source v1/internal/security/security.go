@@ -88,4 +88,3 @@ func (s *SecurityService) Decrypt(ctx context.Context, data string) (string, err
 func IsSovereign(data string) bool {
 	return strings.HasPrefix(data, "cascata:")
 }
-}
