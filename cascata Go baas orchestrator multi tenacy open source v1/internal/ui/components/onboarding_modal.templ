@@ -1,103 +1,137 @@
 package components
 
-import "github.com/nicksnyder/go-i18n/v2/i18n"
+import (
+    "fmt"
+    "github.com/nicksnyder/go-i18n/v2/i18n"
+)
 
 templ OnboardingModal(loc *i18n.Localizer) {
 	<div 
 		x-data="{ step: 1, name: '', slug: '', loading: false }"
-		class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-surface-pit/80 backdrop-blur-xl animate-fade-in"
+		class="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-12 bg-surface-pit/90 backdrop-blur-[32px] animate-fade-in"
 		id="modal-onboarding"
 	>
 		<div 
-			@click.away="document.getElementById('modal-onboarding').remove()"
-			class="w-full max-w-2xl bg-surface-raised border border-white/10 rounded-[40px] p-12 shadow-[0_0_100px_rgba(99,102,241,0.15)] overflow-hidden relative"
+			@click.away="if(step < 3) document.getElementById('modal-onboarding').remove()"
+			class="w-full max-w-4xl bg-surface-raised/40 border border-white/5 rounded-[48px] shadow-[0_0_120px_rgba(0,0,0,0.8)] overflow-hidden relative backdrop-blur-3xl animate-scale-up"
 		>
-			<div class="absolute top-0 right-0 w-96 h-96 bg-accent-primary/5 blur-[120px] -mr-48 -mt-32"></div>
+			<!-- Ambient Decor -->
+			<div class="absolute -top-40 -left-40 w-96 h-96 bg-accent-primary/5 blur-[100px] rounded-full animate-pulse"></div>
+			
+			<div class="flex flex-col lg:flex-row h-full">
+			    <!-- Sidebar: Step Info -->
+			    <div class="w-full lg:w-80 bg-surface-pit/60 border-b lg:border-b-0 lg:border-r border-white/5 p-10 flex flex-col justify-between gap-12">
+			        <div class="space-y-10">
+			            <div class="w-16 h-16 rounded-[24px] bg-accent-primary/20 flex items-center justify-center text-accent-primary border border-accent-primary/20">
+			                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"></path><path d="M18.4 6.6a9 9 0 1 1-12.77.04"></path></svg>
+			            </div>
+			            <div class="space-y-2">
+			                <h2 class="text-3xl font-black text-white italic tracking-tightest leading-none uppercase">PROJECT<br/><span class="text-accent-primary text-4xl">BLUEPRINT</span></h2>
+			                <p class="text-[9px] font-mono text-content-muted uppercase tracking-[0.4em] italic leading-relaxed opacity-60">Architecting Sovereign Data Nodes v1.0</p>
+			            </div>
+			        </div>
 
-			<!-- HEADER -->
-			<div class="flex justify-between items-center mb-12 relative z-10">
-				<div class="flex items-center gap-5">
-					<div class="w-12 h-12 rounded-2xl bg-accent-primary/10 flex items-center justify-center text-accent-primary">
-						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>
-					</div>
-					<div>
-						<h2 class="text-2xl font-black text-white tracking-tight italic uppercase">Novo Inquilino</h2>
-						<p class="text-[10px] font-bold text-accent-primary tracking-[0.3em] uppercase opacity-60">Passo <span x-text="step"></span> de 3</p>
-					</div>
-				</div>
-				<button @click="document.getElementById('modal-onboarding').remove()" class="p-3 rounded-2xl hover:bg-white/5 text-content-muted hover:text-white transition-all">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
-				</button>
+			        <!-- Technical Indicators -->
+			        <div class="space-y-6">
+			            <div :class="step >= 1 ? 'text-accent-primary opacity-100' : 'text-content-muted opacity-40'" class="flex items-center gap-4 transition-all duration-500">
+			                <div :class="step >= 1 ? 'bg-accent-primary' : 'bg-surface-elevated'" class="w-2 h-2 rounded-full shadow-glow"></div>
+			                <span class="text-[10px] font-black uppercase tracking-[0.2em] italic">01 ID_GENESIS</span>
+			            </div>
+			            <div :class="step >= 2 ? 'text-accent-secondary opacity-100' : 'text-content-muted opacity-40'" class="flex items-center gap-4 transition-all duration-500">
+			                <div :class="step >= 2 ? 'bg-accent-secondary' : 'bg-surface-elevated'" class="w-2 h-2 rounded-full shadow-glow"></div>
+			                <span class="text-[10px] font-black uppercase tracking-[0.2em] italic">02 QUOTA_LIMITS</span>
+			            </div>
+			            <div :class="step >= 3 ? 'text-accent-success opacity-100' : 'text-content-muted opacity-40'" class="flex items-center gap-4 transition-all duration-500">
+			                <div :class="step >= 3 ? 'bg-accent-success' : 'bg-surface-elevated'" class="w-2 h-2 rounded-full shadow-glow"></div>
+			                <span class="text-[10px] font-black uppercase tracking-[0.2em] italic">03 DEPLOY_NODES</span>
+			            </div>
+			        </div>
+			    </div>
+
+			    <!-- Main Content Area -->
+			    <div class="flex-1 p-10 lg:p-16 relative overflow-hidden">
+			        <form hx-post="/system/projects" hx-target="#project-grid" hx-swap="afterbegin" @htmx:after-request="if(event.detail.successful) document.getElementById('modal-onboarding').remove()" class="h-full flex flex-col justify-between">
+			            
+			            <!-- CONTENT STEPS -->
+			            <div class="flex-1 min-h-[360px]">
+			                <!-- STEP 1: IDENTITY -->
+			                <div x-show="step === 1" x-transition.opacity class="space-y-10">
+			                    <div class="space-y-4">
+			                        <h3 class="text-xl font-black text-white italic tracking-widest uppercase">Identidade do Inquilino</h3>
+			                        <p class="text-[10px] text-content-muted font-bold uppercase tracking-widest leading-relaxed">Defina o nome de guerra da sua nova infraestrutura soberana.</p>
+			                    </div>
+			                    
+			                    <div class="space-y-8">
+			                        <div class="space-y-3 group">
+			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 group-focus-within:text-accent-primary transition-colors italic">Nome da Operação</label>
+			                            <input 
+			                                name="name" 
+			                                x-model="name"
+			                                @input="slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '')"
+			                                placeholder="EX: CASCATA CLOUD"
+			                                autofocus
+			                                class="w-full h-20 bg-surface-pit/40 border border-white/5 rounded-[24px] px-10 text-lg text-white font-mono focus:outline-none focus:border-accent-primary/40 focus:bg-surface-pit/80 transition-all italic font-bold tracking-widest shadow-inner placeholder:text-content-muted/20"
+			                            />
+			                        </div>
+			                        <div class="space-y-2 opacity-60">
+			                             <label class="text-[8px] font-black uppercase tracking-[0.5em] text-accent-primary ml-4 italic">Computed_Slug (Automated)</label>
+			                             <div class="px-10 py-4 bg-surface-pit/20 rounded-[18px] font-mono text-xs text-accent-primary italic font-bold border border-white/5" x-text="slug || 'awaiting_input...'"></div>
+			                             <input type="hidden" name="slug" x-model="slug" />
+			                        </div>
+			                    </div>
+			                </div>
+
+			                <!-- STEP 2: METRICS -->
+			                <div x-show="step === 2" x-transition.opacity style="display: none;" class="space-y-12">
+			                    <div class="space-y-4">
+			                        <h3 class="text-xl font-black text-white italic tracking-widest uppercase">Parâmetros de Quota</h3>
+			                        <p class="text-[10px] text-content-muted font-bold uppercase tracking-widest leading-relaxed">Estabeleça os limites de expansão do nó de dados.</p>
+			                    </div>
+
+			                    <div class="grid grid-cols-2 gap-10">
+			                        <div class="space-y-4">
+			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">Max_Users</label>
+			                            <input type="number" name="max_users" value="1000" class="w-full h-18 bg-surface-pit border border-white/5 rounded-[20px] px-8 text-white font-mono font-black italic focus:border-accent-secondary/50 outline-none transition-all" />
+			                        </div>
+			                        <div class="space-y-4">
+			                            <label class="text-[9px] font-black uppercase tracking-[0.3em] text-content-muted ml-4 italic">Storage_MB</label>
+			                            <input type="number" name="max_storage_mb" value="512" class="w-full h-18 bg-surface-pit border border-white/5 rounded-[20px] px-8 text-white font-mono font-black italic focus:border-accent-secondary/50 outline-none transition-all" />
+			                        </div>
+			                    </div>
+			                </div>
+
+			                <!-- STEP 3: DEPLOY -->
+			                <div x-show="step === 3" x-transition.opacity style="display: none;" class="space-y-10 py-8 text-center">
+			                    <div class="w-32 h-32 mx-auto rounded-full bg-accent-success/5 border border-accent-success/20 flex items-center justify-center text-accent-success relative group">
+			                        <div class="absolute inset-0 bg-accent-success/10 rounded-full animate-ping"></div>
+			                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="relative z-10"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path><path d="m9 12 2 2 4-4"></path></svg>
+			                    </div>
+			                    <div class="space-y-4">
+			                        <h3 class="text-3xl font-black text-white uppercase italic tracking-widest leading-tight">Gênese de<br/>Infraestrutura</h3>
+			                        <p class="text-[11px] text-content-muted mx-auto max-w-sm font-bold uppercase tracking-[0.2em] leading-relaxed italic opacity-80">Confirmar a provisão do isolamento soberano para o inquilino <span class="text-accent-success" x-text="slug"></span>?</p>
+			                    </div>
+			                </div>
+			            </div>
+
+			            <!-- FOOTER: ACTIONS -->
+			            <div class="flex items-center gap-6 mt-12 bg-surface-pit/20 p-4 rounded-[28px] border border-white/5">
+			                <button type="button" x-show="step > 1" @click="step--" class="px-8 h-18 rounded-[20px] bg-surface-raised border border-white/5 text-white font-black italic tracking-widest text-[10px] hover:bg-surface-elevated transition-all uppercase">VOLTAR</button>
+			                
+			                <div class="flex-1 flex justify-center gap-2">
+			                    <div :class="step === 1 ? 'w-8 bg-accent-primary' : 'w-2 bg-white/10'" class="h-1.5 rounded-full transition-all duration-500"></div>
+			                    <div :class="step === 2 ? 'w-8 bg-accent-secondary' : 'w-2 bg-white/10'" class="h-1.5 rounded-full transition-all duration-500"></div>
+			                    <div :class="step === 3 ? 'w-8 bg-accent-success' : 'w-2 bg-white/10'" class="h-1.5 rounded-full transition-all duration-500"></div>
+			                </div>
+
+			                <button type="button" x-show="step < 3" @click="step++" :disabled="!name" class="px-12 h-18 rounded-[20px] bg-white text-surface-pit font-black italic tracking-widest text-[10px] hover:scale-105 active:scale-95 transition-all disabled:opacity-20 uppercase">PRÓXIMO</button>
+			                <button type="submit" x-show="step === 3" @click="loading = true" class="px-12 h-18 rounded-[20px] bg-accent-success text-white font-black italic tracking-widest text-[10px] shadow-glow hover:scale-105 active:scale-95 transition-all uppercase">
+			                    <span x-show="!loading">EXECUTAR PROVISÃO</span>
+			                    <span x-show="loading" class="flex items-center gap-3 animate-pulse">SINCRONIZANDO...</span>
+			                </button>
+			            </div>
+			        </form>
+			    </div>
 			</div>
-
-			<!-- FORM E STEPS -->
-			<form hx-post="/system/projects" hx-target="#project-grid" hx-swap="afterbegin" @htmx:after-request="if(event.detail.successful) document.getElementById('modal-onboarding').remove()" class="relative z-10 min-h-[340px]">
-				<!-- STEP 1: IDENTIDADE -->
-				<div x-show="step === 1" x-transition.opacity>
-					<div class="space-y-8">
-						<div class="space-y-3">
-							<label class="text-[10px] font-black uppercase tracking-[0.2em] text-content-muted ml-1">Nome do Projeto</label>
-							<div class="relative group">
-								<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="absolute left-6 top-1/2 -translate-y-1/2 text-content-muted group-focus-within:text-accent-primary transition-colors"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
-								<input 
-									name="name" 
-									x-model="name"
-									@input="slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '')"
-									placeholder="Ex: Cascata Marketplace"
-									class="w-full h-16 bg-surface-base border border-white/5 rounded-[22px] pl-16 pr-8 text-sm text-white font-mono focus:border-accent-primary/50 focus:ring-1 focus:ring-accent-primary/50 transition-all outline-none italic font-bold tracking-widest"
-								/>
-							</div>
-						</div>
-						<div class="space-y-3">
-							<label class="text-[10px] font-black uppercase tracking-[0.2em] text-content-muted ml-1">URL Slug (Auto)</label>
-							<input name="slug" x-model="slug" readonly class="w-full h-16 bg-surface-base/50 border border-white/5 rounded-[22px] px-8 text-sm text-accent-primary font-mono outline-none opacity-60 font-bold" />
-						</div>
-					</div>
-				</div>
-
-				<!-- STEP 2: COTAS -->
-				<div x-show="step === 2" x-transition.opacity style="display: none;">
-					<div class="grid grid-cols-2 gap-8">
-						<div class="space-y-3">
-							<label class="text-[10px] font-black uppercase tracking-[0.2em] text-content-muted">Usuários Máximos</label>
-							<input type="number" name="max_users" value="1000" class="w-full h-16 bg-surface-base border border-white/5 rounded-[22px] px-8 text-white font-mono outline-none focus:border-accent-primary/50" />
-						</div>
-						<div class="space-y-3">
-							<label class="text-[10px] font-black uppercase tracking-[0.2em] text-content-muted">Storage (MB)</label>
-							<input type="number" name="max_storage_mb" value="512" class="w-full h-16 bg-surface-base border border-white/5 rounded-[22px] px-8 text-white font-mono outline-none focus:border-accent-primary/50" />
-						</div>
-					</div>
-				</div>
-
-				<!-- STEP 3: PROTEÇÃO -->
-				<div x-show="step === 3" x-transition.opacity style="display: none;">
-					<div class="flex flex-col items-center justify-center text-center space-y-8 py-8">
-						<div class="w-24 h-24 rounded-full bg-accent-success/10 flex items-center justify-center text-accent-success animate-bounce">
-							<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path><path d="m9 12 2 2 4-4"></path></svg>
-						</div>
-						<div>
-							<h3 class="text-xl font-bold text-white uppercase italic tracking-widest">Gênese de Infraestrutura</h3>
-							<p class="text-xs text-content-muted mt-2 max-w-sm font-bold uppercase tracking-[0.2em] leading-relaxed">Provisionar isolamento soberano para o projeto <span class="text-white" x-text="slug"></span>?</p>
-						</div>
-					</div>
-				</div>
-
-				<!-- FOOTER ACTIONS -->
-				<div class="mt-12 pt-8 border-t border-white/5 flex gap-4">
-					<template x-if="step > 1">
-						<button @click.prevent="step--" class="flex-1 h-16 rounded-[22px] border border-white/10 text-white font-bold tracking-widest text-xs hover:bg-white/5 transition-all uppercase italic">Voltar</button>
-					</template>
-					<template x-if="step < 3">
-						<button @click.prevent="step++" :disabled="!slug" class="flex-1 h-16 rounded-[22px] bg-white/5 border border-white/10 text-white font-bold tracking-widest text-xs hover:border-accent-primary/50 transition-all uppercase italic disabled:opacity-30">Próximo</button>
-					</template>
-					<template x-if="step === 3">
-						<button type="submit" @click="loading = true" class="flex-1 h-16 rounded-[22px] bg-accent-primary text-white font-black tracking-widest text-xs shadow-xl shadow-accent-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all uppercase italic">
-							<span x-show="!loading">Provisionar Inquilino</span>
-							<span x-show="loading" class="flex items-center gap-2 justify-center">Sincronizando...</span>
-						</button>
-					</template>
-				</div>
-			</form>
 		</div>
 	</div>
 }

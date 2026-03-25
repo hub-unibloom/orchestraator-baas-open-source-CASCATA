@@ -12,9 +12,47 @@ templ Base(title string, loc *i18n.Localizer) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ title } | Cascata BaaS</title>
-			
 			<script src="https://unpkg.com/htmx.org@1.9.10"></script>
 			<script defer src="https://unpkg.com/alpinejs@3.13.5/dist/cdn.min.js"></script>
+			<script src="https://cdn.tailwindcss.com"></script>
+			<script>
+				tailwind.config = {
+					darkMode: 'class',
+					theme: {
+						extend: {
+							colors: {
+								surface: {
+									pit: 'rgb(2 4 8 / <alpha-value>)',
+									base: 'rgb(5 8 15 / <alpha-value>)',
+									raised: 'rgb(12 16 28 / <alpha-value>)',
+									elevated: 'rgb(20 24 40 / <alpha-value>)',
+									overlay: 'rgb(30 38 55 / <alpha-value>)',
+								},
+								content: {
+									primary: 'white',
+									secondary: 'rgb(160 174 192 / <alpha-value>)',
+									muted: 'rgb(80 95 120 / <alpha-value>)',
+								},
+								accent: {
+									primary: 'rgb(99 102 241 / <alpha-value>)',
+									secondary: 'rgb(6 182 212 / <alpha-value>)',
+									danger: 'rgb(244 63 94 / <alpha-value>)',
+									warning: 'rgb(245 158 11 / <alpha-value>)',
+									success: 'rgb(16 185 129 / <alpha-value>)',
+								}
+							},
+							letterSpacing: {
+								widest: '0.15em',
+								tightest: '-0.05em',
+							},
+							fontFamily: {
+								sans: ['Outfit', 'sans-serif'],
+								mono: ['"JetBrains Mono"', 'monospace'],
+							}
+						}
+					}
+				}
+			</script>
 			
 			<link rel="stylesheet" href="/static/tokens.css"/>
 			
