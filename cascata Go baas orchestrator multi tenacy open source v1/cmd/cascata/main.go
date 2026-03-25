@@ -80,16 +80,45 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 		defer otelEngine.Shutdown(context.Background())
 	}
 
-	repo, err := database.Connect(ctx, cfg.DatabaseURL)
-	if err != nil {
-		slog.Error("worker: database bootstrap failed", "id", id, "error", err)
-		os.Exit(1)
-	}
-	defer repo.Close()
+	// --- HEALTH CHECK LOOP (Sovereign Boot Protection) ---
+	var repo *database.Repository
+	var dfly *redis.Client
+	
+	slog.Info("worker: awaiting infrastructure synergy...", "id", id)
+	for i := 1; i <= 6; i++ {
+		success := true
+		
+		// 1. DB Connect Pulse
+		if repo == nil {
+			repo, err = database.Connect(ctx, cfg.DatabaseURL)
+			if err != nil {
+				slog.Warn("worker: database still chilling...", "attempt", i, "err", err)
+				success = false
+			}
+		}
 
-	dfly := redis.NewClient(&redis.Options{
-		Addr: strings.TrimPrefix(cfg.DflyURL, "redis://"),
-	})
+		// 2. Redis Connect Pulse
+		if dfly == nil {
+			dfly = redis.NewClient(&redis.Options{
+				Addr: strings.TrimPrefix(cfg.DflyURL, "redis://"),
+			})
+			if err := dfly.Ping(ctx).Err(); err != nil {
+				slog.Warn("worker: redis still chilling...", "attempt", i, "err", err)
+				dfly.Close()
+				dfly = nil
+				success = false
+			}
+		}
+
+		if success { break }
+		if i == 6 {
+			slog.Error("worker: fatal infrastructure failure - target unreachable", "id", id)
+			os.Exit(1)
+		}
+		time.Sleep(5 * time.Second)
+	}
+
+	defer repo.Close()
 	defer dfly.Close()
 
 	vaultSvc, err := vault.NewVaultService(cfg.VaultAddr, cfg.VaultToken)

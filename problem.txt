@@ -1,28 +1,157 @@
- => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                       74.2s 
-------                                                                                                                                    
- > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                   
-61.82 # cascata/internal/api                                                                                                              
-61.82 internal/api/ui_handler.go:35:27: cannot use templ.WithChildren(r.Context(), pages.Dashboard(loc)) (value of interface type context.Context) as func(*templ.ComponentHandler) value in argument to templ.Handler                                                              
-61.82 internal/api/ui_handler.go:113:27: cannot use templ.WithChildren(r.Context(), pages.ProjectDashboard(slug, loc)) (value of interface type context.Context) as func(*templ.ComponentHandler) value in argument to templ.Handler
-------
-[+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                              91.3s
-Dockerfile.backend:23
+{"time":"2026-03-25T10:12:30.460484013Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T10:12:30.963586775Z","level":"WARN","msg":"api.error_delivered","status":401,"code":"UNAUTHORIZED_IDENTITY","message":"AUTHENTICATION_REQUIRED","detail":""}
+{"time":"2026-03-25T10:12:30.963632449Z","level":"INFO","msg":"api.request","trace_id":"da92ff2d59c1b3e3b4657ea6731e634c","method":"POST","path":"/system/projects","status":401,"latency_ms":0,"remote_ip":"191.202.103.226"}
+191.202.103.226 - - [25/Mar/2026:10:12:30 +0000] "POST /system/projects HTTP/1.1" 401 85 "http://100.54.11.109/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+{"time":"2026-03-25T10:12:31.460558849Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T10:12:32.460753343Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T10:12:33.461527691Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{
+	"Name": "POST /system/projects",
+	"SpanContext": {
+		"TraceID": "da92ff2d59c1b3e3b4657ea6731e634c",
+		"SpanID": "aaf6d86962241280",
+		"TraceFlags": "01",
+		"TraceState": "",
+		"Remote": false
+	},
+	"Parent": {
+		"TraceID": "00000000000000000000000000000000",
+		"SpanID": "0000000000000000",
+		"TraceFlags": "00",
+		"TraceState": "",
+		"Remote": false
+	},
+	"SpanKind": 1,
+	"StartTime": "2026-03-25T10:12:30.963569491Z",
+	"EndTime": "2026-03-25T10:12:30.963661774Z",
+	"Attributes": [
+		{
+			"Key": "http.method",
+			"Value": {
+				"Type": "STRING",
+				"Value": "POST"
+			}
+		},
+		{
+			"Key": "http.url",
+			"Value": {
+				"Type": "STRING",
+				"Value": "/system/projects"
+			}
+		},
+		{
+			"Key": "http.user_agent",
+			"Value": {
+				"Type": "STRING",
+				"Value": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+			}
+		},
+		{
+			"Key": "error.code",
+			"Value": {
+				"Type": "STRING",
+				"Value": "UNAUTHORIZED_IDENTITY"
+			}
+		},
+		{
+			"Key": "error.message",
+			"Value": {
+				"Type": "STRING",
+				"Value": "AUTHENTICATION_REQUIRED"
+			}
+		},
+		{
+			"Key": "http.status_code",
+			"Value": {
+				"Type": "INT64",
+				"Value": 401
+			}
+		}
+	],
+	"Events": [
+		{
+			"Name": "exception",
+			"Attributes": [
+				{
+					"Key": "exception.type",
+					"Value": {
+						"Type": "STRING",
+						"Value": "*errors.errorString"
+					}
+				},
+				{
+					"Key": "exception.message",
+					"Value": {
+						"Type": "STRING",
+						"Value": "request_failed_with_status_401"
+					}
+				}
+			],
+			"DroppedAttributeCount": 0,
+			"Time": "2026-03-25T10:12:30.963627617Z"
+		}
+	],
+	"Links": null,
+	"Status": {
+		"Code": "Error",
+		"Description": "AUTHENTICATION_REQUIRED"
+	},
+	"DroppedAttributes": 0,
+	"DroppedEvents": 0,
+	"DroppedLinks": 0,
+	"ChildSpanCount": 0,
+	"Resource": [
+		{
+			"Key": "service.name",
+			"Value": {
+				"Type": "STRING",
+				"Value": "cascata-orchestrator"
+			}
+		},
+		{
+			"Key": "service.version",
+			"Value": {
+				"Type": "STRING",
+				"Value": "1.0.0.0"
+			}
+		}
+	],
+	"InstrumentationScope": {
+		"Name": "cascata-api",
+		"Version": "",
+		"SchemaURL": "",
+		"Attributes": null
+	},
+	"InstrumentationLibrary": {
+		"Name": "cascata-api",
+		"Version": "",
+		"SchemaURL": "",
+		"Attributes": null
+	}
+}
+{"time":"2026-03-25T10:12:34.462477704Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T10:12:35.463201348Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T10:12:36.463695718Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T10:12:37.463971525Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T10:12:38.464162384Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T10:12:39.464688994Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T10:12:40.464861551Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+.....
+{"time":"2026-03-25T10:12:40.621141122Z","level":"ERROR","msg":"pool_manager: critical master pool failure","error":"closed pool"}
+......
+{"time":"2026-03-25T10:12:49.470830656Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T10:12:50.470975427Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T10:12:51.471370209Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+{"time":"2026-03-25T10:12:52.472483886Z","level":"ERROR","msg":"queue: read failure","error":"redis: client is closed"}
+^C
 
---------------------
 
-  21 |     
-
-  22 |     # Fazer o build do orchestrator e do provisionador CLI
-
-  23 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
-
-  24 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
-
-  25 |     
-
---------------------
-
-failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
-
+ubuntu@ip-172-26-7-197:~$ docker ps
+CONTAINER ID   IMAGE                                                                   COMMAND                  CREATED       STATUS                   PORTS                                                   NAMES
+a6aa320679cb   nginx:1.25-alpine                                                       "/docker-entrypoint.…"   8 hours ago   Up 8 hours               0.0.0.0:80->80/tcp, [::]:80->80/tcp                     cascata-gateway
+b95c4152c28e   cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator   "./cascata-orchestra…"   8 hours ago   Up 8 hours               8080/tcp                                                cascata-orchestrator
+f0d327daebc0   postgres:18-alpine                                                      "docker-entrypoint.s…"   8 hours ago   Up 8 hours (healthy)     0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp             cascata-db
+4652bcf5495b   hashicorp/vault:1.15                                                    "docker-entrypoint.s…"   8 hours ago   Up 8 hours (unhealthy)   8200/tcp, 0.0.0.0:8207->8207/tcp, [::]:8207->8207/tcp   cascata-vault
+692f5fc6cf55   docker.dragonflydb.io/dragonflydb/dragonfly                             "/usr/bin/tini -- en…"   8 hours ago   Up 8 hours (healthy)     0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp             cascata-cache
 ubuntu@ip-172-26-7-197:~$ 
+

@@ -46,12 +46,20 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 		return fmt.Errorf("genesis: create schema failed: %w", err)
 	}
 
-	// Atomic Cleanup: If any step below fails, we must drop the Schema
+	// Atomic Cleanup: If any step fails, we must purge all provisioned artifacts
 	success := false
 	defer func() {
 		if !success {
-			slog.Warn("genesis: rolling back project creation (dropping schema)", "slug", p.Slug)
+			slog.Warn("genesis: rolling back project creation due to failure", "slug", p.Slug)
+			
+			// 1. Purge DB Schema
 			_ = s.tenantRepo.DropSchema(context.Background(), p.Slug)
+			
+			// 2. Purge/Tombstone Vault Secrets to prevent orphan configurations
+			_ = s.vault.WriteSecret(context.Background(), fmt.Sprintf("cascata/tenants/%s/config", p.Slug), map[string]any{
+				"status":     "genesis_failed",
+				"deleted_at": time.Now().Format(time.RFC3339),
+			})
 		}
 	}()
 

@@ -40,10 +40,13 @@ func (s *VaultService) GetClient() *vault.Client {
 
 // WriteSecret stores a secret in the KV-V2 engine.
 func (s *VaultService) WriteSecret(ctx context.Context, path string, data map[string]any) error {
+	// In KV-V2, the path is mount/data/path. vault-client-go v0.4+ uses mount and path separately or combined.
+	// We use the full path approach for maximum transparency in Phase 1.
 	_, err := s.client.Secrets.KvV2Write(ctx, path, schema.KvV2WriteRequest{
 		Data: data,
 	})
 	if err != nil {
+		slog.Error("vault: write failure", "path", path, "error", err)
 		return fmt.Errorf("vault.WriteSecret [%s]: %w", path, err)
 	}
 	return nil
@@ -53,27 +56,40 @@ func (s *VaultService) WriteSecret(ctx context.Context, path string, data map[st
 func (s *VaultService) ReadSecret(ctx context.Context, path string) (map[string]any, error) {
 	resp, err := s.client.Secrets.KvV2Read(ctx, path)
 	if err != nil {
+		slog.Error("vault: read failure", "path", path, "error", err)
 		return nil, fmt.Errorf("vault.ReadSecret [%s]: %w", path, err)
+	}
+	// Responsiveness check for KV-V2 data structure
+	if resp.Data.Data == nil {
+		return nil, fmt.Errorf("vault.ReadSecret: no data payload at [%s]", path)
 	}
 	return resp.Data.Data, nil
 }
 
 // ProvisionTenantVault creates the isolated secret infrastructure for a new project (Phase 23).
 func (s *VaultService) ProvisionTenantVault(ctx context.Context, slug string) error {
-	slog.Info("vault: provisioning isolated path for tenant", "slug", slug)
+	slog.Info("vault: initiating sovereign genesis for tenant", "slug", slug)
 	
-	path := fmt.Sprintf("cascata/tenants/%s", slug)
+	// We use the 'cascata' mount point as defined in our Sovereign Infrastructure Plan (install.sh).
+	// The path starts with 'cascata/' to target the specific engine.
+	mountPath := "cascata"
+	secretPath := fmt.Sprintf("tenants/%s/config", slug)
 	
-	// Create a default placeholder config
 	data := map[string]any{
-		"initialized_at": time.Now().Format(time.RFC3339),
-		"status":         "active",
+		"genesis_at":    time.Now().Format(time.RFC3339),
+		"status":        "sovereign_active",
+		"isolation_v":   "1.0.0.0",
 	}
 
-	err := s.WriteSecret(ctx, path+"/config", data)
+	// Use specific KvV2Write with explicit mount to bypass path ambiguity in v0.4.0
+	_, err := s.client.Secrets.KvV2Write(ctx, secretPath, schema.KvV2WriteRequest{
+		Data: data,
+	}, vault.WithMountPath(mountPath))
+
 	if err != nil {
-		return fmt.Errorf("vault.ProvisionTenantVault: %w", err)
+		return fmt.Errorf("vault.ProvisionTenantVault [mount:%s, path:%s]: %w", mountPath, secretPath, err)
 	}
 
+	slog.Info("vault: genesis complete for tenant", "slug", slug)
 	return nil
 }
