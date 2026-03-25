@@ -23,7 +23,7 @@ services:
       - DB_URL=postgres://${DB_USER}:${DB_PASS}@cascata-db:5432/${DB_NAME}
       - DFLY_URL=redis://cascata-cache:6379
       - GO_ENV=${NODE_ENV}
-      - VAULT_ADDR=${VAULT_ADDR}
+      - VAULT_ADDR=http://cascata-vault:8200
       - VAULT_TOKEN=${VAULT_TOKEN}
       - SYSTEM_JWT_SECRET=${SYSTEM_JWT_SECRET}
     # Porta 8080 agora é interna, acessível via Gateway na porta 80
@@ -82,6 +82,8 @@ services:
   cascata-vault:
     image: hashicorp/vault:1.15
     container_name: cascata-vault
+    environment:
+      - VAULT_ADDR=http://127.0.0.1:8200
     cap_add:
       - IPC_LOCK
     command: server -config=/vault/config/cascata-vault.hcl
@@ -91,7 +93,7 @@ services:
       - ./deployments/vault-config.hcl:/vault/config/cascata-vault.hcl:ro
       - cascata-vault-data:/vault/file
     ports:
-      - "8207:8207"
+      - "8207:8200"
     healthcheck:
       test: ["CMD", "vault", "status"]
       interval: 5s
