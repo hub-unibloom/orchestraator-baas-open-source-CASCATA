@@ -2,126 +2,210 @@ package database
 
 import (
     "fmt"
-    "cascata/internal/i18n"
+    "github.com/nicksnyder/go-i18n/v2/i18n"
+    internalI18n "cascata/internal/i18n"
 )
 
-// SqlConsole: Sovereign Terminal for Advanced Database Orchestration.
+// SqlConsole: Sovereign Terminal for Raw SQL Execution (v1.0.0.0 Alpha).
 templ SqlConsole(slug string, loc *i18n.Localizer) {
-    <div class="flex-1 flex flex-col h-full bg-surface-base htmx-entry-anim animate-in slide-in-from-bottom-10 duration-700 overflow-hidden italic" id="database-sql-console">
+    <div class="flex-1 flex flex-col bg-surface-pit htmx-entry-anim animate-in slide-in-from-bottom-10 duration-700 overflow-hidden italic shadow-2xl relative" id="database-sql-console">
         
-        <!-- Console Terminal Header -->
-        <header class="h-20 border-b border-white/5 bg-surface-base/80 flex items-center justify-between px-10 backdrop-blur-3xl sticky top-0 z-30">
+        <!-- Console Header (The Command Deck) -->
+        <header class="h-20 border-b border-white/5 bg-surface-base/80 flex items-center justify-between px-10 backdrop-blur-3xl sticky top-0 z-30 shadow-sm transition-all duration-500">
             <div class="flex items-center gap-8">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-[22px] bg-accent-primary/10 flex items-center justify-center text-accent-primary border border-accent-primary/10 shadow-glow-sm">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="animate-float"><path d="m5 16 3-3-3-3"/><path d="M9 16h7"/></svg>
+                <div class="flex items-center gap-5">
+                    <div class="w-12 h-12 rounded-[24px] bg-accent-primary/10 flex items-center justify-center text-accent-primary border border-accent-primary/10 shadow-glow relative overflow-hidden group">
+                         <div class="absolute inset-0 bg-gradient-to-br from-accent-primary/20 to-transparent animate-pulse"></div>
+                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="relative z-10 group-hover:scale-110 transition-transform"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
                     </div>
                     <div>
-                        <h2 class="text-xs font-black uppercase tracking-[0.4em] text-white underline underline-offset-8 decoration-accent-primary/50 decoration-2">SQL_AUTHORITY</h2>
-                        <span class="text-[9px] font-black text-content-muted uppercase tracking-widest italic">Sovereign_Terminal_v1_Ready</span>
+                        <h2 class="text-xs font-black uppercase tracking-[0.4em] text-white italic">SQL_AUTHORITY_TERMINAL</h2>
+                        <span class="text-[9px] font-black text-content-muted uppercase tracking-[0.3em] italic opacity-60 flex items-center gap-2 mt-1">
+                            <div class="w-1 h-1 rounded-full bg-accent-primary shadow-glow animate-pulse"></div>
+                            Bypass_Sanitization: <span class="text-white">ENFORCED</span>
+                        </span>
                     </div>
-                </div>
-
-                <div class="h-8 w-[1px] bg-white/5"></div>
-
-                <!-- Environment / Safety Tier -->
-                <div class="flex items-center gap-3 px-4 py-2 bg-rose-500/5 rounded-full border border-rose-500/20 group">
-                    <div class="w-2 h-2 rounded-full bg-rose-500 shadow-glow animate-pulse"></div>
-                    <span class="text-[9px] font-black text-rose-500 uppercase tracking-widest">PRODUCTION_SAFETY_ACTIVE</span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="text-rose-500/40 opacity-0 group-hover:opacity-100 transition-opacity"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 </div>
             </div>
 
-            <div class="flex items-center gap-4">
-                 <button class="flex items-center gap-3 px-6 py-3 rounded-full bg-surface-raised border border-white/10 text-[9px] font-black uppercase tracking-widest text-content-muted hover:text-white hover:border-white/30 transition-all active:scale-95 group shadow-glow-sm">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-content-muted group-hover:text-accent-primary transition-colors"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                    <span>SCRIPT_LIBRARY</span>
-                 </button>
-                 
-                 <button 
-                   hx-post={ fmt.Sprintf("/system/projects/%s/database/console/execute", slug) }
-                   hx-include="#sql-editor-textarea"
-                   hx-target="#sql-response-area"
-                   class="flex items-center gap-4 px-8 py-3 rounded-full bg-accent-primary text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-glow hover:scale-[1.05] active:scale-[0.95] transition-all group">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform rotate-45"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-                    <span>EXECUTE_PULSE</span>
-                 </button>
+            <!-- Console Actions -->
+            <div class="flex items-center gap-3">
+                <button 
+                  hx-on:click="document.getElementById('sql-editor-area').value = ''"
+                  class="p-3.5 rounded-[22px] bg-white/5 border border-white/5 text-content-muted hover:text-rose-500 hover:border-rose-500/20 transition-all active:scale-90 group" title="Purge Buffer">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-12 transition-transform"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                </button>
+                
+                <div class="w-[1px] h-8 bg-white/5 mx-2"></div>
+
+                <button 
+                   hx-post={ fmt.Sprintf("/system/projects/%s/database/sql/execute", slug) }
+                   hx-include="#sql-editor-area"
+                   hx-target="#sql-response-stream"
+                   hx-indicator="#sql-indicator"
+                   class="flex items-center gap-5 px-8 py-4 rounded-[28px] bg-accent-primary text-white text-[10px] font-black uppercase tracking-[0.3em] shadow-glow hover:scale-[1.03] active:scale-[0.97] transition-all group overflow-hidden relative">
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+                    <span>EXECUTE_STRIKE</span>
+                    <div id="sql-indicator" class="htmx-indicator ml-2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><path d="M22 4h-8v8"/></svg>
+                    </div>
+                </button>
             </div>
         </header>
 
-        <!-- Main Workspace (Editor + History + Results) -->
-        <div class="flex-1 flex flex-col overflow-hidden relative">
-            
-            <!-- SQL Editor Area (The Grid Matrix) -->
-            <div class="flex-[1.5] flex flex-col relative group">
-                <!-- AI Assistant Trigger (Phase 28 Legacy Anchor) -->
-                <button class="absolute top-6 right-8 z-30 p-2.5 rounded-full bg-secondary/10 border border-secondary/20 text-secondary hover:bg-secondary/20 hover:shadow-glow transition-all active:scale-90 opacity-40 hover:opacity-100 group">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="animate-pulse"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
-                </button>
-                
-                <!-- Line Numbers Sidebar (Visual only for now) -->
-                <div class="absolute left-0 top-0 bottom-0 w-12 bg-surface-base/40 border-r border-white/5 flex flex-col items-center py-6 gap-2 text-[8px] font-mono text-white/10 select-none">
-                    <span>01</span><span>02</span><span>03</span><span>04</span><span>05</span><span>06</span><span>07</span><span>08</span><span>09</span><span>10</span>
+        <!-- Main Terminal Body -->
+        <div class="flex-1 flex flex-col overflow-hidden divide-y divide-white/5">
+            <!-- SQL Editor Area (The Forge) -->
+            <div class="h-2/3 flex flex-row relative group/editor bg-surface-base">
+                <!-- Line Numbers Sidebar (Legacy Aesthetic) -->
+                <div class="w-16 bg-surface-pit/40 border-r border-white/5 flex flex-col items-center py-8 text-[9px] font-mono text-content-muted select-none opacity-40 group-hover/editor:opacity-100 transition-opacity">
+                    for i := 1; i <= 24; i++ {
+                        <div class="h-6 flex items-center">{ fmt.Sprintf("%02d", i) }</div>
+                    }
+                    <div class="mt-auto h-12 flex items-center animate-pulse text-accent-primary">--</div>
                 </div>
 
-                <textarea 
-                  id="sql-editor-textarea"
-                  name="sql"
-                  placeholder="-- ENTER_SOVEREIGN_COMMANDS_HERE (SELECT * FROM residents;)"
-                  class="flex-1 bg-surface-pit/60 pl-16 pr-8 py-6 text-xs font-mono font-bold text-accent-primary/80 placeholder:text-content-muted/30 outline-none focus:bg-surface-pit/80 focus:text-white transition-all caret-accent-primary selection:bg-accent-primary/30 resize-none custom-scrollbar"
-                ></textarea>
+                <!-- Textarea (Monaco-ish Feel) -->
+                <div class="flex-1 relative overflow-hidden">
+                    <textarea 
+                        id="sql-editor-area"
+                        name="sql"
+                        spellcheck="false"
+                        class="w-full h-full bg-transparent border-none p-8 text-[11px] font-mono text-white placeholder:text-content-muted/20 outline-none resize-none selection:bg-accent-primary/30 leading-6 italic custom-scrollbar"
+                        placeholder="-- Enter Sovereign SQL Command...&#10;SELECT * FROM system.users WHERE identity_status = 'VERIFIED';"></textarea>
+                    
+                    <!-- Phantom AI Overlay (Ghost Logic) -->
+                    <div class="absolute right-10 bottom-10 flex flex-col items-end gap-3 pointer-events-none group-focus-within:opacity-100 opacity-20 transition-all duration-1000">
+                        <div class="flex items-center gap-3 bg-accent-primary/10 border border-accent-primary/20 px-6 py-3 rounded-full backdrop-blur-md shadow-glow-sm">
+                             <div class="w-1.5 h-1.5 rounded-full bg-accent-primary animate-pulse"></div>
+                             <span class="text-[8px] font-black uppercase tracking-[0.2em] text-accent-primary">Phantom_AI_Ready</span>
+                        </div>
+                        <span class="text-[7px] font-bold text-content-muted uppercase tracking-widest italic opacity-40 shadow-sm">Press CMD+Space to synthesize...</span>
+                    </div>
+                </div>
                 
-                <!-- History Quick-Strip -->
-                <div class="h-10 border-t border-white/5 bg-surface-base/60 flex items-center px-6 gap-4 overflow-x-auto scrollbar-hide select-none transition-all hover:bg-surface-base/80">
-                    <span class="text-[8px] font-black text-content-muted uppercase tracking-[0.2em] shrink-0 italic">Recent_Pulsations:</span>
-                    <div class="flex items-center gap-3">
-                         <button class="px-3 py-1 rounded-md bg-white/5 border border-white/5 text-[8px] font-black text-white/40 hover:text-accent-primary hover:border-accent-primary/20 transition-all whitespace-nowrap">SELECT_FROM_AUTH</button>
-                         <button class="px-3 py-1 rounded-md bg-white/5 border border-white/5 text-[8px] font-black text-white/40 hover:text-accent-primary hover:border-accent-primary/20 transition-all whitespace-nowrap">ALTER_TABLE_RESIDENTS</button>
-                         <button class="px-3 py-1 rounded-md bg-white/5 border border-white/5 text-[8px] font-black text-white/40 hover:text-accent-primary hover:border-accent-primary/20 transition-all whitespace-nowrap">VACUUM_ANALYZE_ALL</button>
+                <!-- History Strip (Sovereign Legacy) -->
+                <div class="w-64 bg-surface-pit/40 border-l border-white/5 overflow-hidden flex flex-col">
+                    <div class="p-5 border-b border-white/5 bg-surface-base/80 flex items-center justify-between">
+                         <span class="text-[9px] font-black uppercase tracking-[0.3em] text-white/40">COMMAND_LOG</span>
+                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="text-content-muted opacity-20"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+                         <!-- Mock history items -->
+                         <div class="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-accent-primary/40 transition-all cursor-pointer group">
+                             <div class="flex items-center justify-between mb-2">
+                                <span class="text-[7px] font-black text-emerald-500 uppercase tracking-widest">SUCCESS</span>
+                                <span class="text-[7px] font-mono text-white/10 italic">2m ago</span>
+                             </div>
+                             <code class="text-[8px] font-mono text-content-muted/60 block truncate font-black group-hover:text-white transition-colors italic">SELECT * FROM public.products;</code>
+                         </div>
+                         <div class="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-rose-500/40 transition-all cursor-pointer group">
+                             <div class="flex items-center justify-between mb-2">
+                                <span class="text-[7px] font-black text-rose-500 uppercase tracking-widest">ERROR</span>
+                                <span class="text-[7px] font-mono text-white/10 italic">14m ago</span>
+                             </div>
+                             <code class="text-[8px] font-mono text-content-muted/60 block truncate font-black group-hover:text-white transition-colors italic">DROP TABLE core_logic;</code>
+                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Results Output Area (The Fragment Swapper) -->
-            <div id="sql-response-area" class="flex-1 bg-surface-pit/80 border-t border-white/10 overflow-hidden relative backdrop-blur-xl">
-                 <div class="absolute inset-0 flex flex-col items-center justify-center opacity-10 select-none">
-                     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-6 rotate-12"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-                     <span class="text-[10px] font-black uppercase tracking-[0.5em] italic">AWAITING_ORCHESTRATION_RESULT</span>
-                 </div>
-                 
-                 <!-- Error Handling Layout (Fragment Synergy) -->
-                 <div id="sql-error-panel" class="hidden absolute inset-0 bg-rose-500/5 backdrop-blur-xl p-10 flex flex-col">
-                    <div class="flex items-center gap-4 text-rose-500 mb-6">
-                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="16" y1="12" y2="12"/></svg>
-                         <h3 class="text-xs font-black uppercase tracking-[0.3em]">Query_Fatal_Error</h3>
-                    </div>
-                    <pre class="flex-1 bg-rose-500/10 border border-rose-500/20 rounded-2xl p-8 text-[11px] font-mono text-rose-200 overflow-auto selection:bg-rose-500/40 italic">-- Postgres_Exception: Relation "users" does not exist in schema "public"</pre>
-                    
-                    <button class="mt-6 flex items-center justify-center gap-4 bg-surface-raised border border-rose-500/40 p-5 rounded-[28px] text-[10px] font-black uppercase tracking-[0.2em] text-rose-500 hover:bg-rose-500/10 transition-all active:scale-95 group shadow-glow">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="animate-pulse shadow-glow"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                        <span>SMART_AI_FIX (PHANTOM_REPAIR)</span>
-                    </button>
-                 </div>
+            <!-- Response Console (The Result Matrix) -->
+            <div class="h-1/3 bg-surface-pit/60 overflow-hidden flex flex-col" id="sql-response-stream">
+                <div class="flex-1 flex flex-col items-center justify-center p-20 opacity-20 selection:none">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-content-muted mb-4 animate-float"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    <span class="text-[9px] font-black uppercase tracking-[0.5em] text-content-muted italic">Awaiting_Sovereign_Payload...</span>
+                </div>
             </div>
         </div>
 
-        <!-- System Stats Footer (Operational Fidelity) -->
-        <footer class="h-10 bg-surface-base border-t border-white/5 px-8 flex items-center justify-between backdrop-blur-md">
+        <!-- Terminal Status Footer -->
+        <footer class="h-10 border-t border-white/5 bg-surface-base px-8 flex items-center justify-between relative z-20">
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-2">
-                    <span class="text-[8px] font-black text-content-muted uppercase tracking-widest italic">Exec_Time:</span>
-                    <span class="text-[8px] font-black text-emerald-500 uppercase tracking-widest" id="sql-exec-time">--ms</span>
+                    <span class="text-[7px] font-black text-content-muted uppercase tracking-[0.2em]">Runtime:</span>
+                    <span class="text-[8px] font-black text-emerald-500 uppercase tracking-widest italic">POSTGRES_CORE_v16.1</span>
                 </div>
-                <div class="w-1 h-1 rounded-full bg-white/10"></div>
+                <div class="w-[1px] h-3 bg-white/10"></div>
                 <div class="flex items-center gap-2">
-                    <span class="text-[8px] font-black text-content-muted uppercase tracking-widest italic">Rows_Affected:</span>
-                    <span class="text-[8px] font-black text-white uppercase tracking-widest" id="sql-rows-affected">0</span>
+                    <span class="text-[7px] font-black text-content-muted uppercase tracking-[0.2em]">Transaction:</span>
+                    <span class="text-[8px] font-black text-white uppercase tracking-widest italic">READ_COMMITTED</span>
                 </div>
             </div>
-            <div class="flex items-center gap-4 opacity-40">
-                <span class="text-[8px] font-black text-content-muted uppercase tracking-widest italic">SQL_ENGINE_ENFORCED</span>
-                <div class="w-2 h-2 rounded-full border border-white/20"></div>
+            <div class="flex items-center gap-4">
+                 <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5">
+                    <span class="text-[7px] font-black text-content-muted uppercase tracking-widest">Active_Connections:</span>
+                    <span class="text-[8px] font-black text-accent-primary shadow-glow-sm">124</span>
+                 </div>
+                 <span class="text-[7px] font-black text-content-muted uppercase tracking-[0.3em]">CASCATA_SHELL_v1.0.0.0</span>
             </div>
         </footer>
+    </div>
+}
+
+// SqlResultView: Dynamic component to render the matrix of returned data.
+templ SqlResultView(success bool, message string, columns []string, data []map[string]interface{}, executionMs int64) {
+    <div class="flex-1 flex flex-col htmx-entry-anim animate-in fade-in duration-500 overflow-hidden">
+        <header class={ "h-12 px-8 flex items-center justify-between border-b", 
+                    templ.KV("bg-emerald-500/10 border-emerald-500/20", success),
+                    templ.KV("bg-rose-500/10 border-rose-500/20", !success) }>
+            <div class="flex items-center gap-4">
+                 <div class={ "w-2 h-2 rounded-full", templ.KV("bg-emerald-500 shadow-glow animate-pulse", success), templ.KV("bg-rose-500 shadow-glow", !success) }></div>
+                 <span class={ "text-[9px] font-black uppercase tracking-widest", templ.KV("text-emerald-500", success), templ.KV("text-rose-500", !success) }>
+                    if success {
+                        PAYLOAD_STRIKE_SUCCESSFUL
+                    } else {
+                        ENTITY_FAULT_DETECTED
+                    }
+                 </span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-[8px] font-black text-content-muted uppercase tracking-widest italic">{ fmt.Sprintf("TIME: %dms", executionMs) }</span>
+                <span class="text-[8px] font-black text-white uppercase tracking-widest italic">{ fmt.Sprintf("ENTITIES: %d", len(data)) }</span>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-auto custom-scrollbar bg-surface-base">
+            if !success {
+                <div class="p-10 font-mono">
+                    <h3 class="text-rose-500 text-xs font-black uppercase tracking-widest mb-4">Fault Trace:</h3>
+                    <pre class="p-6 bg-rose-500/5 border border-rose-500/20 rounded-2xl text-[10px] text-rose-200/60 whitespace-pre-wrap leading-relaxed italic select-all">
+                        { message }
+                    </pre>
+                </div>
+            } else if len(data) == 0 {
+                <div class="h-full flex flex-col items-center justify-center p-20 opacity-40 selection:none font-mono">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500 mb-4 animate-bounce"><path d="M20 6 9 17l-5-5"/></svg>
+                    <span class="text-[9px] font-black uppercase tracking-[0.5em] text-emerald-500 italic">Command_Executed_Void_Response</span>
+                    <span class="text-[7px] font-bold text-content-muted uppercase tracking-widest mt-2">No structural data returned. Use Command_Log for details.</span>
+                </div>
+            } else {
+                <table class="w-full border-collapse select-text table-auto">
+                    <thead class="sticky top-0 z-10 bg-surface-base/90 backdrop-blur-md border-b border-white/10 shadow-sm">
+                        <tr>
+                            for _, col := range columns {
+                                <th class="p-4 text-left border-r border-white/5 text-[9px] font-black uppercase tracking-widest text-content-muted italic">{ col }</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        for _, row := range data {
+                            <tr class="hover:bg-white/[0.02] transition-colors h-10 font-mono">
+                                for _, col := range columns {
+                                    <td class="p-4 border-r border-white/5 text-[10px] text-white/60 truncate max-w-[240px] italic">
+                                        if row[col] == nil {
+                                            <span class="opacity-20">NULL</span>
+                                        } else {
+                                            { fmt.Sprintf("%v", row[col]) }
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
     </div>
 }

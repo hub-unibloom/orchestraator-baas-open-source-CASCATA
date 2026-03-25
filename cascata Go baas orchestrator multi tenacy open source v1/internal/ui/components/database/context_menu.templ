@@ -1,0 +1,89 @@
+package database
+
+import "fmt"
+
+// TableContextMenu: Sovereign context-aware portal for entity manipulation.
+templ TableContextMenu(slug string, schema string, name string, x int, y int) {
+    <div 
+        id="database-context-menu"
+        class="fixed z-[9999] w-72 bg-surface-base/95 backdrop-blur-3xl border border-white/10 rounded-[28px] shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden htmx-entry-anim animate-in zoom-in-95 duration-200 italic"
+        style={ fmt.Sprintf("left: %dpx; top: %dpx;", x, y) }
+        hx-on:click-away="this.remove()">
+        
+        <header class="p-6 border-b border-white/5 bg-surface-pit/20">
+            <div class="flex items-center gap-4">
+                 <div class="w-10 h-10 rounded-2xl bg-accent-primary/10 flex items-center justify-center text-accent-primary border border-accent-primary/10 shadow-glow-sm">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
+                 </div>
+                 <div class="flex flex-col truncate">
+                    <span class="text-[10px] font-black uppercase tracking-[0.3em] text-white truncate">{ name }</span>
+                    <span class="text-[8px] font-black text-content-muted uppercase tracking-widest italic opacity-60 truncate">{ fmt.Sprintf("%s.ENTITY_NODE", schema) }</span>
+                 </div>
+            </div>
+        </header>
+
+        <div class="p-3 space-y-1">
+            <!-- Primary Operations -->
+            @ContextAction("TRANSFORM_STRUCTURE", "grid", fmt.Sprintf("htmx.ajax('GET', '/system/projects/%s/database/tables/%s/data?schema=%s', '#database-content-canvas')", slug, name, schema), "primary")
+            
+            <div class="h-[1px] bg-white/5 mx-4 my-2"></div>
+
+            <!-- Management Suite -->
+            @ContextAction("CLONE_LAB", "copy", fmt.Sprintf("htmx.ajax('GET', '/system/projects/%s/database/modals/duplicate?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "default")
+            @ContextAction("RE_IDENTIFY", "edit", fmt.Sprintf("htmx.ajax('GET', '/system/projects/%s/database/modals/rename?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "default")
+            @ContextAction("EXPORT_ENTITY", "download", fmt.Sprintf("htmx.ajax('GET', '/system/projects/%s/database/modals/export?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "default")
+            
+            <div class="h-[1px] bg-white/5 mx-4 my-2"></div>
+
+            <!-- Dangerous Terminals -->
+            @ContextAction("TRUNCATE_PULSE", "zap", fmt.Sprintf("htmx.ajax('GET', '/system/projects/%s/database/modals/truncate?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "warning")
+            @ContextAction("TERMINATE_NODE", "trash", fmt.Sprintf("htmx.ajax('GET', '/system/projects/%s/database/modals/delete?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "danger")
+        </div>
+
+        <footer class="p-4 bg-surface-pit/40 border-t border-white/5 flex items-center justify-between opacity-40 italic">
+            <span class="text-[7px] font-black uppercase tracking-widest">Auth_Level: 10</span>
+            <span class="text-[7px] font-mono">0xCC_NODE</span>
+        </footer>
+    </div>
+}
+
+templ ContextAction(label string, icon string, action string, mode string) {
+    <button 
+        onclick={ templ.ComponentScript{ Call: action } }
+        class={ "w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all group/item relative overflow-hidden",
+                templ.KV("hover:bg-accent-primary/10 text-white", mode == "primary"),
+                templ.KV("hover:bg-white/5 text-content-muted hover:text-white", mode == "default"),
+                templ.KV("hover:bg-amber-500/10 text-amber-500/60 hover:text-amber-500", mode == "warning"),
+                templ.KV("hover:bg-rose-500/10 text-rose-500/60 hover:text-rose-500", mode == "danger") }>
+        
+        <!-- Hover Aura -->
+        <div class={ "absolute inset-0 opacity-0 group-hover/item:opacity-100 transition-opacity", 
+                   templ.KV("bg-gradient-to-r from-accent-primary/10 via-transparent to-transparent", mode == "primary"),
+                   templ.KV("bg-gradient-to-r from-white/5 via-transparent to-transparent", mode == "default"),
+                   templ.KV("bg-gradient-to-r from-rose-500/5 via-transparent to-transparent", mode == "danger") }></div>
+
+        <div class={ "w-8 h-8 rounded-xl flex items-center justify-center transition-transform group-hover/item:scale-110",
+                   templ.KV("bg-accent-primary/10 text-accent-primary", mode == "primary"),
+                   templ.KV("bg-white/5 text-content-muted group-hover/item:text-white", mode == "default"),
+                   templ.KV("bg-rose-500/10 text-rose-500", mode == "danger") }>
+            @Icon(icon)
+        </div>
+        <span class="text-[9px] font-black uppercase tracking-[0.2em] relative z-10">{ label }</span>
+    </button>
+}
+
+templ Icon(name string) {
+    if name == "grid" {
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+    } else if name == "copy" {
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+    } else if name == "edit" {
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    } else if name == "download" {
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+    } else if name == "trash" {
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+    } else if name == "zap" {
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    }
+}

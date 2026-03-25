@@ -2,7 +2,6 @@ package database
 
 import (
     "fmt"
-    "cascata/internal/i18n"
 )
 
 // ExtensionsModal: Empower users to activate sovereign database features.
@@ -16,7 +15,7 @@ templ ExtensionsModal(slug string, extensions []string, available []string) {
             <header class="p-10 border-b border-white/5 bg-surface-pit/20 flex items-center justify-between">
                 <div class="flex items-center gap-6">
                     <div class="w-16 h-16 rounded-[28px] bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/10 shadow-glow-sm">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2-2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     </div>
                     <div>
                         <h2 class="text-2xl font-black uppercase tracking-[0.4em] text-white italic">Extension_Catalyst</h2>
@@ -225,6 +224,153 @@ templ DeleteTableConfirm(slug string, table string, schema string) {
                     <span>DESTROY_COMMAND</span>
                 </button>
             </div>
+        </div>
+    </div>
+}
+
+// DuplicateModal: Sovereign Cloning Lab.
+templ DuplicateModal(slug string, table string, schema string) {
+    <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-2xl z-[1500] flex items-center justify-center p-8 animate-in zoom-in-95 pointer-events-auto" 
+         id="duplicate-modal"
+         onclick="if(event.target == this) this.remove();">
+        <div class="bg-surface-base rounded-[48px] p-16 max-w-xl w-full shadow-glow border border-white/10 text-center select-none italic">
+            <div class="w-24 h-24 bg-secondary/10 text-secondary rounded-[36px] flex items-center justify-center mx-auto mb-10 border border-secondary/10 shadow-glow">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="13" height="13" x="9" y="9" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </div>
+            <h3 class="text-2xl font-black text-white mb-4 uppercase tracking-[0.4em]">Cloning_Architect</h3>
+            <p class="text-[10px] text-content-muted font-black uppercase tracking-widest leading-relaxed mb-12">
+                Replicate the structural DNA of <span class="text-secondary bg-secondary/5 px-2 py-0.5 rounded-lg border border-secondary/10">{ table }</span> into a new sibling node.
+            </p>
+
+            <div class="space-y-8 text-left mb-12">
+                 <div class="space-y-3">
+                    <label class="text-[9px] font-black text-content-muted uppercase tracking-widest ml-1 italic">New Entity Identifier</label>
+                    <input type="text" value={ fmt.Sprintf("%s_copy", table) } class="w-full bg-surface-pit/60 border border-white/10 py-5 px-8 rounded-[28px] text-[11px] font-black uppercase tracking-widest text-white focus:border-secondary/40 focus:bg-surface-raised transition-all outline-none italic"/>
+                 </div>
+                 
+                 <div class="flex items-center justify-between p-6 bg-surface-raised/40 rounded-[28px] border border-white/5">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-secondary">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12h18"/><path d="m15 18 6-6-6-6"/></svg>
+                        </div>
+                        <span class="text-[9px] font-black uppercase tracking-widest text-white">INCLUDE_DATA_PAYLOAD</span>
+                    </div>
+                    <button class="w-12 h-7 bg-secondary rounded-full p-1 flex items-center justify-end transition-all shadow-glow">
+                        <div class="w-5 h-5 bg-white rounded-full shadow-md"></div>
+                    </button>
+                 </div>
+            </div>
+
+            <div class="flex gap-6">
+                <button onclick="document.getElementById('duplicate-modal').remove()" class="flex-1 py-5 text-[10px] font-black text-content-muted hover:text-white uppercase tracking-[0.2em] transition-all">ABORT_CLONE</button>
+                <button class="flex-[2] py-5 bg-secondary text-white rounded-[28px] text-[10px] font-black uppercase tracking-[0.3em] shadow-glow hover:scale-[1.05] active:scale-[0.95] transition-all italic">
+                    EXECUTE_DUPLICATION
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+// IngestHubModal: Massive structural data injection.
+templ IngestHubModal(slug string, table string, schema string) {
+     <div class="fixed inset-0 bg-slate-950/90 backdrop-blur-2xl z-[1500] flex items-center justify-center p-8 animate-in zoom-in-95 pointer-events-auto" 
+         id="ingest-modal"
+         onclick="if(event.target == this) this.remove();">
+        <div class="bg-surface-base rounded-[64px] w-full max-w-2xl shadow-glow border border-white/10 overflow-hidden flex flex-col italic">
+            <header class="p-10 border-b border-white/5 flex items-center gap-6 bg-surface-raised/20 relative">
+                 <!-- Pulse Aura -->
+                 <div class="absolute -top-10 -right-10 w-40 h-40 bg-accent-primary/10 blur-[60px] rounded-full animate-pulse"></div>
+                 
+                 <div class="w-16 h-16 rounded-[28px] bg-accent-primary/10 flex items-center justify-center text-accent-primary border border-accent-primary/10 shadow-glow relative z-10">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                 </div>
+                 <div class="relative z-10">
+                    <h2 class="text-2xl font-black uppercase tracking-[0.4em] text-white">Ingest_Hub</h2>
+                    <span class="text-[10px] font-black text-content-muted uppercase tracking-widest italic">{ fmt.Sprintf("DESTINATION_NODE: %s", table) }</span>
+                 </div>
+            </header>
+
+            <div class="p-12 space-y-10 flex-1">
+                <!-- Drop Zone -->
+                <div class="border-2 border-dashed border-white/10 rounded-[48px] p-16 flex flex-col items-center justify-center bg-surface-pit/10 group hover:border-accent-primary/40 hover:bg-accent-primary/5 transition-all cursor-pointer relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-accent-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center text-content-muted group-hover:text-accent-primary transition-all mb-8 shadow-inner">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/></svg>
+                    </div>
+                    <span class="text-xs font-black uppercase tracking-[0.4em] text-white mb-2">Drop_Data_Matrix</span>
+                    <span class="text-[9px] font-bold text-content-muted uppercase tracking-widest italic">Supported: .csv, .json, .xlsx (Max 50MB)</span>
+                </div>
+
+                <!-- Format selection -->
+                <div class="grid grid-cols-3 gap-4">
+                    <button class="py-4 rounded-[22px] bg-surface-raised border border-accent-primary/40 text-[10px] font-black uppercase tracking-widest text-white shadow-glow">AUTODETECT</button>
+                    <button class="py-4 rounded-[22px] bg-surface-raised/40 border border-white/5 text-[10px] font-black uppercase tracking-widest text-content-muted hover:border-white/20 transition-all">STRICT_JSON</button>
+                    <button class="py-4 rounded-[22px] bg-surface-raised/40 border border-white/5 text-[10px] font-black uppercase tracking-widest text-content-muted hover:border-white/20 transition-all">FLAT_CSV</button>
+                </div>
+            </div>
+
+            <footer class="p-10 border-t border-white/5 bg-surface-pit/20 flex gap-6">
+                <button onclick="document.getElementById('ingest-modal').remove()" class="flex-1 py-5 text-[10px] font-black text-content-muted hover:text-white uppercase tracking-[0.2em] transition-all">ABORT_INGEST</button>
+                <button class="flex-[3] py-5 bg-accent-primary text-white rounded-[28px] text-[10px] font-black uppercase tracking-[0.4em] shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all italic">COMMENCE_VALIDATION_PULSE</button>
+            </footer>
+        </div>
+     </div>
+}
+
+// RecycleBinModal: Historical node recovery storage.
+templ RecycleBinModal(slug string, items []string) {
+    <div class="fixed inset-0 bg-slate-950/90 backdrop-blur-2xl z-[1500] flex items-center justify-center p-8 animate-in zoom-in-95 pointer-events-auto" 
+         id="recycle-modal"
+         onclick="if(event.target == this) this.remove();">
+        <div class="bg-surface-base rounded-[56px] w-full max-w-3xl shadow-glow border border-white/10 flex flex-col overflow-hidden italic">
+            <header class="p-10 border-b border-white/5 bg-rose-500/5 flex items-center justify-between">
+                <div class="flex items-center gap-6">
+                    <div class="w-16 h-16 rounded-[28px] bg-rose-500/10 flex items-center justify-center text-rose-500 border border-rose-500/10 shadow-glow-sm">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><rect width="4" height="10" x="10" y="11" rx="2"/></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-black uppercase tracking-[0.4em] text-white">Archive_Pulse</h2>
+                        <span class="text-[10px] font-black text-rose-500 uppercase tracking-widest italic">{ fmt.Sprintf("%d_NODES_IN_STASIS", len(items)) }</span>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('recycle-modal').remove()" class="p-4 rounded-full text-white/20 hover:text-white hover:bg-white/5 transition-all">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-10 min-h-[400px] flex flex-col custom-scrollbar">
+                if len(items) == 0 {
+                    <div class="flex-1 flex flex-col items-center justify-center text-content-muted/20 opacity-40 py-20">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-6"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        <span class="text-xs font-black uppercase tracking-widest">Archive_Storage_Empty</span>
+                    </div>
+                } else {
+                    <div class="space-y-4">
+                        for _, item := range items {
+                             <div class="flex items-center justify-between p-6 bg-surface-raised/40 rounded-[32px] border border-white/5 group hover:border-rose-500/30 transition-all">
+                                <div class="flex items-center gap-5">
+                                    <div class="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-rose-500 group-hover:bg-rose-500/10 transition-colors">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12h18"/><path d="m15 18 6-6-6-6"/></svg>
+                                    </div>
+                                    <div>
+                                        <span class="block text-xs font-black text-white uppercase tracking-widest italic">{ item }</span>
+                                        <span class="block text-[8px] font-bold text-content-muted uppercase tracking-tighter">DELETED_2_HOURS_AGO</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all">
+                                     <button class="px-5 py-2 rounded-full border border-white/10 text-[9px] font-black uppercase tracking-widest text-content-muted hover:text-white hover:bg-white/5 transition-all">VIEW_STRUCT</button>
+                                     <button class="px-5 py-2 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all shadow-glow-sm">RESTORE_NODE</button>
+                                </div>
+                             </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <footer class="p-10 border-t border-white/5 bg-surface-pit/20 flex justify-between items-center">
+                 <button class="text-[9px] font-black uppercase tracking-widest text-rose-500 hover:underline transition-all">PURGE_ENTIRE_STASIS_CORE</button>
+                 <span class="text-[7px] font-bold text-content-muted uppercase tracking-widest">Storage Encrypted: AES-256-GCM</span>
+            </footer>
         </div>
     </div>
 }

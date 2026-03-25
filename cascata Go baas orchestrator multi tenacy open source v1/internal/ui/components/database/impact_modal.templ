@@ -1,0 +1,156 @@
+package database
+
+import (
+    "fmt"
+)
+
+type DependencyItem struct {
+    Type     string // 'fk', 'index', 'view', 'trigger', 'function', 'policy', 'cronjob'
+    Name     string
+    Detail   string
+    Severity string // 'danger', 'warning', 'info'
+    Stack    string // Optional: Related code snippet or DDL
+}
+
+// ColumnImpactModal: Critical Analysis for Structural Transformations.
+templ ColumnImpactModal(slug string, action string, schema string, table string, target string, newName string, dependencies []DependencyItem) {
+    <div class="fixed inset-0 bg-slate-950/90 backdrop-blur-2xl z-[1600] flex items-center justify-center p-8 animate-in zoom-in-95 pointer-events-auto" 
+         id="impact-modal-overlay"
+         onclick="if(event.target == this) this.remove();">
+        
+        <div class="bg-surface-base rounded-[48px] w-full max-w-3xl max-h-[90vh] flex flex-col shadow-glow border border-white/10 overflow-hidden htmx-entry-anim select-none transition-all duration-700">
+            <!-- Header (Impact Atmosphere) -->
+            <header class={ "p-10 border-b border-white/5 relative overflow-hidden", 
+                        templ.KV("bg-rose-500/10", action == "delete"),
+                        templ.KV("bg-accent-primary/10", action == "rename") }>
+                
+                <div class="flex items-center justify-between relative z-10">
+                    <div class="flex items-center gap-6">
+                        <div class={ "w-16 h-16 rounded-[28px] flex items-center justify-center text-white shadow-glow border", 
+                                    templ.KV("bg-rose-600 border-rose-500/30", action == "delete"),
+                                    templ.KV("bg-accent-primary border-accent-primary/30", action == "rename") }>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="animate-pulse"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                        </div>
+                        <div>
+                             <h2 class="text-2xl font-black uppercase tracking-[0.4em] text-white italic">Impact_Analysis</h2>
+                             <div class="flex items-center gap-3 mt-1">
+                                <span class="text-[10px] font-black text-content-muted uppercase tracking-widest">{ fmt.Sprintf("%s_%s", action, target) }</span>
+                                <div class="w-1 h-1 rounded-full bg-white/20"></div>
+                                <span class="text-[10px] font-black text-white italic">{ fmt.Sprintf("%s.%s", schema, table) }</span>
+                             </div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="document.getElementById('impact-modal-overlay').remove()" class="p-4 rounded-full text-white/20 hover:text-white hover:bg-white/5 transition-all">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Area (The Dependency Mesh) -->
+            <div class="flex-1 overflow-y-auto p-12 space-y-10 custom-scrollbar">
+                if len(dependencies) == 0 {
+                    <div class="flex flex-col items-center justify-center py-20 animate-in fade-in duration-1000">
+                         <div class="w-24 h-24 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 shadow-glow mb-8">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                         </div>
+                         <h3 class="text-lg font-black text-white uppercase tracking-[0.4em] mb-4">Zero_Impact_Verified</h3>
+                         <p class="text-[10px] text-content-muted font-bold uppercase tracking-widest max-w-xs text-center leading-relaxed">Safety Protocol Alpha: No external dependencies detected in the current schema context. Operation is secure.</p>
+                    </div>
+                } else {
+                    <!-- Summary Statistics -->
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span class="text-[9px] font-black text-content-muted uppercase tracking-[0.4em] mr-2">DETECTION_PULSE:</span>
+                        for _, dep := range dependencies {
+                             <div class="px-4 py-2 bg-white/5 rounded-full border border-white/5 flex items-center gap-3">
+                                <div class={ "w-1.5 h-1.5 rounded-full", templ.KV("bg-rose-500", dep.Severity == "danger"), templ.KV("bg-amber-500", dep.Severity == "warning"), templ.KV("bg-blue-500", dep.Severity == "info") }></div>
+                                <span class="text-[9px] font-black uppercase text-white/60 tracking-widest">{ dep.Type }</span>
+                             </div>
+                        }
+                    </div>
+
+                    <!-- Dependency Feed -->
+                    <div class="space-y-4">
+                        for _, dep := range dependencies {
+                            <div class={ "group p-6 rounded-[32px] border transition-all duration-500 hover:scale-[1.01] bg-surface-raised/40", 
+                                        templ.KV("border-rose-500/20 hover:bg-rose-500/5", dep.Severity == "danger"),
+                                        templ.KV("border-amber-500/20 hover:bg-amber-500/5", dep.Severity == "warning"),
+                                        templ.KV("border-white/5 hover:bg-white/5", dep.Severity == "info") }>
+                                
+                                <div class="flex items-start justify-between gap-6">
+                                    <div class="flex items-start gap-5">
+                                        <div class={ "w-12 h-12 rounded-2xl flex items-center justify-center text-white border transition-all", 
+                                                    templ.KV("bg-rose-500/10 border-rose-500/10", dep.Severity == "danger"),
+                                                    templ.KV("bg-amber-500/10 border-amber-500/10", dep.Severity == "warning"),
+                                                    templ.KV("bg-blue-500/10 border-blue-500/10", dep.Severity == "info") }>
+                                            @DependencyIcon(dep.Type)
+                                        </div>
+                                        <div>
+                                            <div class="flex items-center gap-3 mb-1">
+                                                <span class="text-xs font-black uppercase tracking-widest text-white">{ dep.Name }</span>
+                                                <span class={ "text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter",
+                                                            templ.KV("bg-rose-500 text-white", dep.Severity == "danger"),
+                                                            templ.KV("bg-amber-500 text-white", dep.Severity == "warning"),
+                                                            templ.KV("bg-blue-500 text-white", dep.Severity == "info") }>{ dep.Severity }</span>
+                                            </div>
+                                            <p class="text-[9px] font-bold text-content-muted uppercase tracking-widest leading-relaxed opacity-60 italic">{ dep.Detail }</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <button class="flex items-center gap-2 p-2 rounded-xl text-content-muted hover:text-white transition-all opacity-0 group-hover:opacity-100 italic">
+                                        <span class="text-[8px] font-black uppercase tracking-widest">VIEW_DDL</span>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m18 13-6 6-6-6"/><path d="M12 5v14"/></svg>
+                                    </button>
+                                </div>
+                                
+                                if dep.Stack != "" {
+                                    <pre class="mt-6 p-4 bg-surface-pit/60 rounded-[22px] border border-white/5 text-[9px] font-mono text-content-muted/60 overflow-hidden group-hover:text-white/40 transition-colors italic">
+                                        { dep.Stack }
+                                    </pre>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Action Footer (The Sovereign Commitment) -->
+            <footer class="p-12 border-t border-white/5 bg-surface-base flex items-center gap-8 relative z-20">
+                <button onclick="document.getElementById('impact-modal-overlay').remove()" class="flex-1 py-5 text-[10px] font-black text-content-muted hover:text-white uppercase tracking-[0.3em] transition-all italic">ABORT_TRANSFORMATION</button>
+                <button class={ "flex-[2] h-18 text-white rounded-[32px] text-[11px] font-black uppercase tracking-[0.4em] shadow-glow hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center gap-4 group italic", 
+                            templ.KV("bg-rose-600", action == "delete"),
+                            templ.KV("bg-accent-primary", action == "rename") }>
+                    
+                    if action == "delete" {
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="group-hover:rotate-12 transition-transform"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        <span>CASCADE_DESTRUCTION</span>
+                    } else {
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="group-hover:rotate-12 transition-transform"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <span>EXECUTE_RENAME_BURST</span>
+                    }
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+templ DependencyIcon(depType string) {
+    switch depType {
+        case "fk":
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21 2-2 2a2.828 2.828 0 1 1-4-4l2-2"/><path d="m3 21 2-2a2.828 2.828 0 1 1 4 4l-2 2"/><path d="m21 2-9 9"/><path d="m15 5-9 9"/></svg>
+        case "index":
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+        case "view":
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        case "trigger":
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>
+        case "function":
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        case "policy":
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        case "cronjob":
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        default:
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    }
+}
