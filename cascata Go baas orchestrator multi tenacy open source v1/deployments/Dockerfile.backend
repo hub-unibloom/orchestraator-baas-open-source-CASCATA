@@ -34,7 +34,13 @@ WORKDIR /root/
 COPY --from=builder /app/cascata-orchestrator .
 COPY --from=builder /app/worner-provision .
 
-# Definir porta padrão (exemplo)
+# Copiar a essência fluida: traduções (i18n), design system e assets 
+COPY --from=builder /app/languages ./languages
+COPY --from=builder /app/internal/ui/static ./internal/ui/static
+# Se existirem temas no futuro, garante que sejam encontrados.
+COPY --from=builder /app/themas ./themas 2>/dev/null || true
+
+# Definir porta padrão
 EXPOSE 8080
 
 # Rodar o binário

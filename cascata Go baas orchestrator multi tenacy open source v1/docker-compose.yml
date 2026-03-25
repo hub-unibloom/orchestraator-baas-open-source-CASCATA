@@ -84,6 +84,7 @@ services:
     container_name: cascata-vault
     cap_add:
       - IPC_LOCK
+    command: server -config=/vault/config/cascata-vault.hcl
     networks:
       - cascata-net
     volumes:

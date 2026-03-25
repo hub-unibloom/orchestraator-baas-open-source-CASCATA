@@ -59,7 +59,7 @@ func main() {
 func runPrimary(ctx context.Context, cfg *config.Config) {
 	slog.Info("Cascata v1.0.0.0 Primary: Starting Engine (Synergy Hub)", "env", cfg.Environment)
 	
-	const defaultWorkers = 2 
+	const defaultWorkers = 1 // Production scaling is handled by Docker replicas, NOT local processes
 	orch := cluster.NewOrchestrator(defaultWorkers)
 	
 	if err := orch.Start(ctx); err != nil {
