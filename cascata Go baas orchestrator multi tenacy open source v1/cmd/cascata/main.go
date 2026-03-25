@@ -189,7 +189,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	interceptor := api.NewInterceptor(repo, projectRepo, phantomSvc, eventQueue, workflowEngine, auditService)
 	
 	systemH := api.NewSystemHandler(systemAuth, sessionSvc, rlEngine, genesisSvc, projectRepo, projectService, storage.NewBackupService(projectService, repo))
-	uiH := api.NewUIHandler(systemH, projectService)
+	uiH := api.NewUIHandler(projectService)
 	
 	srv := api.NewServer(
 		cfg, 
