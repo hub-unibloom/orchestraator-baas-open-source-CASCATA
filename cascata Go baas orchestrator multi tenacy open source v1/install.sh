@@ -55,7 +55,7 @@ print_banner() {
   ██║     ██╔══██║╚════██║██║      ██╔══██║   ██║   ██╔══██║
   ╚██████╗██║  ██║███████║╚██████╗ ██║  ██║   ██║   ██║  ██║
    ╚═════╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝
-${C_RESET}${C_DIM}                              v1.0.0.0 | Orchestrator Studio${C_RESET}"
+${C_RESET}${C_DIM}                              v1.0.0.0 | BAAS Orchestrator Studio${C_RESET}"
     echo -e "${C_DIM}---------------------------------------------------------------${C_RESET}\n"
     log_info "Inicializando Orquestração Zero-Trust | Soberania Cascata v1..."
 }
