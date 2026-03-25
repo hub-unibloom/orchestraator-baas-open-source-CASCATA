@@ -26,26 +26,35 @@ func NewUIHandler(systemH *SystemHandler) *UIHandler {
 // ServeIndex renders the main entry point (Authenticated Dashboard).
 func (h *UIHandler) ServeIndex(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
-	// Wrap Dashboard inside Base layout
 	title := i18n.T(loc, "dashboard_title")
+	
+	w.Header().Set("Content-Type", "text/html")
 	component := layouts.Base(title, loc)
 	
-	// Inject pages.Dashboard as children of layout.Base
-	w.Header().Set("Content-Type", "text/html")
-	templ.Handler(component, templ.WithChildren(r.Context(), pages.Dashboard(loc))).ServeHTTP(w, r)
+	// Canonical Templ Child Injection in Go code
+	ctx := templ.WithChildren(r.Context(), pages.Dashboard(loc))
+	if err := component.Render(ctx, w); err != nil {
+		slog.Error("ui: failed to render index", "err", err)
+	}
 }
 
 // ServeLogin renders the sovereign authentication portal.
 func (h *UIHandler) ServeLogin(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
-	templ.Handler(pages.Login(loc)).ServeHTTP(w, r)
+	w.Header().Set("Content-Type", "text/html")
+	if err := pages.Login(loc).Render(r.Context(), w); err != nil {
+		slog.Error("ui: failed to render login", "err", err)
+	}
 }
 
 // ServeSystemDashboard returns the dashboard fragment for HTMX requests.
 func (h *UIHandler) ServeSystemDashboard(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("HX-Request") == "true" {
 		loc := i18n.GetLocalizer(r)
-		templ.Handler(pages.Dashboard(loc)).ServeHTTP(w, r)
+		w.Header().Set("Content-Type", "text/html")
+		if err := pages.Dashboard(loc).Render(r.Context(), w); err != nil {
+			slog.Error("ui: failed to render dashboard fragment", "err", err)
+		}
 		return
 	}
 	h.ServeIndex(w, r)
@@ -102,15 +111,21 @@ func (h *UIHandler) HandleUIProjectDashboard(w http.ResponseWriter, r *http.Requ
 	}
 
 	if r.Header.Get("HX-Request") == "true" {
-		templ.Handler(pages.ProjectDashboard(slug, loc)).ServeHTTP(w, r)
+		w.Header().Set("Content-Type", "text/html")
+		if err := pages.ProjectDashboard(slug, loc).Render(r.Context(), w); err != nil {
+			slog.Error("ui: failed to render project dashboard fragment", "slug", slug, "err", err)
+		}
 		return
 	}
 
-	// Full Page Reload Synergy
+	// Full Page Reload Synergy (Canonical Render)
 	title := "Project: " + slug
-	component := layouts.Base(title, loc)
 	w.Header().Set("Content-Type", "text/html")
-	templ.Handler(component, templ.WithChildren(r.Context(), pages.ProjectDashboard(slug, loc))).ServeHTTP(w, r)
+	component := layouts.Base(title, loc)
+	ctx := templ.WithChildren(r.Context(), pages.ProjectDashboard(slug, loc))
+	if err := component.Render(ctx, w); err != nil {
+		slog.Error("ui: failed to render project dashboard page", "slug", slug, "err", err)
+	}
 }
 
 // HandleUIProjectOverview returns the stats fragment for the cockpit.

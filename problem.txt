@@ -1,19 +1,12 @@
- => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                       73.2s 
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go                       74.2s 
 ------                                                                                                                                    
  > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                   
-60.65 # cascata/internal/api                                                                                                              
-60.65 internal/api/system_handler.go:93:5: undefined: strings                                                                             
-60.65 internal/api/ui_handler.go:35:27: cannot use templ.WithChildren(pages.Dashboard(loc)) (value of interface type context.Context) as func(*templ.ComponentHandler) value in argument to templ.Handler                                                                           
-60.65 internal/api/ui_handler.go:35:46: not enough arguments in call to templ.WithChildren
-60.65 	have (templ.Component)
-60.65 	want (context.Context, templ.Component)
-60.65 internal/api/ui_handler.go:113:27: cannot use templ.WithChildren(pages.ProjectDashboard(slug, loc)) (value of interface type context.Context) as func(*templ.ComponentHandler) value in argument to templ.Handler
-60.65 internal/api/ui_handler.go:113:46: not enough arguments in call to templ.WithChildren
-60.65 	have (templ.Component)
-60.65 	want (context.Context, templ.Component)
+61.82 # cascata/internal/api                                                                                                              
+61.82 internal/api/ui_handler.go:35:27: cannot use templ.WithChildren(r.Context(), pages.Dashboard(loc)) (value of interface type context.Context) as func(*templ.ComponentHandler) value in argument to templ.Handler                                                              
+61.82 internal/api/ui_handler.go:113:27: cannot use templ.WithChildren(r.Context(), pages.ProjectDashboard(slug, loc)) (value of interface type context.Context) as func(*templ.ComponentHandler) value in argument to templ.Handler
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                              85.4s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-cascata-orchestrator Building                                              91.3s
 Dockerfile.backend:23
 
 --------------------
