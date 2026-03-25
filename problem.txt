@@ -1,13 +1,11 @@
- => [builder  8/10] RUN templ generate                     1.2s 
- => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux g  71.3s 
-------                                                          
- > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                         
-58.32 # cascata/internal/api                                    
-58.32 internal/api/ui_handler.go:268:53: cannot use x (variable of type string) as int value in argument to database.TableContextMenu
-58.32 internal/api/ui_handler.go:268:56: cannot use y (variable of type string) as int value in argument to database.TableContextMenu
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux   72.0s 
+------                                                         
+ > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                       
+71.66 # command-line-arguments                                 
+71.66 cmd/cascata/main.go:192:26: cannot use projectService (variable of type *service.ProjectService) as service.ProjectService value in argument to api.NewUIHandler
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyo... Building 91.2s
+ ⠙ Image cascatagobaasorchestratormultitenacy... Building 87.6s
 Dockerfile.backend:23
 
 --------------------

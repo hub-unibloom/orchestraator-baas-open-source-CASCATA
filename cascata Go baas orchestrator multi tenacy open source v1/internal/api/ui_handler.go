@@ -18,10 +18,10 @@ import (
 
 // UIHandler manages the high-fidelity management cockpits.
 type UIHandler struct {
-	projectSvc service.ProjectService
+	projectSvc *service.ProjectService
 }
 
-func NewUIHandler(projectSvc service.ProjectService) *UIHandler {
+func NewUIHandler(projectSvc *service.ProjectService) *UIHandler {
 	return &UIHandler{
 		projectSvc: projectSvc,
 	}
@@ -39,7 +39,7 @@ func (h *UIHandler) HandleUIRoot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	component := layouts.Base(title, loc, true, nil)
+	component := layouts.Base(title, loc, false, nil)
 	ctx := templ.WithChildren(r.Context(), pages.Dashboard(loc))
 	if err := component.Render(ctx, w); err != nil {
 		slog.Error("ui: failed to render root page", "err", err)
@@ -58,7 +58,7 @@ func (h *UIHandler) HandleUIProjects(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	component := layouts.Base(title, loc, true, nil)
+	component := layouts.Base(title, loc, false, nil)
 	ctx := templ.WithChildren(r.Context(), pages.Projects(loc))
 	if err := component.Render(ctx, w); err != nil {
 		slog.Error("ui: failed to render projects page", "err", err)
@@ -246,7 +246,10 @@ func (h *UIHandler) HandleUIDatabaseModals(w http.ResponseWriter, r *http.Reques
 		table := r.URL.Query().Get("table")
 		_ = dbUI.DeleteTableConfirm(slug, table, "public").Render(r.Context(), w)
 	case "add-column":
-		w.Write([]byte(`<div class="p-10 text-white font-black italic">ADD_COLUMN_WORK_IN_PROGRESS</div>`))
+		table := r.URL.Query().Get("table")
+		schema := r.URL.Query().Get("schema")
+		if schema == "" { schema = "public" }
+		_ = dbUI.AddColumnModal(slug, table, schema).Render(r.Context(), w)
 	}
 }
 
@@ -462,12 +465,23 @@ func (h *UIHandler) HandleUISettings(w http.ResponseWriter, r *http.Request) {
 func (h *UIHandler) HandleUIOnboarding(w http.ResponseWriter, r *http.Request) {
 	loc := internalI18n.GetLocalizer(r)
 	w.Header().Set("Content-Type", "text/html")
-	_ = pages.OnboardingPage(loc).Render(r.Context(), w)
+	
+	if r.Header.Get("HX-Request") == "true" {
+		_ = pages.OnboardingPage(loc).Render(r.Context(), w)
+		return
+	}
+
+	component := layouts.Base("Projeto Genesis", loc, true, nil)
+	ctx := templ.WithChildren(r.Context(), pages.OnboardingPage(loc))
+	_ = component.Render(ctx, w)
 }
 
 // HandleUIServeLogin serves the identity gateway entry point.
 func (h *UIHandler) HandleUIServeLogin(w http.ResponseWriter, r *http.Request) {
 	loc := internalI18n.GetLocalizer(r)
 	w.Header().Set("Content-Type", "text/html")
-	_ = pages.LoginPage(loc).Render(r.Context(), w)
+	
+	component := layouts.Base("Acesso Soberano", loc, true, nil)
+	ctx := templ.WithChildren(r.Context(), pages.LoginPage(loc))
+	_ = component.Render(ctx, w)
 }
