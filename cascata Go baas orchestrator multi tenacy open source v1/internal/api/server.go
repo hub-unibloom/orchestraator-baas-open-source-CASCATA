@@ -114,8 +114,11 @@ func (s *Server) Start(ctx context.Context, id int) error {
 		r.Get("/", s.UIH.ServeIndex)
 		r.Get("/dashboard", s.UIH.ServeSystemDashboard)
 		
+		r.Get("/projects", s.SystemH.HandleListProjects)
+		r.Post("/projects", s.SystemH.HandleCreateProject)
+		r.Get("/projects/export", s.SystemH.HandleExportCAF)
+
 		r.Route("/projects", func(r chi.Router) {
-			r.Get("/", s.SystemH.HandleListProjects)
 			r.Get("/list", s.UIH.HandleUIListProjects) 
 			r.Get("/onboarding", s.UIH.HandleUIOnboarding) 
 			r.Get("/{slug}", s.UIH.HandleUIProjectDashboard)
@@ -127,9 +130,7 @@ func (s *Server) Start(ctx context.Context, id int) error {
 			r.Get("/{slug}/database/tables/{table}/context-menu", s.UIH.HandleUIDatabaseContextMenu)
 			r.Get("/{slug}/database/console", s.UIH.HandleUIDatabaseConsole)
 			r.Get("/{slug}/database/modals/{type}", s.UIH.HandleUIDatabaseModals)
-			r.Post("/", s.SystemH.HandleCreateProject)
 			r.Delete("/{slug}", s.SystemH.HandleDeleteProject)
-			r.Get("/export", s.SystemH.HandleExportCAF)
 		})
 	})
 

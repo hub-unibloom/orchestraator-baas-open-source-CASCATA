@@ -50,7 +50,7 @@ templ OnboardingModal(loc *i18n.Localizer) {
 
 			    <!-- Main Content Area -->
 			    <div class="flex-1 p-10 lg:p-16 relative overflow-hidden">
-			        <form hx-post="/dashboard/projects" hx-target="#project-grid" hx-swap="afterbegin" @htmx:after-request="if(event.detail.successful) document.getElementById('modal-onboarding').remove()" class="h-full flex flex-col justify-between">
+			        <form hx-post="/projects" hx-target="#project-grid" hx-swap="afterbegin" @htmx:after-request="if(event.detail.successful) document.getElementById('modal-onboarding').remove()" class="h-full flex flex-col justify-between">
 			            
 			            <!-- CONTENT STEPS -->
 			            <div class="flex-1 min-h-[360px]">
