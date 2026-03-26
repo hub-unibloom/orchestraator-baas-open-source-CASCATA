@@ -66,6 +66,6 @@ func (s *SystemAuthService) AuthenticateMember(ctx context.Context, email, passw
 }
 
 // LogAudit exposes the internal auditor to external handlers without exposing the field.
-func (s *SystemAuthService) LogAudit(ctx context.Context, projectSlug, op, actorID, actorType string, payload any) error {
-	return s.auditSvc.Log(ctx, projectSlug, op, actorID, actorType, payload)
+func (s *SystemAuthService) LogAudit(ctx context.Context, q domain.Queryer, projectSlug, op, actorID, actorType string, payload any) error {
+	return s.auditSvc.Log(ctx, q, projectSlug, op, actorID, actorType, payload)
 }

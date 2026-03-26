@@ -102,7 +102,7 @@ func (s *ResidentAuthService) AuthenticateByCPF(ctx context.Context, projectSlug
 	}
 
 	// 5. Log activity
-	_ = s.auditSvc.Log(ctx, projectSlug, "RESIDENT_LOGIN", res.ID, string(domain.IdentityResident), map[string]interface{}{"cpf": cpf})
+	_ = s.auditSvc.Log(ctx, pool.Pool, projectSlug, "RESIDENT_LOGIN", res.ID, string(domain.IdentityResident), map[string]interface{}{"cpf": cpf})
 
 	return res, token, nil
 }
@@ -287,7 +287,7 @@ func (s *ResidentAuthService) VerifyOTP(ctx context.Context, projectSlug, identi
 		_ = pool.WithRLS(context.Background(), claims, projectSlug, false, func(tx pgx.Tx) error {
 			return s.resRepo.UpdateLastLogin(context.Background(), tx, res.ID)
 		})
-		_ = s.auditSvc.Log(context.Background(), projectSlug, "RESIDENT_LOGIN_OTP", res.ID, string(domain.IdentityResident), map[string]interface{}{"identifier": identifier})
+		_ = s.auditSvc.Log(context.Background(), pool.Pool, projectSlug, "RESIDENT_LOGIN_OTP", res.ID, string(domain.IdentityResident), map[string]interface{}{"identifier": identifier})
 	}()
 
 	return res, signedJWT, nil

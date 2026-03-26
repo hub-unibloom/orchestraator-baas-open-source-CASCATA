@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"cascata/internal/auth"
@@ -16,10 +18,9 @@ import (
 	"cascata/internal/service"
 	"cascata/internal/storage"
 	"cascata/internal/ui/components"
+
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
-	"strconv"
-	"strings"
 )
 
 // SystemHandler handles management-level authentication and sessions.
@@ -220,7 +221,7 @@ func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Reque
 	}
 
 	// 3. System Auditor Ledger (Governance Sinergy)
-	_ = h.authSvc.LogAudit(r.Context(), p.Slug, "PROJECT_BIRTH", "SYSTEM", "MEMBER", map[string]interface{}{
+	_ = h.authSvc.LogAudit(r.Context(), h.ProjectRepo.Pool(), p.Slug, "PROJECT_BIRTH", "SYSTEM", "MEMBER", map[string]interface{}{
 		"name":          p.Name,
 		"max_users":     p.MaxUsers,
 		"max_db_weight": p.MaxDBWeightMB,

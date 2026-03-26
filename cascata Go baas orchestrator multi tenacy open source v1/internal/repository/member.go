@@ -2,11 +2,12 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"cascata/internal/database"
 	"cascata/internal/domain"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // MemberRepository manages members in the `system` schema.
@@ -31,7 +32,7 @@ func (r *MemberRepository) FindByEmail(ctx context.Context, q database.Queryer, 
 		&m.ID, &m.Email, &m.PasswordHash, &m.Role, &m.Type, &m.MFAEnabled, &m.CreatedAt, &m.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {

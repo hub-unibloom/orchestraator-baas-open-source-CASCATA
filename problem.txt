@@ -1,16 +1,19 @@
- => [builder  8/10] RUN templ generate                                     0.8s 
- => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o casca  68.1s 
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o casca  71.1s 
 ------                                                                          
  > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                         
-42.46 # cascata/internal/database                                               
-42.46 internal/database/migration_repo.go:21:73: undefined: Queryer             
-42.46 internal/database/migration_repo.go:27:75: undefined: Queryer             
-42.46 internal/database/migration_repo.go:46:65: undefined: Queryer
-42.46 internal/database/migration_repo.go:60:66: undefined: Queryer
-42.46 internal/database/database.go:10:2: "cascata/internal/domain" imported and not used
+53.35 # cascata/internal/auth                                                   
+53.35 internal/auth/resident_service.go:105:98: not enough arguments in call to s.auditSvc.Log                                                                  
+53.35 	have (context.Context, string, string, string, string, map[string]interface{})
+53.35 	want (context.Context, domain.Queryer, string, string, string, string, any)
+53.35 internal/auth/resident_service.go:290:120: not enough arguments in call to s.auditSvc.Log
+53.35 	have (context.Context, string, string, string, string, map[string]interface{})
+53.35 	want (context.Context, domain.Queryer, string, string, string, string, any)
+53.35 internal/auth/system_auth.go:70:66: not enough arguments in call to s.auditSvc.Log
+53.35 	have (context.Context, string, string, string, string, any)
+53.35 	want (context.Context, domain.Queryer, string, string, string, string, any)
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-casc... Building 86.8s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-casc... Building 87.4s
 Dockerfile.backend:23
 
 --------------------
@@ -29,3 +32,4 @@ Dockerfile.backend:23
 
 failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
 
+ubuntu@ip-172-26-7-197:~$ 
