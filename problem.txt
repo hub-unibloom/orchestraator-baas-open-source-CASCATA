@@ -1,19 +1,85 @@
- => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o casca  71.1s 
+
+ℹ Inicializando Orquestração Zero-Trust | Soberania Cascata v1...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Identidade Corporativa: Provisionamento do Worner
+  O 'Worner' é o administrador supremo do Condomínio Cascata.
+  Este será o único membro criado fora do Audit Trail visual.
+
+  E-mail do Worner: thalesje@gmail.com
+  Senha Mestre (Mínimo 12 caracteres): 
+  Habilitar OTP / MFA Obrigatório? (s/n): n
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Sincronizando Código Fonte
+ℹ Atualizando repositório local...
+✓ Diretório de operação definido: /root/cascata_root/cascata Go baas orchestrator multi tenacy open source v1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Experiência de Uso: Internacionalização Soberana
+  Selecione o idioma principal do Cascata Orchestrator:
+
+    1. en-US
+    2. pt-BR
+
+  Opção (1-2): 1
+✓ Idioma 'en-US' definido como oficial do Orquestrador.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Validando Runtime (Docker) e Ferramentas
+✓ Docker Engine verificado (v29.x).
+ℹ Cascata Architecture: Zero-Trust Foundation.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Aplicando Tuning de Performance Persistente (Sysctl)
+✓ Parâmetros Kernel gravados e tuning de RAM calculado (1907 MB).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Provisão de Identidade Criptográfica (.env)
+⚠ Arquivo .env já existente. Fazendo backup e gerando novo para FRESH INSTALL.
+✓ Arquivo Base Criptográfico (Zero Dev-Mode) concluído.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ▸ Iniciando Orquestração do Cluster Base
+ℹ ANICILAÇÃO DE DADOS: Limpando Containers, Redes e VOLUMES Órfãos...
+ℹ Realizando boot isolado da malha Docker...
+[+] pull 4/4
+ ✔ cascata-orchestrator                              Skipped No image to... 0.0s
+ ✔ Image postgres:18-alpine                          Pulled                 0.4s
+ ✔ Image docker.dragonflydb.io/dragonflydb/dragonfly Pulled                 0.5s
+ ✔ Image nginx:1.25-alpine                           Pulled                 0.4s
+[+] Building 88.1s (16/23)                                                      
+ => [internal] load local bake definitions                                 0.0s
+ => => reading from stdin 760B                                             0.0s
+ => [internal] load build definition from Dockerfile.backend               0.0s
+ => => transferring dockerfile: 1.24kB                                     0.0s
+ => [internal] load metadata for docker.io/library/alpine:latest           0.2s
+ => [internal] load metadata for docker.io/library/golang:1.26-alpine      0.2s
+ => [internal] load .dockerignore                                          0.0s
+ => => transferring context: 2B                                            0.0s
+ => [builder  1/10] FROM docker.io/library/golang:1.26-alpine@sha256:2389  0.0s
+ => => resolve docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43  0.0s
+ => [stage-1 1/7] FROM docker.io/library/alpine:latest@sha256:25109184c71  0.0s
+ => => resolve docker.io/library/alpine:latest@sha256:25109184c71bdad752c  0.0s
+ => [internal] load build context                                          0.0s
+ => => transferring context: 39.50kB                                       0.0s
+ => CACHED [builder  2/10] RUN apk add --no-cache gcc musl-dev git         0.0s
+ => CACHED [builder  3/10] WORKDIR /app                                    0.0s
+ => CACHED [builder  4/10] RUN go install github.com/a-h/templ/cmd/templ@  0.0s
+ => CACHED [builder  5/10] COPY go.mod ./                                  0.0s
+ => [builder  6/10] COPY . .                                               0.4s
+ => [builder  7/10] RUN go mod tidy                                       14.5s
+ => [builder  8/10] RUN templ generate                                     0.8s 
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o casca  71.9s 
 ------                                                                          
  > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                         
-53.35 # cascata/internal/auth                                                   
-53.35 internal/auth/resident_service.go:105:98: not enough arguments in call to s.auditSvc.Log                                                                  
-53.35 	have (context.Context, string, string, string, string, map[string]interface{})
-53.35 	want (context.Context, domain.Queryer, string, string, string, string, any)
-53.35 internal/auth/resident_service.go:290:120: not enough arguments in call to s.auditSvc.Log
-53.35 	have (context.Context, string, string, string, string, map[string]interface{})
-53.35 	want (context.Context, domain.Queryer, string, string, string, string, any)
-53.35 internal/auth/system_auth.go:70:66: not enough arguments in call to s.auditSvc.Log
-53.35 	have (context.Context, string, string, string, string, any)
-53.35 	want (context.Context, domain.Queryer, string, string, string, string, any)
+58.73 # cascata/internal/api                                                    
+58.73 internal/api/interceptors.go:76:52: not enough arguments in call to i.auditSvc.WriteEntry
+58.73 	have (context.Context, *domain.AuditEntry)
+58.73 	want (context.Context, domain.Queryer, *domain.AuditEntry)
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-casc... Building 87.4s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-casc... Building 88.2s
 Dockerfile.backend:23
 
 --------------------

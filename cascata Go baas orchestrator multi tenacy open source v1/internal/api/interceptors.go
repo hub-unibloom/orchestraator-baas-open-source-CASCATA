@@ -73,7 +73,7 @@ func (i *Interceptor) EmitEvent(ctx context.Context, slug, table, operation stri
 				IdentityType: idType,
 				Timestamp:    time.Now(),
 			}
-			_ = i.auditSvc.WriteEntry(context.Background(), entry)
+			_ = i.auditSvc.WriteEntry(context.Background(), i.repo.Pool, entry)
 		}()
 	}
 }
