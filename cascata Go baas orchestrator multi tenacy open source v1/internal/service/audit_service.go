@@ -30,8 +30,8 @@ func NewAuditService(repo *database.Repository) *AuditService {
 func (s *AuditService) refreshLastHash(ctx context.Context) {
 	// 1. Fetch the hash of the latest entry in the ledger
 	var h string
-	// Removed system. prefix to align with Sovereign Namespace Barrier
-	err := s.repo.Pool.QueryRow(ctx, "SELECT entry_hash FROM audit_ledger ORDER BY created_at DESC LIMIT 1").Scan(&h)
+	// Qualify table with cascata_system schema for global visibility
+	err := s.repo.Pool.QueryRow(ctx, "SELECT entry_hash FROM cascata_system.audit_ledger ORDER BY created_at DESC LIMIT 1").Scan(&h)
 	if err == nil {
 		s.lastHash = h
 	} else {
@@ -54,8 +54,9 @@ func (s *AuditService) WriteEntry(ctx context.Context, q domain.Queryer, entry *
 
 	// 3. Persist (Blockchain-style immutable append)
 	// Sovereign Registration: Persisted within the provided transaction context.
+	// Qualified table name ensures visibility across namespaces.
 	_, err := q.Exec(ctx, 
-		"INSERT INTO audit_ledger (project_slug, operation, identity_id, identity_type, table_name, payload, prev_hash, entry_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+		"INSERT INTO cascata_system.audit_ledger (project_slug, operation, identity_id, identity_type, table_name, payload, prev_hash, entry_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
 		entry.Project, entry.Operation, entry.IdentityID, entry.IdentityType, entry.Table, entry.Payload, entry.PrevHash, entry.EntryHash,
 	)
 	if err != nil {
