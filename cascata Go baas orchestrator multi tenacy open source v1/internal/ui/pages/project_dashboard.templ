@@ -8,7 +8,7 @@ import (
 templ ProjectDashboard(slug string, loc *i18n.Localizer) {
 	<!-- Smart Navigation OOB Injection -->
 	<div id="sub-navigation-slot" hx-swap-oob="true">
-		@ProjectSubNav(slug)
+		@ProjectSubNav(slug, "overview")
 	</div>
 
 	<div class="h-full flex flex-col bg-surface-base animate-fade-in relative overflow-hidden p-16">
@@ -36,10 +36,28 @@ templ ProjectDashboard(slug string, loc *i18n.Localizer) {
 	</div>
 }
 
-templ ProjectSubNav(slug string) {
+templ ProjectSubNav(slug string, active string) {
 	<div class="flex items-center gap-2 bg-surface-raised/40 border border-white/5 p-1 rounded-full backdrop-blur-md shadow-2xl">
-		<a hx-get={ fmt.Sprintf("/projects/%s", slug) } hx-target="#main-content" class="px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest text-content-muted hover:text-white transition-all cursor-pointer italic">OVR_VIEW</a>
-		<a hx-get={ fmt.Sprintf("/projects/%s/database", slug) } hx-target="#main-content" class="px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest bg-accent-primary text-white border border-accent-primary/20 hover:scale-105 transition-all cursor-pointer italic shadow-glow">DB_EXPLR</a>
+		<a 
+			hx-get={ fmt.Sprintf("/projects/%s", slug) } 
+			hx-target="#main-content" 
+			hx-push-url="true"
+			class={ "px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer italic", 
+				templ.KV("bg-accent-primary text-white shadow-glow", active == "overview"),
+				templ.KV("text-content-muted hover:text-white", active != "overview") }
+		>
+			{ "OVR_VIEW" }
+		</a>
+		<a 
+			hx-get={ fmt.Sprintf("/projects/%s/database", slug) } 
+			hx-target="#main-content" 
+			hx-push-url="true"
+			class={ "px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer italic",
+				templ.KV("bg-accent-primary text-white shadow-glow", active == "database"),
+				templ.KV("text-content-muted hover:text-white", active != "database") }
+		>
+			{ "DB_EXPLR" }
+		</a>
 		<a class="px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest text-content-muted hover:text-white transition-all cursor-pointer italic">SEC_LAB</a>
 		<a class="px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest text-content-muted hover:text-white transition-all cursor-pointer italic">STORAGE</a>
 		<a class="px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest text-content-muted hover:text-white transition-all cursor-pointer italic">AUTO_ENGINE</a>

@@ -7,7 +7,7 @@ import (
 
 // TableCreatorDrawer: The Enterprise Schema Architect (v1.0.0.0 Sovereign Standard).
 templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, loc *i18n.Localizer) {
-	<div class="fixed inset-y-0 right-0 w-[600px] bg-surface-base shadow-[0_0_100px_rgba(0,0,0,0.8)] z-[1000] border-l border-white/5 flex flex-col htmx-entry-anim animate-in slide-in-from-right duration-500 overflow-hidden italic select-none" id="table-creator-drawer">
+	<div class="fixed inset-y-0 right-0 w-[600px] bg-surface-base shadow-[0_0_100px_rgba(0,0,0,0.8)] z-[1000] border-l border-white/5 flex flex-col htmx-entry-anim animate-in slide-in-from-right duration-500 overflow-hidden italic select-none pointer-events-auto" id="table-creator-drawer">
 		<!-- Header (Architectural Ambience) -->
 		<header class="p-10 border-b border-white/5 bg-surface-base/80 flex items-center justify-between sticky top-0 z-30 backdrop-blur-3xl">
 			<div class="flex items-center gap-6">
@@ -166,4 +166,7 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
         // Inline logic for adding/removing columns via HTMX templates would go here
         // or handled by hx-get to a fragment-only endpoint.
     </script>
+}
+templ TableCreator(slug string, loc *i18n.Localizer) {
+	@TableCreatorDrawer(slug, []string{"public", "auth", "storage"}, "public", loc)
 }

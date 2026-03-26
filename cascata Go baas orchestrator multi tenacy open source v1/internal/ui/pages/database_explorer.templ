@@ -9,7 +9,11 @@ import (
 // DatabaseExplorer: The Sovereign Management Cockpit (v1.0.0.0 Alpha).
 templ DatabaseExplorer(slug string, loc *i18n.Localizer) {
 	<div class="flex h-screen bg-surface-base text-white overflow-hidden selection:bg-accent-primary/30 selection:text-white htmx-entry-anim italic select-none" id="database-explorer-root">
-		
+		<!-- Smart Navigation OOB Injection -->
+		<div id="sub-navigation-slot" hx-swap-oob="true">
+			@ProjectSubNav(slug, "database")
+		</div>
+
 		<!-- Sovereign Sidebar (The Pulse Stream) -->
 		@database.Sidebar(slug, loc)
 

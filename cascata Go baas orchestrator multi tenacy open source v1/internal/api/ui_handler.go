@@ -124,7 +124,7 @@ func (h *UIHandler) HandleUIProjectDashboard(w http.ResponseWriter, r *http.Requ
 	// Full Page Reload Synergy (Canonical Render)
 	title := "Project: " + slug
 	w.Header().Set("Content-Type", "text/html")
-	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug, "overview"))
 	ctx := templ.WithChildren(r.Context(), pages.ProjectDashboard(slug, loc))
 	if err := component.Render(ctx, w); err != nil {
 		slog.Error("ui: failed to render project dashboard page", "slug", slug, "err", err)
@@ -188,7 +188,7 @@ func (h *UIHandler) HandleUIDatabaseExplorer(w http.ResponseWriter, r *http.Requ
 	// Full Page Reload
 	title := "Database Explorer: " + slug
 	w.Header().Set("Content-Type", "text/html")
-	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug))
+	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug, "database"))
 	ctx := templ.WithChildren(r.Context(), pages.DatabaseExplorer(slug, loc))
 	if err := component.Render(ctx, w); err != nil {
 		slog.Error("ui: failed to render database explorer page", "slug", slug, "err", err)
@@ -247,7 +247,10 @@ func (h *UIHandler) HandleUIDatabaseModals(w http.ResponseWriter, r *http.Reques
 	modalType := chi.URLParam(r, "type")
 
 	w.Header().Set("Content-Type", "text/html")
+	loc := i18n.GetLocalizer(r)
 	switch modalType {
+	case "create-table":
+		_ = database.TableCreator(slug, loc).Render(r.Context(), w)
 	case "extensions":
 		installed := []string{"pgcrypto", "uuid-ossp"}
 		available := []string{"pgcrypto", "uuid-ossp", "pg_vector", "postgis", "pg_cron", "pg_audit"}
