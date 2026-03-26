@@ -329,7 +329,7 @@ func (h *UIHandler) HandleUIDatabaseCreateTable(w http.ResponseWriter, r *http.R
 	// Execute SQL in the context of the project schema
 	// Note: In a real production system, we would use the tenant's specific pool
     // and potentially wrap it in a transaction.
-	_, err := h.SystemH.ProjectRepo.Repo.Pool.Exec(r.Context(), sql)
+	_, err := h.SystemH.ProjectRepo.Pool().Exec(r.Context(), sql)
 	if err != nil {
 		slog.Error("ui: failed to execute create table SQL", "slug", slug, "err", err, "sql", sql)
 		// Return an error feedback (toast/alert) via HTMX

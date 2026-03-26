@@ -1,0 +1,26 @@
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux   71.6s 
+------                                                         
+ > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                       
+58.64 # cascata/internal/api                                   
+58.64 internal/api/ui_handler.go:332:34: h.SystemH.ProjectRepo.Repo undefined (type *repository.ProjectRepository has no field or method Repo, but does have unexported field repo)
+------
+[+] up 0/1
+ ⠙ Image cascatagobaasorchestratormultitenacy... Building 86.8s
+Dockerfile.backend:23
+
+--------------------
+
+  21 |     
+
+  22 |     # Fazer o build do orchestrator e do provisionador CLI
+
+  23 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
+
+  24 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
+
+  25 |     
+
+--------------------
+
+failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
+
