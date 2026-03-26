@@ -82,21 +82,16 @@ func (s *MigrationService) ApplyMigration(ctx context.Context, slug string, name
 
 	repo := database.NewMigrationRepository(pool)
 
-	// 3. Ensure History Table Exists (Genesis Pattern)
-	if err := repo.EnsureHistoryTable(ctx); err != nil {
-		span.RecordError(err)
-		return fmt.Errorf("migration.ApplyMigration: history table creation failed: %w", err)
-	}
-
-	// 4. Check for 'CONCURRENTLY' - these cannot be run inside a transaction
+	// 3. Check for 'CONCURRENTLY' - these cannot be run inside an atomic transaction.
 	isConcurrent := strings.Contains(strings.ToUpper(ddl), "CONCURRENTLY")
 
-	// 5. Execution Workflow
-	err = pgx.BeginFunc(ctx, pool.Pool, func(tx pgx.Tx) error {
-		// a. Enforce Schema Isolation precisely for this transaction
-		// This forces all unqualified DDLs (e.g. CREATE TABLE users) into the tenant's schema.
-		if _, err := tx.Exec(ctx, fmt.Sprintf(`SET LOCAL search_path TO "%s", public;`, slug)); err != nil {
-			return fmt.Errorf("migration: failed to inject search_path: %w", err)
+	// 4. Execution Workflow via Sovereign Barrier (WithRLS)
+	// We use isMaintenance=true to increase the statement timeout for DDL.
+	claims := database.UserClaims{Role: "service_role"}
+	err = pool.WithRLS(ctx, claims, slug, true, func(tx pgx.Tx) error {
+		// a. Ensure History Table Exists (Isolated by search_path via WithRLS)
+		if err := repo.EnsureHistoryTable(ctx, tx); err != nil {
+			return fmt.Errorf("migration.ApplyMigration: history table creation failed: %w", err)
 		}
 
 		// b. Acquire Advisory Lock to prevent concurrent orchestrators (Phase 15)
@@ -105,7 +100,7 @@ func (s *MigrationService) ApplyMigration(ctx context.Context, slug string, name
 			return err
 		}
 
-		// c. Idempotency Check
+		// b. Idempotency Check (Isolated by search_path via WithRLS)
 		var existingChecksum, status string
 		err = tx.QueryRow(ctx, "SELECT checksum, status FROM cascata_migrations WHERE name = $1", name).Scan(&existingChecksum, &status)
 		if err == nil {
@@ -118,7 +113,7 @@ func (s *MigrationService) ApplyMigration(ctx context.Context, slug string, name
 			}
 		}
 
-		// d. Pre-Execution Record (Audit Fidelity)
+		// c. Pre-Execution Record (Audit Fidelity)
 		m := &domain.Migration{
 			Slug:     slug,
 			Name:     name,
@@ -128,12 +123,12 @@ func (s *MigrationService) ApplyMigration(ctx context.Context, slug string, name
 		}
 		repo.RecordStep(ctx, tx, m)
 
-		// e. Handle Concurrent Operations (Non-Transactional DDL)
+		// d. Handle Concurrent Operations (Non-Transactional DDL)
 		if isConcurrent {
 			return fmt.Errorf("migration: CONCURRENTLY operations not supported in automated batch (Manual migration required)")
 		}
 
-		// f. Execute DDL
+		// e. Execute DDL
 		start := time.Now()
 		if _, err := tx.Exec(ctx, ddl); err != nil {
 			m.Status = domain.MigrationFailed
