@@ -18,13 +18,13 @@ func NewMigrationRepository(pool *Repository) *MigrationRepository {
 
 // EnsureHistoryTable initializes the migration tracking metadata if not present.
 // Implements SOVEREIGN SCHEMA MAPPING: created within the injected search_path.
-func (r *MigrationRepository) EnsureHistoryTable(ctx context.Context, q database.Queryer) error {
+func (r *MigrationRepository) EnsureHistoryTable(ctx context.Context, q Queryer) error {
 	_, err := q.Exec(ctx, domain.MigrationTableDDL)
 	return err
 }
 
 // GetAppliedMigrations retrieves the list of successfully executed schema changes.
-func (r *MigrationRepository) GetAppliedMigrations(ctx context.Context, q database.Queryer) ([]domain.Migration, error) {
+func (r *MigrationRepository) GetAppliedMigrations(ctx context.Context, q Queryer) ([]domain.Migration, error) {
 	rows, err := q.Query(ctx, "SELECT id, slug, name, ddl, checksum, status, applied_at FROM cascata_migrations ORDER BY applied_at ASC")
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func (r *MigrationRepository) GetAppliedMigrations(ctx context.Context, q databa
 }
 
 // RecordStep logs the attempt or result of a structural change.
-func (r *MigrationRepository) RecordStep(ctx context.Context, q database.Queryer, m *domain.Migration) error {
+func (r *MigrationRepository) RecordStep(ctx context.Context, q Queryer, m *domain.Migration) error {
 	sql := `
 		INSERT INTO cascata_migrations (slug, name, ddl, checksum, status, error, applied_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -57,7 +57,7 @@ func (r *MigrationRepository) RecordStep(ctx context.Context, q database.Queryer
 }
 
 // AcquireLock uses Postgres Advisory Locks to ensure single-orchestrator execution (Phase 15).
-func (r *MigrationRepository) AcquireLock(ctx context.Context, q database.Queryer, lockID int64) error {
+func (r *MigrationRepository) AcquireLock(ctx context.Context, q Queryer, lockID int64) error {
 	var acquired bool
 	err := q.QueryRow(ctx, "SELECT pg_try_advisory_xact_lock($1)", lockID).Scan(&acquired)
 	if err != nil {
