@@ -83,7 +83,7 @@ func (i *Interceptor) EmitEvent(ctx context.Context, slug, table, operation stri
 func (i *Interceptor) ProcessResponse(ctx context.Context, slug, table, operation string, data map[string]interface{}) (map[string]interface{}, error) {
 	// 1. Resolve Workflows for this project marked as Interceptors (Phase 10 Metadata)
 	// In production, we'd cache these lookups.
-	wfs, err := i.projRepo.GetWorkflows(ctx, slug)
+	wfs, err := i.projRepo.GetWorkflows(ctx, i.repo.Pool, slug)
 	if err != nil {
 		return data, nil // Fail open for safety, but log it
 	}

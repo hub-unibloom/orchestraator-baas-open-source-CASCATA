@@ -38,6 +38,7 @@ func NewSystemHandler(
 	authSvc *auth.SystemAuthService, 
 	sessionSvc *auth.SessionManager, 
 	rl *ratelimit.AdaptiveEngine,
+	genesis *service.GenesisService,
 	projectSvc *service.ProjectService,
 	projectRepo *repository.ProjectRepository,
 	backupSvc *storage.BackupService,

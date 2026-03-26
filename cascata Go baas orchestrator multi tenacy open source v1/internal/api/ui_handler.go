@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"cascata/internal/database"
+	cDB "cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/i18n"
 	"cascata/internal/repository"
@@ -108,7 +108,7 @@ func (h *UIHandler) ServeSystemDashboard(w http.ResponseWriter, r *http.Request)
 // HandleUIListProjects returns a fragment containing the grid of project cards.
 func (h *UIHandler) HandleUIListProjects(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
-	dbProjects, err := h.SystemH.ProjectRepo.List(r.Context())
+	dbProjects, err := h.SystemH.projectSvc.ListProjects(r.Context())
 	if err != nil {
 		slog.Error("ui: failed to list projects", "err", err)
 		http.Error(w, "Failed to fetch projects", http.StatusInternalServerError)
@@ -180,7 +180,7 @@ func (h *UIHandler) HandleUIProjectOverview(w http.ResponseWriter, r *http.Reque
 	slug := strings.TrimPrefix(path, "/projects/")
 	slug = strings.TrimSuffix(slug, "/overview")
 
-	dbProjects, err := h.SystemH.ProjectRepo.List(r.Context())
+	dbProjects, err := h.SystemH.projectSvc.ListProjects(r.Context())
 	if err != nil {
 		slog.Error("ui: failed to list tenants for overview", "err", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
@@ -499,7 +499,7 @@ func (h *UIHandler) fetchProjectSchemas(ctx context.Context, slug string) []stri
 	`
 
 	// Discovery within Sovereign Context
-	_ = h.SystemH.ProjectRepo.Repo().WithRLS(ctx, database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
+	_ = h.SystemH.ProjectRepo.Repo().WithRLS(ctx, cDB.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, sql, prefix)
 		if err != nil {
 			return err
