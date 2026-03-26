@@ -7,11 +7,11 @@
 
 ## 🎯 Executive Summary
 
-Cascata é um BaaS multi-tenant open source de auto-hospedagem. Sua arquitetura segue o modelo de condomínio: o orquestrador central (Cascata) gerencia múltiplos bancos de dados fisicamente isolados — cada tenant tem seu próprio apartamento, completamente independente dos demais, seguro desde a entrada até o armazenamento.
+Cascata é um BaaS multi-tenant open source de auto-hospedagem. Sua arquitetura segue o modelo de condomínio de alta densidade: o orquestrador central (Cascata) gerencia múltiplos namespaces (schemas) isolados através da **Arquitetura de Barreira por Pseudônimo (Sovereign Namespace Barrier)**. Cada tenant possui seu próprio conjunto de schemas prefixados pelo seu identificador único (ex: `slug_public`, `slug_auth`), garantindo isolamento total, performance extrema e segurança inviolável.
 
 Este plano documenta a construção do Cascata v1 em Go. É o guia definitivo — para humanos e para IA — de como o sistema é, o que ele faz, e como deve ser construído.
 
-> **Base provada em produção:** O Cascata v0 já opera com todas as features core documentadas aqui — incluindo isolamento físico, Privacy Engine, Automações com Interceptors, Webhook Receivers e Storage multi-provider — sustentando mais de 5.000 usuários simultâneos em VPS de 2GB de RAM com Node.js. Isso não foi acidente: foi resultado de arquitetura correta, algoritmos precisos e caching bem posicionado. O v1 em Go existe para remover os últimos limites que o runtime anterior impunha. Goroutines de 2KB vs threads de 1MB. Streaming pipelines sem disco temporário. Transaction pipelines com um único RTT. O mesmo hardware, multiplicado.
+> **Base provada em produção:** O Cascata v0 já opera com todas as features core documentadas aqui — incluindo isolamento por namespace, Privacy Engine, Automações com Interceptors, Webhook Receivers e Storage multi-provider — sustentando mais de 5.000 usuários simultâneos em VPS de 2GB de RAM com Node.js. Isso não foi acidente: foi resultado de arquitetura correta, algoritmos precisos e caching bem posicionado. O v1 em Go existe para remover os últimos limites que o runtime anterior impunha. Goroutines de 2KB vs threads de 1MB. Streaming pipelines sem disco temporário. Transaction pipelines com um único RTT. O mesmo hardware, multiplicado.
 
 **Filosofias:**
 - **Segurança reside no banco**
@@ -21,7 +21,7 @@ Este plano documenta a construção do Cascata v1 em Go. É o guia definitivo �
 **Stack:**
 - **Backend:** Go (Hyper-Cluster via Unix Socket IPC)
 - **Frontend:** React 19.1 + Vite
-- **Banco de dados:** PostgreSQL — Isolamento físico por tenant
+- **Banco de dados:** PostgreSQL — Isolamento Lógico-Físico via Concatenative Namespace (Sovereign Barrier)
 - **Segurança:** Zero-Trust, Triple-Mode Auth, RLS Claims Injection, Native Security Engine (Go + AES-GCM)
 - **Automação:** Engine de grafos com Interceptors síncronos e Cron nativo
 - **Edge Functions:** Engine Mode isolado com Go-V8 Bindings (modo padrão) e Wasmer/WASM (modo isolamento máximo)
@@ -135,7 +135,7 @@ O Cascata deve ser capaz de: revogar todas as chaves em segundos (Panic Mode), r
 | Comunicação painel ↔ servidor | Tráfego HTTPS | mTLS bidirecional — sem certificado cliente válido a conexão não abre, JWT nem é avaliado | Se OTP não estiver configurado pelo operador, esta camada fica mais fraca |
 | Shell no container (qualquer) | Filesystem do container | Dados criptografados, sockets restritos, sem credenciais em disco | Escape de container via misconfiguration Docker (`--privileged`, volume `/`) leva ao host — containers rodam sem privilégios extras |
 | Shell no host | SO do servidor | PAM + OTP obrigatório para `sudo` e qualquer comando privilegiado — recusado pelo SO, não pelo software | Se o atacante tiver UID 0 por escape de container, PAM pode ser contornado — defesa aqui é impedir o escape antes |
-| Banco de um tenant | Dados daquele tenant físico | Isolamento físico — banco de outro tenant é outro processo Postgres, inacessível por definição | Nenhum — isolamento físico real não tem workaround lógico |
+| Banco de um tenant | Dados e schemas daquele tenant | Isolamento via Namespace Concatenado (`slug_...`) — Banco unificado, mas visibilidade restrita via Search Path e RLS. Acesso entre tenants é fisicamente impossível no nível de catálogo. | Nenhum — vazamentos são bloqueados pelo orquestrador e pelo motor de segurança nativo. |
 | Rede interna (`cascata_secure`) | Containers internos visíveis entre si | Cada container valida a origem independentemente; SSRF bloqueado no Storage e no Automation Engine | Um container comprometido pode tentar falar com o Security Engine — mitigado por identificação nativa por serviço |
 
 ### O Que Nunca É Aceitável
@@ -162,11 +162,12 @@ O Cascata deve ser capaz de: revogar todas as chaves em segundos (Panic Mode), r
 
 ---
 
-### Fase 2 — Isolamento Físico de Tenants (Modelo Condomínio)
+### Fase 2 — Isolamento Lógico-Físico (Sovereign Namespace Barrier)
 **Escopo:**
-- `internal/orchestrator`: gerenciamento de ciclo de vida de bancos físicos por tenant
-- Provisionamento dinâmico via `CREATE DATABASE` com aplicação de template
-- Serviço de migração Go-nativo com versionamento e checksums
+- `internal/orchestrator`: gerenciamento de ciclo de vida de namespaces isolados via prefixo de slug
+- Provisionamento dinâmico via `CREATE SCHEMA "slug_public"`, `CREATE SCHEMA "slug_auth"`, etc.
+- Tradutor Inteligente de DDL: converte comandos visuais (ex: `CREATE TABLE users`) em comandos físicos injetados no schema correto (`slug_public.users`)
+- Serviço de migração Go-nativo com versionamento, checksums e consciência de namespace
 
 **Postgres Federation (Scale-out Transparente):**
 O modelo condomínio não é limitado a um único servidor Postgres. Quando um projeto cresce, o operador conecta um segundo (ou terceiro) servidor Postgres externo — o orquestrador Go faz load balance transparente entre os servidores sem que o projeto precise mudar infraestrutura ou código.
@@ -178,7 +179,7 @@ O modelo condomínio não é limitado a um único servidor Postgres. Quando um p
 - Recomendação: porta Postgres do servidor externo acessível somente pelo IP do Cascata
 - **Read Replicas:** orquestrador roteia queries de leitura para réplicas quando disponíveis — transparente para o tenant, configurado no painel
 
-**Critério de conclusão:** Tenant A não enxerga o banco do Tenant B. Novo tenant provisionado em menos de 2 segundos. Segundo servidor Postgres externo adicionado com queries distribuídas de forma transparente.
+**Critério de conclusão:** Tenant A não enxerga os schemas do Tenant B. Novo namespace do tenant provisionado em menos de 1 segundo. Segundo servidor Postgres externo adicionado com queries distribuídas de forma transparente.
 
 ---
 

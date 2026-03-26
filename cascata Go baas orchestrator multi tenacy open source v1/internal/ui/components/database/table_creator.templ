@@ -6,11 +6,7 @@ import (
 	internalI18n "cascata/internal/i18n"
 )
 
-// TableCreatorDrawer: The Enterprise Schema Architect (v1.0.0.0 Sovereign Standard).
-templ TableCreator(slug string, loc *i18n.Localizer, schemas []string, currentSchema string) {
-	@TableCreatorDrawer(slug, schemas, currentSchema, loc)
-}
-
+!
 templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, loc *i18n.Localizer) {
 	<div 
         class="fixed inset-y-0 right-0 w-[600px] bg-surface-base shadow-[0_0_100px_rgba(0,0,0,0.8)] z-[2500] border-l border-white/5 flex flex-col htmx-entry-anim animate-in slide-in-from-right duration-500 overflow-hidden italic select-none pointer-events-auto" 

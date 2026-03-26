@@ -2,7 +2,7 @@
 
 ## Contexto do Projeto
 
-O Cascata é um BaaS multi-tenant open source de auto-hospedagem. Sua arquitetura segue o modelo de condomínio: o orquestrador central (Cascata) gerencia múltiplos bancos de dados isolados fisicamente — cada tenant tem seu próprio apartamento, completamente independente dos demais, seguro desde a entrada até o armazenamento e permite as pessoas orquestrarem com liberdade suas portas, portões, janelas, etc. O objetivo é criar um BaaS que seja ao mesmo tempo seguro, escalável e fácil de usar. Onde o orquestrador é o próprio banco de dados, ou seja, o Cascata é um banco de dados que gerencia outros bancos de dados, e cada banco de dados é um tenant, e cada tenant tem seu próprio banco de dados operando sob o mesmo.
+O Cascata é um BaaS multi-tenant open source de auto-hospedagem. Sua arquitetura segue o modelo de condomínio de alta densidade: o orquestrador central (Cascata) gerencia múltiplos namespaces (schemas) isolados através da **Arquitetura de Barreira por Pseudônimo (Sovereign Namespace Barrier)**. Cada tenant possui seu próprio conjunto de schemas prefixados pelo seu identificador único (ex: `slug_public`, `slug_auth`), garantindo isolamento total, performance extrema e segurança inviolável, onde um "apartamento" (tenant) é fisicamente incapaz de enxergar ou acessar outro no mesmo banco de dados. O orquestrador atua como um tradutor inteligente, mascarando esses prefixos na UI para manter a soberania visual do desenvolvedor enquanto mantém a barreira bruta no PostgreSQL.
 
 Este repositório é o **Cascata v1.0.0.0**, reescrito em Go para atingir a performance que a arquitetura exige. O desenvolvimento acontece aqui:
 ```
@@ -90,4 +90,38 @@ Para garantir a perfeição real e a consistência absoluta em todo o código, e
 2. **PostgreSQL RLS Nativo**: Injeção de claims do JWT diretamente no PostgreSQL para filtragem automática em nível de linha via injeção atômica no `WithRLS`.
 3. **Alto Desempenho via Dragonfly**: Uso de DragonflyDB como motor de alta performance para Caching, Rate-limiting e Streaming de eventos assíncronos (Phase 10-17).
 4. **Observabilidade Total (OTel)**: Rastreabilidade distribuída ponta-a-ponta, desde a requisição na API até a persistência no banco e execução de workflows (Phase 17-22).
-5. **Isolamento Físico**: Garantia que dados de diferentes tenants nunca residam no mesmo banco de dados físico ou instância, mantendo o princípio do "Apartamento".
+5. **Isolamento de Namespace (Sovereign Barrier)**: Garantia que dados de diferentes tenants operem em schemas concatenados (`slug_...`) no banco unificado, tornando vazamentos fisicamente impossíveis via Search Path restrito e RLS, mantendo o princípio do "Apartamento" com performance de condôminio de elite.
+
+---
+
+## Protocolo de Tradução de Namespace (Sovereign Namespace Barrier)
+
+Para garantir que o isolamento seja absoluto e que não haja colisões ou vazamentos, seguimos este protocolo rigoroso de tradução entre o **Mundo Visual (Dashboard)** e a **Realidade da Infraestrutura (PostgreSQL)**:
+
+### 1. Tradução de Entrada (Inbound / UI -> DB)
+Toda solicitação do usuário deve ser "enclausurada" no seu prefixo soberano antes de tocar o banco de dados:
+- **Schemas:** Se o usuário solicitar ações no schema `auth`, o backend traduz internamente para `slug_auth`.
+- **Comandos DDL:** Qualquer `CREATE SCHEMA "nome"` enviado via SQL Editor ou CLI deve ser interceptado e reescrito como `CREATE SCHEMA "{slug}_{nome}"`.
+- **Tabelas e Objetos:** Ao referenciar `public.users`, o sistema deve traduzir para `{slug}_public.users`.
+
+### 2. Tradução de Saída (Outbound / DB -> UI)
+A infraestrutura real nunca deve ser exposta ao desenvolvedor, mantendo a "Soberania Visual":
+- **Descoberta (Discovery):** Consultas ao `information_schema.schemata` ou `pg_catalog.pg_namespace` DEVEM ser filtradas por `schema_name LIKE '{slug}_%'`.
+- **Mascaramento de Prefixo:** Antes de enviar a lista de schemas para o Sidebar ou Database Explorer, o backend deve remover o prefixo `{slug}_`. 
+  - *Exemplo:* Nosso pool tem `customer1_public`. Para o usuário logado como `customer1`, ele verá apenas `public`.
+
+### 3. Confinamento de Busca (Search Path Law)
+O `WithRLS` e o motor de execução SQL devem configurar o `search_path` de forma atômica no início de cada transação:
+- **Ordem de Prioridade:** `SET LOCAL search_path TO "{slug}_public", "{slug}_auth", ...;`
+- **Exclusão Global:** O schema `public` global do PostgreSQL deve ser removido ou relegado à última posição apenas para leitura de extensões compartilhadas, nunca para criação de dados.
+
+### 4. Inviolabilidade do Agente
+Mesmo um Agente de IA (MCP) operando no Studio está sujeito a este protocolo. Ele é incapaz de referenciar ou criar objetos fora do namespace prefixado do tenant ativo. Se um agente tentar um `DROP SCHEMA public`, o orquestrador traduzirá para `DROP SCHEMA slug_public`, protegendo a base global do sistema.
+
+### 5. Sinergia de DDL (Smart Translation Middleware)
+O "SQL Forge" (Editor SQL) do painel deve possuir um middleware de análise sintática que:
+1. Detecta referências a schemas.
+2. Injeta o prefixo `{slug}_` em tempo de execução.
+3. Bloqueia comandos que tentem acessar schemas sem o prefixo do projeto atual.
+
+---

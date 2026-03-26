@@ -59,7 +59,9 @@ Repository  → acesso a dados puro via `pgx.Tx`. Imune ao meio externo, opera e
 
 Cruzando as Camadas (RLS Law):
 - Repositórios NUNCA abrem conexões ou instanciam pools. Recebem `tx pgx.Tx`.
-- Serviços utilizam o wrapper `pool.WithRLS` para injetar o `search_path` (Schema do Tenant) e as Claims de segurança de forma atômica no início de cada transação.
+- Serviços utilizam o wrapper `pool.WithRLS` para injetar o `search_path` (Namespace Concatenado: `{slug}_public`) e as Claims de segurança de forma atômica no início de cada transação.
+- **Protocolo de Descoberta (Sovereign Discovery):** Repositórios que consultam metadados (`information_schema`) DEVEM aplicar filtros de prefixo (`schema_name LIKE $1 || '_%'`) para manter a barreira entre inquilinos.
+- **Isolamento de DDL:** Toda execução de DDL enviada pelo usuário DEVE passar por um tradutor que injeta o prefixo soberano antes de tocar o banco.
 
 ### 2.3 Tipagem
 - Toda resposta de API tem `struct` definida com tags `json:"field_name"`
@@ -98,7 +100,7 @@ _ = riskyOperation()
 - Chaves nunca passadas como `string` pura entre funções — use tipos opacos ou structs dedicadas
 - RLS Fail-Closed: se a injeção de contexto falhar, `ROLLBACK` forçado — nunca executa query sem contexto de segurança estabelecido.
 - **Database Sinergy (Phase 22):** O padrão `WithRLS` deve implementar loop de **Retry para erros transientes** (conn reset) e injeção atômica por meio de `SET LOCAL search_path` e `SET LOCAL cascata.claims`.
-- **Logical Multi-Tenancy:** Para sustentar 5.000 usuários em 2GB de RAM, o isolamento físico (DB per Tenant) é desencorajado. O padrão ouro é a isolação por **SCHEMA** dentro do pool unificado do Cascata.
+- **Sovereign Namespace Barrier:** Para sustentar 5.000 usuários em 2GB de RAM com segurança máxima, o padrão ouro é a **isolação por SCHEMA concatenado (`slug_...`)** dentro do pool unificado. Toda operação DDL deve ser traduzida para o namespace correto e o `search_path` deve ser estritamente confinado ao início de cada transação.
 
 ### 2.7 Concorrência
 - Todo canal tem `select` com `case ctx.Done()` — sem goroutine que bloqueia indefinidamente
@@ -185,8 +187,8 @@ Estado compartilhado vai no Dragonfly, não em memória local. Cache local (L1) 
 **Nenhuma decisão de arquitetura pode criar singleton de estado.**
 Se uma feature exige que exista exatamente uma instância processando algo — ela está errada. Worker pools distribuídos, filas no Dragonfly, locks distribuídos com TTL: são as ferramentas corretas. Um lock que não expira automaticamente é uma bomba-relógio.
 
-**Sharding por tenant é a unidade natural de escala.**
-O modelo de isolamento físico não é só segurança — é escala. Mover um tenant para outro servidor Postgres é uma operação de minutos, não de dias. Quando o sistema crescer, a escala horizontal é horizontal de verdade: mais servidores Postgres, mais instâncias do orquestrador Go, mais nós Dragonfly — sem reescrever nada.
+**Sharding por workspace (Namespace) é a unidade natural de escala.**
+O modelo de isolamento por namespace não é só segurança — é escala. Mover as tabelas de um inquilino para outro servidor Postgres físico (Federação) é uma operação de minutos. Quando o sistema crescer, a escala horizontal ocorre via Federação de Bancos, onde o Orquestrador roteia o tráfego para o servidor correto, mantendo a barreira de namespace ativa em cada nó.
 
 ### 7.3 Benchmarks como Critério de Aceitação
 
@@ -198,7 +200,7 @@ Toda Fase que toca performance crítica tem benchmark obrigatório antes de ser 
 | RLS injection + query em um RTT | < 5ms adicional |
 | Resolução de variável `{{env.VAR}}` | < 0.5ms |
 | Latência SSE após mudança no banco | < 50ms |
-| Provisionamento de novo tenant | < 2s |
+| Provisionamento de novo tenant (schemas) | < 1s |
 | Geração de `.caf` (1GB de dados) | sem arquivo temporário em disco |
 | Cold start de edge function V8 | < 100ms |
 | Throughput de automações assíncronas | > 10k/min por instância |

@@ -15,14 +15,14 @@ Desenho primário do monolito em Go. Estabelecimento das leis de injeção de de
 O `DataHandler` dinâmico. Um roteador generativo de endpoints (CRUD) baseados na introspecção fluída das tabelas via API REST.
 **Fase 2: Authentication & Identity Management**
 Motor de gestão de identidades (JWT blindado, Bcrypt, Session Tokens efêmeros e middleware verificador super rápido).
-**Fase 3: Multi-Tenant Pool Manager**
-Isolamento absoluto. Cada inquilino ganha seu Pool exclusivo no PGX e todas as conexões usam bloqueio `WithRLS` e `UserClaims` antes da query.
+**Fase 3: Sovereign Namespace Pool Manager**
+Isolamento absoluto via **Barreira por Pseudônimo**. Cada inquilino opera em um conjunto de schemas concatenados (`slug_...`) no pool unificado. Todas as conexões usam bloqueio `WithRLS` e `UserClaims` com injeção de `search_path` restrito antes da query.
 **Fase 4: GraphQL Gateway Provisioning**
 Evolução da camada de acesso de dados, injetando introspecção rica via suporte direto e parametrizado ao `pg_graphql`.
 **Fase 5: Storage & Media Hub**
 API S3-Compatible com controle de cotas estrito em DragonflyDB no momento de `Upload/Multipart`. Nenhuma mídia passa sem checagem de limites do locatário.
-**Fase 6: Genesis Lifecycle Service**
-O Berçário do Cascata. Serviço autônomo que provisiona fisicamente novos bancos `PostgreSQL`, injeta schemas seguros e ativa extensões necessárias `CREATE DATABASE`.
+**Fase 6: Namespace Genesis Service**
+O Berçário do Cascata. Serviço autônomo que provisiona logicamente os novos schemas concatenados (`slug_public`, `slug_auth`), injeta a base segura e ativa extensões necessárias de forma isolada.
 **Fase 7: Real-Time Sync Hub (SSE)**
 Comunicação reativa nativa no banco (Postgres `LISTEN/NOTIFY`), convertida pelo orquestrador em WebSockets / Server-Sent Events distribuído aos apps.
 **Fase 8: Phantom AI v1 (Blindagem Adaptativa)**
@@ -40,7 +40,7 @@ Dragonfly Streams centralizando o `EventQueue`. Motor rodando scripts em backgro
 **Fase 10.1: Resident Gateway - Estratégias de Acesso (CPF, WhatsApp, Magic Link)**
 Implementação real (não simulada) do fluxo de login para moradores (Residents). Suporte a Identificador (CPF/Email/nickName ou qualquer outro que o susurio quiser criar pelo painel) + Password, OTP via WhatsApp e links efêmeros de login.
 **Fase 10.2: Resident Data Table & RBAC Schema Injection**
-Atualização do Genesis para provisionar a tabela `auth.users` e esquemas de permissões (RBAC) em cada banco físico de inquilino no momento do nascimento.
+Atualização do Genesis para provisionar a tabela `auth.users` e esquemas de permissões (RBAC) em cada workspace lógico (prefixed schemas) de inquilino no momento do nascimento.
 **Fase 10.3: The Trinity Postman - SMTP & SMS Integrator Hub**
 Criação do hub central de comunicações transacionais para envio de OTPs e Magic Links, integrado ao motor de segredos nativo.
 **Fase 10.4: Webhook 'Trindade' & Graph Automation Consolidation**
