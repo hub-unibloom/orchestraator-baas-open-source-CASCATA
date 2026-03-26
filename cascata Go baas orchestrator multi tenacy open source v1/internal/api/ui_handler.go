@@ -13,7 +13,36 @@ import (
 	"cascata/internal/domain"
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
+	"regexp"
+	"fmt"
+	"encoding/json"
 )
+
+type CreateTableRequest struct {
+	TableName   string `json:"tableName"`
+	Description string `json:"description"`
+	EnableRLS   bool   `json:"enableRLS"`
+	McpEnabled  bool   `json:"mcpEnabled"`
+	McpPerms    struct {
+		R bool `json:"r"`
+		C bool `json:"c"`
+		U bool `json:"u"`
+		D bool `json:"d"`
+	} `json:"mcpPerms"`
+	Columns []struct {
+		ID           interface{} `json:"id"`
+		Name         string      `json:"name"`
+		Type         string      `json:"type"`
+		DefaultValue string      `json:"defaultValue"`
+		Nullable     bool        `json:"nullable"`
+		PK           bool        `json:"pk"`
+		Unique       bool        `json:"unique"`
+		Array        bool        `json:"array"`
+		Identity     *string     `json:"identity"`
+		Lock         *string     `json:"lock"`
+		Format       *string     `json:"format"`
+	} `json:"columns"`
+}
 
 // UIHandler manages the sovereign web interface rendering with i18n support.
 type UIHandler struct {
@@ -284,4 +313,116 @@ func (h *UIHandler) HandleUIProjectSettings(w http.ResponseWriter, r *http.Reque
 	slug = strings.TrimSuffix(slug, "/settings")
 
 	templ.Handler(components.ProjectSettingsModal(slug, loc)).ServeHTTP(w, r)
+}
+// HandleUIDatabaseCreateTable births a new table from a UI blueprint.
+func (h *UIHandler) HandleUIDatabaseCreateTable(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	var req CreateTableRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Error("ui: failed to decode create table request", "err", err)
+		http.Error(w, "Invalid blueprint body", http.StatusBadRequest)
+		return
+	}
+
+	sql := h.generateCreateTableSQL(req, slug)
+
+	// Execute SQL in the context of the project schema
+	// Note: In a real production system, we would use the tenant's specific pool
+    // and potentially wrap it in a transaction.
+	_, err := h.SystemH.ProjectRepo.Repo.Pool.Exec(r.Context(), sql)
+	if err != nil {
+		slog.Error("ui: failed to execute create table SQL", "slug", slug, "err", err, "sql", sql)
+		// Return an error feedback (toast/alert) via HTMX
+		w.Header().Set("HX-Retarget", "#database-modal-root")
+		fmt.Fprintf(w, `<div class="bg-rose-500/90 text-white p-8 rounded-2xl animate-pulse font-black uppercase text-[10px] tracking-widest border border-rose-400">ARCHITECTURAL_FAILURE: %v</div>`, err)
+		return
+	}
+
+	// Success: Trigger a refresh of the table list and show success pulse
+	w.Header().Set("HX-Trigger", "tableCreated")
+    fmt.Fprintf(w, `<div class="bg-emerald-500/90 text-white p-8 rounded-3xl animate-fade-in font-black uppercase text-[10px] tracking-widest border border-emerald-400 flex items-center gap-4 shadow-glow">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg>
+        ENTITY_STRIKE_SUCCESS: %s
+        <script>setTimeout(() => document.getElementById('table-creator-drawer').remove(), 1500)</script>
+    </div>`, req.TableName)
+}
+
+func (h *UIHandler) generateCreateTableSQL(req CreateTableRequest, slug string) string {
+	tableName := h.SanitizeName(req.TableName)
+	schema := slug 
+	if schema == "" { schema = "public" }
+
+	var colDefs []string
+	for _, c := range req.Columns {
+		name := h.SanitizeName(c.Name)
+		typeStr := c.Type
+		if c.Array { typeStr += "[]" }
+
+		var constraints []string
+		if c.PK { constraints = append(constraints, "PRIMARY KEY") }
+		if !c.Nullable && !c.PK { constraints = append(constraints, "NOT NULL") }
+		if c.Unique && !c.PK { constraints = append(constraints, "UNIQUE") }
+
+		if c.Identity != nil && *c.Identity != "" {
+			gen := "ALWAYS"
+			if *c.Identity == "by_default" { gen = "BY DEFAULT" }
+			constraints = append(constraints, fmt.Sprintf("GENERATED %s AS IDENTITY", gen))
+		} else if c.DefaultValue != "" {
+			// Basic default value formatting
+			val := c.DefaultValue
+            if !strings.Contains(val, "(") && !strings.Contains(val, "::") && val != "true" && val != "false" {
+                val = "'" + strings.ReplaceAll(val, "'", "''") + "'"
+            }
+			constraints = append(constraints, fmt.Sprintf("DEFAULT %s", val))
+		}
+
+		colDefs = append(colDefs, fmt.Sprintf("    %s %s %s", name, typeStr, strings.Join(constraints, " ")))
+	}
+
+	sql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s.%s (\n%s\n);", schema, tableName, strings.Join(colDefs, ",\n"))
+
+	// RLS Deployment
+	if req.EnableRLS {
+		sql += fmt.Sprintf("\nALTER TABLE %s.%s ENABLE ROW LEVEL SECURITY;", schema, tableName)
+	}
+
+	// Comments for Format & Lock (UI Metadata)
+	for _, c := range req.Columns {
+		meta := ""
+		if c.Format != nil && *c.Format != "" {
+			meta += "||FORMAT:" + *c.Format
+		}
+		if c.Lock != nil && *c.Lock != "" {
+			meta += "||LOCK:" + *c.Lock
+		}
+		if meta != "" {
+			colName := h.SanitizeName(c.Name)
+			sql += fmt.Sprintf("\nCOMMENT ON COLUMN %s.%s.%s IS '%s';", schema, tableName, colName, meta)
+		}
+	}
+
+	// MCP Governance comment
+	mcpFlag := ""
+	if req.McpEnabled {
+		mcpFlag = "||MCP:"
+		if req.McpPerms.R { mcpFlag += "R" }
+		if req.McpPerms.C { mcpFlag += "C" }
+		if req.McpPerms.U { mcpFlag += "U" }
+		if req.McpPerms.D { mcpFlag += "D" }
+	}
+	if req.Description != "" || mcpFlag != "" {
+		sql += fmt.Sprintf("\nCOMMENT ON TABLE %s.%s IS '%s%s';", schema, tableName, strings.ReplaceAll(req.Description, "'", "''"), mcpFlag)
+	}
+
+	return sql
+}
+
+func (h *UIHandler) SanitizeName(val string) string {
+	val = strings.ToLower(val)
+	re := regexp.MustCompile(`[^a-z0-9_]`)
+	val = re.ReplaceAllString(val, "_")
+	if len(val) > 0 && val[0] >= '0' && val[0] <= '9' {
+		val = "_" + val
+	}
+	return val
 }

@@ -6,8 +6,35 @@ import (
 )
 
 // TableCreatorDrawer: The Enterprise Schema Architect (v1.0.0.0 Sovereign Standard).
+templ TableCreator(slug string, loc *i18n.Localizer) {
+	@TableCreatorDrawer(slug, []string{"public", "auth", "storage"}, "public", loc)
+}
+
 templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, loc *i18n.Localizer) {
-	<div class="fixed inset-y-0 right-0 w-[600px] bg-surface-base shadow-[0_0_100px_rgba(0,0,0,0.8)] z-[1000] border-l border-white/5 flex flex-col htmx-entry-anim animate-in slide-in-from-right duration-500 overflow-hidden italic select-none pointer-events-auto" id="table-creator-drawer">
+	<div 
+        class="fixed inset-y-0 right-0 w-[600px] bg-surface-base shadow-[0_0_100px_rgba(0,0,0,0.8)] z-[2500] border-l border-white/5 flex flex-col htmx-entry-anim animate-in slide-in-from-right duration-500 overflow-hidden italic select-none pointer-events-auto" 
+        id="table-creator-drawer"
+        x-data="{ 
+            tableName: '', 
+            tableDesc: '',
+            enableRLS: true,
+            mcpEnabled: true,
+            mcpPerms: { r: true, c: true, u: true, d: false },
+            columns: [
+                { id: Date.now(), name: 'id', type: 'uuid', defaultValue: 'gen_random_uuid()', nullable: false, pk: true, unique: true, array: false, identity: null, lock: 'immutable', format: null },
+                { id: Date.now() + 1, name: 'created_at', type: 'timestamptz', defaultValue: 'now()', nullable: false, pk: false, unique: false, array: false, identity: null, lock: 'insert_only', format: null }
+            ],
+            addColumn() {
+                this.columns.push({ id: Date.now(), name: '', type: 'text', defaultValue: '', nullable: true, pk: false, unique: false, array: false, identity: null, lock: null, format: null });
+            },
+            removeColumn(id) {
+                this.columns = this.columns.filter(c => c.id !== id);
+            },
+            get canSubmit() {
+                return this.tableName.length > 0 && this.columns.every(c => c.name.length > 0);
+            }
+        }"
+    >
 		<!-- Header (Architectural Ambience) -->
 		<header class="p-10 border-b border-white/5 bg-surface-base/80 flex items-center justify-between sticky top-0 z-30 backdrop-blur-3xl">
 			<div class="flex items-center gap-6">
@@ -18,7 +45,7 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
 					<h2 class="text-xl font-black uppercase tracking-[0.4em] text-white italic">Schema_Architect</h2>
 					<div class="flex items-center gap-2 mt-1">
 						<div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-glow"></div>
-						<span class="text-[9px] font-black text-content-muted uppercase tracking-widest italic">{ fmt.Sprintf("DESTINATION_SCHEMA: %s", currentSchema) }</span>
+						<span class="text-[9px] font-black text-content-muted uppercase tracking-widest italic">{ fmt.Sprintf("CONTEXT: %s", currentSchema) }</span>
 					</div>
 				</div>
 			</div>
@@ -36,26 +63,39 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
 					<div class="w-1 h-4 bg-accent-primary rounded-full"></div>
 					<h3 class="text-[10px] font-black text-white uppercase tracking-[0.4em]">ENTITY_IDENTITY</h3>
 				</div>
-				<div class="space-y-8">
+				<div class="grid grid-cols-1 gap-8">
 					<div class="space-y-3">
 						<label class="text-[9px] font-black text-content-muted uppercase tracking-widest ml-1 italic">Structural_Identifier (TableName)</label>
-						<input type="text" placeholder="e.g. secure_audit_logs" class="w-full bg-surface-base border border-white/5 py-5 px-8 rounded-[28px] text-xs font-black uppercase tracking-widest text-white placeholder:text-content-muted focus:border-accent-primary/50 focus:bg-surface-raised transition-all outline-none italic shadow-glow-sm"/>
+						<input 
+                            type="text" 
+                            x-model="tableName"
+                            placeholder="e.g. secure_audit_logs" 
+                            class="w-full bg-surface-base border border-white/5 py-5 px-8 rounded-[28px] text-xs font-black uppercase tracking-widest text-white placeholder:text-content-muted focus:border-accent-primary/50 focus:bg-surface-raised transition-all outline-none italic shadow-glow-sm"
+                        />
 					</div>
 					<div class="space-y-3">
 						<label class="text-[9px] font-black text-content-muted uppercase tracking-widest ml-1 italic">Semantic_Hint (Description for AI)</label>
-						<textarea rows="2" placeholder="Describe the structural purpose of this node for autonomous orchestration..." class="w-full bg-surface-base border border-white/5 py-5 px-8 rounded-[28px] text-[10px] font-black uppercase tracking-widest text-content-muted placeholder:text-content-muted/40 focus:border-accent-primary/50 focus:bg-surface-raised transition-all outline-none italic shadow-glow-sm leading-relaxed"></textarea>
+						<textarea 
+                            rows="2" 
+                            x-model="tableDesc"
+                            placeholder="Describe the structural purpose of this node for autonomous orchestration..." 
+                            class="w-full bg-surface-base border border-white/5 py-5 px-8 rounded-[28px] text-[10px] font-black uppercase tracking-widest text-white placeholder:text-content-muted/40 focus:border-accent-primary/50 focus:bg-surface-raised transition-all outline-none italic shadow-glow-sm leading-relaxed"
+                        ></textarea>
 					</div>
 				</div>
 			</section>
 
-			<!-- Column Gasket (Replicating React complexity) -->
+			<!-- Column Gasket -->
 			<section class="space-y-6">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-3">
 						<div class="w-1 h-4 bg-secondary rounded-full"></div>
 						<h3 class="text-[10px] font-black text-white uppercase tracking-[0.4em]">FRAGMENT_GRID</h3>
 					</div>
-					<button class="flex items-center gap-4 px-6 py-2.5 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-[9px] font-black uppercase tracking-widest hover:bg-secondary hover:text-white transition-all shadow-glow active:scale-95 group">
+					<button 
+                        @click="addColumn()"
+                        class="flex items-center gap-4 px-6 py-2.5 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-[9px] font-black uppercase tracking-widest hover:bg-secondary hover:text-white transition-all shadow-glow active:scale-95 group"
+                    >
 						<div class="p-0.5 bg-secondary text-white rounded-md group-hover:scale-110 transition-transform">
                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
                         </div>
@@ -64,109 +104,200 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
 				</div>
 
 				<div class="space-y-4" id="column-definition-mesh">
-					<!-- Standard ID Node (Legacy Genesis) -->
-					<div class="bg-surface-base p-8 rounded-[40px] border border-white/5 group/col hover:border-accent-primary/30 transition-all duration-500 shadow-glow-sm relative overflow-hidden">
-                        <div class="absolute -right-10 -bottom-10 opacity-5 group-hover/col:opacity-10 transition-opacity">
-                            <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                        </div>
-
-						<div class="flex items-start gap-6 relative z-10">
-							<div class="flex-1 space-y-5">
-								<div class="flex gap-4">
-									<input type="text" value="id" class="flex-[3] bg-surface-pit/60 border border-white/5 py-3.5 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest text-accent-primary outline-none italic"/>
-									<select class="flex-[2] bg-surface-pit/60 border border-white/5 py-3.5 px-4 rounded-2xl text-[9px] font-black uppercase tracking-widest text-white outline-none cursor-pointer italic">
-										<option value="uuid">UUID (V4)</option>
-                                        <option value="int8">INT8 (BigInt)</option>
-                                        <option value="serial">SERIAL (AutoInc)</option>
-									</select>
-								</div>
-								
-								<!-- Metadata Toggles (The Matrix Style) -->
-								<div class="flex items-center gap-2 flex-wrap">
-									<div class="px-4 py-2 bg-accent-primary/10 rounded-xl text-[8px] font-black text-accent-primary border border-accent-primary/20 shadow-glow-sm">PK_STRATEGY</div>
-									<div class="px-4 py-2 bg-white/5 rounded-xl text-[8px] font-black text-content-muted border border-white/5 hover:border-emerald-500/40 hover:text-white transition-all cursor-pointer">NULL_ALLOWED</div>
-									<div class="px-4 py-2 bg-white/5 rounded-xl text-[8px] font-black text-content-muted border border-white/5 hover:border-secondary/40 hover:text-white transition-all cursor-pointer">UNIQUE_ENFORCE</div>
-                                    <div class="px-4 py-2 bg-rose-500/10 rounded-xl text-[8px] font-black text-rose-500 border border-rose-500/20 shadow-glow-sm flex items-center gap-2">
-                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                                        IMMUTABLE
+					<template x-for="(col, index) in columns" :key="col.id">
+                        <div class="bg-surface-base p-8 rounded-[40px] border border-white/5 group/col hover:border-accent-primary/30 transition-all duration-500 shadow-glow-sm relative overflow-hidden">
+                            <div class="flex items-start gap-6 relative z-10">
+                                <div class="flex-1 space-y-5">
+                                    <div class="flex gap-4">
+                                        <input 
+                                            type="text" 
+                                            x-model="col.name"
+                                            :class="col.name.length === 0 ? 'border-amber-500/50' : 'border-white/5'"
+                                            class="flex-[3] bg-surface-pit/60 border py-3.5 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white outline-none italic focus:border-accent-primary/50"
+                                            placeholder="column_name"
+                                        />
+                                        <select 
+                                            x-model="col.type"
+                                            class="flex-[2] bg-surface-pit/60 border border-white/5 py-3.5 px-4 rounded-2xl text-[9px] font-black uppercase tracking-widest text-white outline-none cursor-pointer italic appearance-none"
+                                        >
+                                            <optgroup label="Core Numbers" class="bg-surface-elevated">
+                                                <option value="int8">int8 (BigInt)</option>
+                                                <option value="int4">int4 (Integer)</option>
+                                                <option value="numeric">numeric</option>
+                                                <option value="float8">float8</option>
+                                            </optgroup>
+                                            <optgroup label="Auto-Sequence" class="bg-surface-elevated">
+                                                <option value="serial">serial (Int4)</option>
+                                                <option value="bigserial">bigserial (Int8)</option>
+                                            </optgroup>
+                                            <optgroup label="Text & Identity" class="bg-surface-elevated">
+                                                <option value="text">text</option>
+                                                <option value="varchar">varchar</option>
+                                                <option value="uuid">uuid</option>
+                                            </optgroup>
+                                            <optgroup label="Temporal" class="bg-surface-elevated">
+                                                <option value="timestamptz">timestamp (TZ)</option>
+                                                <option value="date">date</option>
+                                                <option value="interval">interval</option>
+                                            </optgroup>
+                                            <optgroup label="Sovereign Data" class="bg-surface-elevated">
+                                                <option value="jsonb">jsonb (Dynamic)</option>
+                                                <option value="vector">vector (AI/Embed)</option>
+                                                <option value="bool">boolean</option>
+                                                <option value="inet">inet (IP)</option>
+                                            </optgroup>
+                                        </select>
                                     </div>
-								</div>
-							</div>
-						</div>
-					</div>
+                                    
+                                    <!-- Toggles & Modifiers -->
+                                    <div class="flex items-center gap-2 flex-wrap min-h-[32px]">
+                                        <button 
+                                            @click="col.pk = !col.pk; if(col.pk) col.nullable = false"
+                                            :class="col.pk ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 'bg-white/5 text-content-muted border-white/5'"
+                                            class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic"
+                                        >PK</button>
+                                        
+                                        <button 
+                                            @click="col.unique = !col.unique"
+                                            :class="col.unique ? 'bg-purple-500/20 text-purple-500 border-purple-500/30' : 'bg-white/5 text-content-muted border-white/5'"
+                                            class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic"
+                                        >UNIQ</button>
+                                        
+                                        <button 
+                                            @click="col.nullable = !col.nullable"
+                                            :class="col.nullable ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'bg-white/5 text-content-muted border-white/5'"
+                                            class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic"
+                                        >NULL</button>
 
-                    <!-- Dynamic New Column Node -->
-                    <div class="bg-surface-raised/40 p-8 rounded-[40px] border border-white/5 group/new-col hover:border-secondary/30 transition-all duration-500 shadow-glow-sm animate-pulse-slow">
-                        <div class="flex items-start gap-6">
-                            <div class="flex-1 space-y-5">
-                                <div class="flex gap-4">
-                                    <input type="text" placeholder="new_node_id..." class="flex-[3] bg-surface-base border border-white/5 py-3.5 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white outline-none italic focus:border-secondary/50"/>
-                                    <select class="flex-[2] bg-surface-base border border-white/5 py-3.5 px-4 rounded-2xl text-[9px] font-black uppercase tracking-widest text-white outline-none cursor-pointer italic">
-                                        <option value="text">TEXT (AlphaNumeric)</option>
-                                        <option value="timestamptz">TIMESTAMP (UTC)</option>
-                                        <option value="jsonb">JSONB (Dynamic)</option>
-                                        <option value="bool">BOOLEAN (Logic)</option>
-                                    </select>
-                                </div>
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <button class="px-4 py-2 bg-white/5 rounded-xl text-[8px] font-black text-content-muted border border-white/5 hover:border-secondary/40 hover:text-white transition-all italic">GEN_LINK (FK)</button>
-                                    <button class="px-4 py-2 bg-white/5 rounded-xl text-[8px] font-black text-content-muted border border-white/5 hover:border-amber-500/40 hover:text-white transition-all italic">ENFORCE_FORMAT</button>
-                                    <button class="px-4 py-2 bg-white/5 rounded-xl text-[8px] font-black text-content-muted border border-white/5 hover:border-emerald-500/40 hover:text-white transition-all italic">AUTO_SEQ</button>
+                                        <button 
+                                            @click="col.identity = col.identity ? null : 'always'"
+                                            x-show="['int2','int4','int8'].includes(col.type)"
+                                            :class="col.identity ? 'bg-teal-500/20 text-teal-400 border-teal-500/30' : 'bg-white/5 text-content-muted border-white/5'"
+                                            class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic"
+                                        >AUTO_ID</button>
+
+                                        <button 
+                                            @click="col.lock = col.lock === 'immutable' ? null : 'immutable'"
+                                            :class="col.lock ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 'bg-white/5 text-content-muted border-white/5'"
+                                            class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic flex items-center gap-2"
+                                        >
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                            LOCK
+                                        </button>
+                                        
+                                        <div class="flex-1"></div>
+                                        
+                                        <button 
+                                            @click="removeColumn(col.id)"
+                                            class="p-2 text-white/5 hover:text-rose-500 transition-colors"
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                        </button>
+                                    </div>
+
+                                    <!-- Extended Settings (Conditional) -->
+                                    <div x-show="col.lock === 'immutable'" class="mt-4 p-4 bg-rose-500/5 rounded-2xl border border-rose-500/20">
+                                        <select x-model="col.lock" class="w-full bg-transparent text-[8px] font-black text-rose-500 uppercase tracking-widest outline-none italic">
+                                            <option value="immutable">IMMUTABLE (Blocks INSERT & UPDATE)</option>
+                                            <option value="insert_only">INSERT_ONLY (Blocks UPDATE)</option>
+                                            <option value="service_role_only">SERVICE_ROLE_ONLY</option>
+                                            <option value="otp_protected">OTP_STEP_UP_REQUIRED</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div x-show="['text','varchar'].includes(col.type)" class="mt-4 space-y-2">
+                                        <select x-model="col.format" class="w-full bg-surface-pit/40 border border-white/5 rounded-xl py-2 px-4 text-[8px] font-black text-white uppercase tracking-widest outline-none italic">
+                                            <option value="">No Filter (Raw Text)</option>
+                                            <option value="email">Validator: EMAIL</option>
+                                            <option value="url">Validator: URL_SECURE</option>
+                                            <option value="cpf">Validator: CPF (BR)</option>
+                                            <option value="cnpj">Validator: CNPJ (BR)</option>
+                                            <option value="phone">Validator: E.164_PHONE</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                            <button class="p-4 rounded-2xl text-white/10 hover:text-rose-500 hover:bg-rose-500/5 transition-all">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                            </button>
                         </div>
-                    </div>
+                    </template>
 				</div>
 			</section>
 
-			<!-- Security & Governance Pulses (Legacy Fire Power) -->
+			<!-- Governance & Security -->
 			<section class="space-y-6">
 				<div class="flex items-center gap-3">
 					<div class="w-1 h-4 bg-rose-500 rounded-full"></div>
 					<h3 class="text-[10px] font-black text-white uppercase tracking-[0.4em]">GOVERNANCE_PROTOCOL</h3>
 				</div>
-				<div class="grid grid-cols-2 gap-6">
+				<div class="grid grid-cols-1 gap-6">
 					<div class="bg-surface-base p-6 rounded-[32px] border border-white/5 group hover:border-emerald-500/30 transition-all flex items-center justify-between">
 						<div>
 							<span class="block text-[9px] font-black text-white uppercase tracking-widest">Enable_RLS_Enforcement</span>
 							<span class="block text-[8px] font-bold text-content-muted uppercase tracking-tighter italic mt-1">Isolation Tier Alpha Active</span>
 						</div>
-						<button class="w-12 h-6 bg-emerald-500 rounded-full p-1 flex items-center justify-end transition-all shadow-glow">
+						<button 
+                            @click="enableRLS = !enableRLS"
+                            :class="enableRLS ? 'bg-emerald-500' : 'bg-white/10'"
+                            class="w-12 h-6 rounded-full p-1 flex items-center transition-all shadow-glow"
+                            :style="enableRLS ? 'justify-content: flex-end' : 'justify-content: flex-start'"
+                        >
 							<div class="w-4 h-4 bg-white rounded-full shadow-md"></div>
 						</button>
 					</div>
-					<div class="bg-surface-base p-6 rounded-[32px] border border-white/5 group hover:border-amber-500/30 transition-all flex items-center justify-between">
-						<div>
-							<span class="block text-[9px] font-black text-white uppercase tracking-widest">MCP_Autonomous_Access</span>
-							<span class="block text-[8px] font-bold text-content-muted uppercase tracking-tighter italic mt-1">AI Protocol Connectivity</span>
-						</div>
-						<button class="w-12 h-6 bg-white/5 rounded-full p-1 flex items-center justify-start transition-all border border-white/10">
-							<div class="w-4 h-4 bg-white/20 rounded-full shadow-md"></div>
-						</button>
+
+                    <!-- MCP MCP ACCESS BOX -->
+					<div x-show="mcpEnabled" class="bg-slate-900/60 p-8 rounded-[40px] border border-white/5 relative overflow-hidden">
+                        <div class="absolute -top-10 -left-10 w-32 h-32 bg-emerald-500/10 blur-[60px] rounded-full"></div>
+                        <div class="relative z-10">
+                            <div class="flex items-center gap-4 mb-8">
+                                <div class="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-glow">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 2v8"/><path d="m4.93 4.93 1.41 1.41"/><path d="M22 22l-6-6"/><path d="m15 7 5 5-5 5-5-5 5-5z"/></svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-[11px] font-black text-white uppercase tracking-widest">MCP_Access_Control</h4>
+                                    <p class="text-[8px] text-content-muted uppercase font-bold tracking-tighter italic">AI Agent Sovereignty Permissions</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <template x-for="perm in ['r','c','u','d']">
+                                    <button 
+                                        @click="mcpPerms[perm] = !mcpPerms[perm]"
+                                        :class="mcpPerms[perm] ? 'bg-emerald-500 text-white shadow-glow' : 'bg-white/5 text-content-muted' "
+                                        class="flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5"
+                                        x-text="perm.toUpperCase()"
+                                    ></button>
+                                </template>
+                            </div>
+                            <p x-show="mcpPerms.d" class="mt-4 text-[8px] font-black text-rose-500 italic text-center animate-pulse tracking-widest uppercase">
+                                ⚠ DELETE_ENABLED_FOR_AI_AGENTS
+                            </p>
+                        </div>
 					</div>
 				</div>
 			</section>
 		</div>
 
-		<!-- Footer Actions (The Sovereign Strike) -->
+		<!-- Footer Actions -->
 		<footer class="p-10 border-t border-white/5 bg-surface-base flex items-center gap-8 sticky bottom-0 z-30 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
 			<button onclick="document.getElementById('table-creator-drawer').remove()" class="flex-1 py-5 text-[10px] font-black text-content-muted hover:text-white uppercase tracking-[0.3em] transition-all italic">ABORT_BLUEPRINT</button>
-			<button class="flex-[2] h-18 bg-accent-primary text-white rounded-[32px] text-[11px] font-black uppercase tracking-[0.4em] shadow-glow hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center gap-5 group overflow-hidden relative italic">
+			<button 
+                :disabled="!canSubmit"
+                hx-post={ fmt.Sprintf("/projects/%s/database/tables/create", slug) }
+                hx-ext="json-enc"
+                hx-vals="js:{
+                    tableName: document.getElementById('table-creator-drawer').__x.$data.tableName,
+                    description: document.getElementById('table-creator-drawer').__x.$data.tableDesc,
+                    enableRLS: document.getElementById('table-creator-drawer').__x.$data.enableRLS,
+                    mcpEnabled: document.getElementById('table-creator-drawer').__x.$data.mcpEnabled,
+                    mcpPerms: document.getElementById('table-creator-drawer').__x.$data.mcpPerms,
+                    columns: document.getElementById('table-creator-drawer').__x.$data.columns
+                }"
+                hx-target="#database-modal-root"
+                class="flex-[2] h-18 bg-accent-primary text-white rounded-[32px] text-[11px] font-black uppercase tracking-[0.4em] shadow-glow hover:scale-[1.03] active:scale-[0.97] disabled:opacity-30 disabled:grayscale transition-all flex items-center justify-center gap-5 group overflow-hidden relative italic"
+            >
                 <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-12 transition-transform"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
 				<span>COMMIT_BLUEPRINT_STRIKE</span>
 			</button>
 		</footer>
 	</div>
-
-    <script>
-        // Inline logic for adding/removing columns via HTMX templates would go here
-        // or handled by hx-get to a fragment-only endpoint.
-    </script>
-}
-templ TableCreator(slug string, loc *i18n.Localizer) {
-	@TableCreatorDrawer(slug, []string{"public", "auth", "storage"}, "public", loc)
 }
