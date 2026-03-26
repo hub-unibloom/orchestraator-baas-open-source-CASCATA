@@ -89,7 +89,7 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 
 	// 3. System Metadata Registration (Must exist for Migration Engine to resolve)
 	// Sovereign Registration: Metadata must be stored in cascata_system.
-	err = s.repo.WithRLS(ctx, database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
+	err := s.repo.WithRLS(ctx, database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
 		if err := s.projectRepo.Create(ctx, tx, p); err != nil {
 			return fmt.Errorf("genesis: metadata registration failed: %w", err)
 		}
