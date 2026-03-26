@@ -1,43 +1,54 @@
 /* 
-   CASCATA SOVEREIGN DESIGN SYSTEM - Phase 1.0.0.0 
-   Identity: Zero-Trust / High-Density / Premium Brutalism
+   CASCATA SOVEREIGN DESIGN SYSTEM - Phase 2.0.0.0 (Evolution)
+   Identity: Fusion / Zero-Trust / High-Performance Elegance
 */
 
 :root {
-    /* Surface Colors - Deep Space Hybrid */
+    /* Default: Light Mode (Sovereign Elite) from Legacy Core */
+    --surface-pit:      248, 250, 252;  /* Slate 50 */
+    --surface-base:     255, 255, 255;  /* Pure White */
+    --surface-raised:   241, 245, 249;  /* Slate 100 */
+    --surface-elevated: 226, 232, 240;  /* Slate 200 */
+    --surface-overlay:  203, 213, 225;  /* Slate 300 */
+
+    /* Content & Typography - High Elegance */
+    --content-primary:   15, 23, 42;     /* Slate 900 */
+    --content-secondary: 71, 85, 105;    /* Slate 600 */
+    --content-muted:     148, 163, 184;  /* Slate 400 */
+    --content-disabled:  203, 213, 225;  /* Slate 300 */
+    --content-inverse:   255, 255, 255;  /* White */
+
+    /* Accents - The Sinergy Blue */
+    --accent-primary:     99, 102, 241;   /* Indigo 500 */
+    --accent-primary-rgb: 99, 102, 241;
+    --accent-secondary:   14, 165, 233;   /* Sky 500 */
+    --accent-danger:      225, 29, 72;    /* Rose 600 */
+    --accent-warning:     217, 119, 6;    /* Amber 600 */
+    --accent-success:     5, 150, 105;    /* Emerald 600 */
+    
+    --border-subtle:   rgba(15, 23, 42, 0.05);
+    --border-default:  rgba(15, 23, 42, 0.1);
+    --border-strong:   rgba(15, 23, 42, 0.2);
+    
+    --aura-glass-blur:    16px;
+}
+
+/* Dark Mode Overrides (Abyss Standard) */
+.dark, :root[class~="dark"] {
     --surface-pit:      2, 4, 8;      /* #020408 — O Abismo */
     --surface-base:     5, 8, 15;     /* #05080F — Fundo Primário */
     --surface-raised:   12, 16, 28;   /* #0C101C — Cards e Paineis */
     --surface-elevated: 20, 24, 40;   /* #141828 — Modais e Floating */
     --surface-overlay:  30, 38, 55;   /* #1E2637 — Tooltips/Dropdowns */
 
-    /* Content & Typography - High Contrast */
     --content-primary:   255, 255, 255;  /* Puro Branco */
     --content-secondary: 160, 174, 192;  /* Slate 400 */
     --content-muted:     80, 95, 120;    /* Slate 600 */
     --content-disabled:  45, 55, 72;     /* Slate 800 */
-    --content-inverse:   2, 4, 8;        /* Contrast */
 
-    /* Accents - Vibrant Neon */
-    --accent-primary:     99, 102, 241;   /* Indigo 500 */
-    --accent-primary-rgb: 99, 102, 241;
-    --accent-secondary:   6, 182, 212;    /* Cyan 500 */
-    --accent-danger:      244, 63, 94;    /* Rose 500 */
-    --accent-warning:     245, 158, 11;   /* Amber 500 */
-    --accent-success:     16, 185, 129;   /* Emerald 500 */
-    --accent-success-rgb: 16, 185, 129;
-
-    /* Aura Management */
-    --aura-glass-blur:    32px;
-    --aura-shadow-weight: 0.15;
-    --border-radius-xl:   32px;
-    --border-radius-2xl:  48px;
-
-    /* Borders - Precision Lines */
     --border-subtle:   rgba(255, 255, 255, 0.04);
     --border-default:  rgba(255, 255, 255, 0.08);
     --border-strong:   rgba(255, 255, 255, 0.12);
-    --border-accent:   rgba(99, 102, 241, 0.2);
 }
 
 /* Base Normalization */
@@ -52,141 +63,94 @@
 html, body {
     background-color: rgb(var(--surface-pit));
     color: rgb(var(--content-secondary));
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     height: 100vh;
     width: 100vw;
-    overflow-x: hidden;
+    overflow: hidden;
     scroll-behavior: smooth;
+    transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-h1, h2, h3, h4, .font-brutalist {
-    font-family: 'Outfit', sans-serif;
-    font-weight: 900;
-    text-transform: uppercase;
-    font-style: italic;
-    letter-spacing: -0.02em;
+h1, h2, h3, h4 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.025em;
     color: rgb(var(--content-primary));
 }
 
 .font-mono {
     font-family: 'JetBrains Mono', monospace;
-    letter-spacing: -0.05em;
 }
 
-/* Deep Space Backdrop */
-.space-background {
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(circle at 50% 50%, rgba(var(--accent-primary-rgb), 0.03) 0%, transparent 70%);
-    z-index: -1;
-}
-
-.space-background::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
-    opacity: 0.05;
-    pointer-events: none;
-}
-
-/* Glassmorphism Evolution */
+/* Modern Minimalist Panels */
 .glass-panel {
-    background: rgba(var(--surface-raised), 0.65);
-    backdrop-filter: blur(var(--aura-glass-blur)) saturate(1.8);
-    -webkit-backdrop-filter: blur(var(--aura-glass-blur)) saturate(1.8);
+    background: rgba(var(--surface-base), 0.75);
+    backdrop-filter: blur(var(--aura-glass-blur));
+    -webkit-backdrop-filter: blur(var(--aura-glass-blur));
     border: 1px solid var(--border-default);
-    box-shadow: 
-        0 8px 32px -4px rgba(0, 0, 0, 0.5),
-        inset 0 1px 1px rgba(255, 255, 255, 0.05);
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    transition: all 0.2s ease;
 }
 
-.glass-panel:hover {
-    border-color: var(--border-strong);
-    background: rgba(var(--surface-raised), 0.75);
+.dark .glass-panel {
+    background: rgba(var(--surface-raised), 0.7);
+    border-color: var(--border-subtle);
 }
 
-/* Premium Buttons */
+/* Action Systems */
 .btn-sovereign {
-    height: 64px;
-    padding: 0 40px;
+    height: 48px;
+    padding: 0 24px;
     background: rgb(var(--accent-primary));
     color: white;
-    font-family: 'Outfit', sans-serif;
-    font-weight: 900;
-    font-style: italic;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
+    font-weight: 600;
     border: none;
-    border-radius: 20px;
+    border-radius: 12px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    box-shadow: 0 0 20px rgba(var(--accent-primary-rgb), 0.25);
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    gap: 8px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    font-size: 14px;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .btn-sovereign:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 0 40px rgba(var(--accent-primary-rgb), 0.45);
-    background: rgb(var(--accent-primary));
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 15px -3px rgba(var(--accent-primary-rgb), 0.3);
 }
 
-.btn-sovereign:active {
-    transform: scale(0.98);
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
 }
 
-/* Inputs Architecture */
-.input-sovereign {
-    width: 100%;
-    height: 64px;
-    background: rgba(var(--surface-pit), 0.5);
-    border: 1px solid var(--border-strong);
-    border-radius: 20px;
-    padding: 0 24px;
-    color: white;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 14px;
-    outline: none;
-    transition: all 0.3s ease;
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-.input-sovereign:focus {
-    border-color: rgb(var(--accent-primary));
-    box-shadow: 0 0 15px rgba(var(--accent-primary-rgb), 0.15);
-    background: rgba(var(--surface-pit), 0.8);
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 10px;
 }
 
-/* Animations */
-@keyframes glow-pulse {
-    0%, 100% { opacity: 0.5; transform: scale(1); }
-    50% { opacity: 0.8; transform: scale(1.05); }
+.status-glow {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgb(var(--accent-success));
+    box-shadow: 0 0 8px rgb(var(--accent-success-rgb));
 }
 
-.glow-orb {
-    position: absolute;
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(var(--accent-primary-rgb), 0.2) 0%, transparent 70%);
-    filter: blur(60px);
-    animation: glow-pulse 10s infinite;
-    z-index: -1;
+@keyframes pulse-gentle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
 }
 
-/* Utility Clases */
-.text-gradient {
-    background: linear-gradient(135deg, white 0%, rgba(255,255,255,0.4) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+.pulse-status {
+    animation: pulse-gentle 2s infinite ease-in-out;
 }
-
-.uppercase { text-transform: uppercase; }
-.italic { font-style: italic; }
-.font-black { font-weight: 900; }
-.tracking-tightest { letter-spacing: -0.05em; }
-.tracking-widest { letter-spacing: 0.2em; }

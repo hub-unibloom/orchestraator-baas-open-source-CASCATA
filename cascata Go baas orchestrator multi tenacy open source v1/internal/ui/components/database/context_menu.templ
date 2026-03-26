@@ -24,20 +24,20 @@ templ TableContextMenu(slug string, schema string, name string, x int, y int) {
 
         <div class="p-3 space-y-1">
             <!-- Primary Operations -->
-            @ContextAction("TRANSFORM_STRUCTURE", "grid", fmt.Sprintf("htmx.ajax('GET', '/system/projects/%s/database/tables/%s/data?schema=%s', '#database-content-canvas')", slug, name, schema), "primary")
+            @ContextAction("TRANSFORM_STRUCTURE", "grid", fmt.Sprintf("htmx.ajax('GET', '/projects/%s/database/tables/%s/data?schema=%s', '#database-content-canvas')", slug, name, schema), "primary")
             
             <div class="h-[1px] bg-white/5 mx-4 my-2"></div>
 
             <!-- Management Suite -->
-            @ContextAction("CLONE_LAB", "copy", fmt.Sprintf("htmx.ajax('GET', '/system/projects/%s/database/modals/duplicate?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "default")
-            @ContextAction("RE_IDENTIFY", "edit", fmt.Sprintf("htmx.ajax('GET', '/system/projects/%s/database/modals/rename?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "default")
-            @ContextAction("EXPORT_ENTITY", "download", fmt.Sprintf("htmx.ajax('GET', '/system/projects/%s/database/modals/export?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "default")
+            @ContextAction("CLONE_LAB", "copy", fmt.Sprintf("htmx.ajax('GET', '/projects/%s/database/modals/duplicate?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "default")
+            @ContextAction("RE_IDENTIFY", "edit", fmt.Sprintf("htmx.ajax('GET', '/projects/%s/database/modals/rename?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "default")
+            @ContextAction("EXPORT_ENTITY", "download", fmt.Sprintf("htmx.ajax('GET', '/projects/%s/database/modals/export?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "default")
             
             <div class="h-[1px] bg-white/5 mx-4 my-2"></div>
 
             <!-- Dangerous Terminals -->
-            @ContextAction("TRUNCATE_PULSE", "zap", fmt.Sprintf("htmx.ajax('GET', '/system/projects/%s/database/modals/truncate?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "warning")
-            @ContextAction("TERMINATE_NODE", "trash", fmt.Sprintf("htmx.ajax('GET', '/system/projects/%s/database/modals/delete?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "danger")
+            @ContextAction("TRUNCATE_PULSE", "zap", fmt.Sprintf("htmx.ajax('GET', '/projects/%s/database/modals/truncate?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "warning")
+            @ContextAction("TERMINATE_NODE", "trash", fmt.Sprintf("htmx.ajax('GET', '/projects/%s/database/modals/delete?table=%s&schema=%s', '#database-modal-root')", slug, name, schema), "danger")
         </div>
 
         <footer class="p-4 bg-surface-pit/40 border-t border-white/5 flex items-center justify-between opacity-40 italic">

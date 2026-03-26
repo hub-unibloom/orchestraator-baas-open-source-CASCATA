@@ -17,12 +17,12 @@ templ ProjectDashboard(slug string, loc *i18n.Localizer) {
 		
 		<!-- CONTEÚDO DINÂMICO (POLLING HTMX) -->
 		<main 
-			hx-get={ fmt.Sprintf("/system/projects/%s/overview", slug) } 
+			hx-get={ fmt.Sprintf("/projects/%s/overview", slug) } 
 			hx-trigger="every 10s" 
 			hx-target="#stats-view"
 			class="flex-1 overflow-y-auto custom-scrollbar p-16 relative z-10"
 		>
-			<div id="stats-view" hx-get={ fmt.Sprintf("/system/projects/%s/overview", slug) } hx-trigger="load" class="animate-fade-in">
+			<div id="stats-view" hx-get={ fmt.Sprintf("/projects/%s/overview", slug) } hx-trigger="load" class="animate-fade-in">
 				<div class="flex flex-col items-center justify-center py-48 gap-8">
 				    <div class="w-16 h-16 border-4 border-accent-primary/20 border-t-accent-primary rounded-full animate-spin"></div>
 					<p class="italic font-black uppercase tracking-[0.5em] text-[10px] text-content-muted animate-pulse">
@@ -38,8 +38,8 @@ templ ProjectDashboard(slug string, loc *i18n.Localizer) {
 
 templ ProjectSubNav(slug string) {
 	<div class="flex items-center gap-2 bg-surface-raised/40 border border-white/5 p-1 rounded-full backdrop-blur-md shadow-2xl">
-		<a hx-get={ fmt.Sprintf("/system/projects/%s", slug) } hx-target="#main-content" class="px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest text-content-muted hover:text-white transition-all cursor-pointer italic">OVR_VIEW</a>
-		<a hx-get={ fmt.Sprintf("/system/projects/%s/database", slug) } hx-target="#main-content" class="px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest bg-accent-primary text-white border border-accent-primary/20 hover:scale-105 transition-all cursor-pointer italic shadow-glow">DB_EXPLR</a>
+		<a hx-get={ fmt.Sprintf("/projects/%s", slug) } hx-target="#main-content" class="px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest text-content-muted hover:text-white transition-all cursor-pointer italic">OVR_VIEW</a>
+		<a hx-get={ fmt.Sprintf("/projects/%s/database", slug) } hx-target="#main-content" class="px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest bg-accent-primary text-white border border-accent-primary/20 hover:scale-105 transition-all cursor-pointer italic shadow-glow">DB_EXPLR</a>
 		<a class="px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest text-content-muted hover:text-white transition-all cursor-pointer italic">SEC_LAB</a>
 		<a class="px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest text-content-muted hover:text-white transition-all cursor-pointer italic">STORAGE</a>
 		<a class="px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest text-content-muted hover:text-white transition-all cursor-pointer italic">AUTO_ENGINE</a>

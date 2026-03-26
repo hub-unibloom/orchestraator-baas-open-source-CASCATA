@@ -92,7 +92,7 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	// Routes
 	// 1. PUBLIC ROUTES
 	router.Get("/health", s.handleHealth)
-	router.Post("/system/auth/login", s.SystemH.HandleLogin) 
+	router.Post("/auth/login", s.SystemH.HandleLogin) 
 
 	// STATIC ASSETS (Sovereign CSS & Scripts)
 	fsStatic := http.FileServer(http.Dir("internal/ui/static"))
@@ -107,14 +107,14 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	router.Handle("/languages/*", http.StripPrefix("/languages/", fsLangs))
 	router.Handle("/themas/*", http.StripPrefix("/themas/", fsThemes))
 	
-	// 2. PROTECTED SYSTEM ROUTES (Dashboard/Members)
+	// 2. PROTECTED ADMINISTRATIVE ROUTES (Dashboard/Members)
 	router.Group(func(r chi.Router) {
 		r.Use(s.MemberMiddle.EnforceMemberSession)
 
 		r.Get("/", s.UIH.ServeIndex)
-		r.Get("/system", s.UIH.ServeSystemDashboard)
+		r.Get("/dashboard", s.UIH.ServeSystemDashboard)
 		
-		r.Route("/system/projects", func(r chi.Router) {
+		r.Route("/projects", func(r chi.Router) {
 			r.Get("/", s.SystemH.HandleListProjects)
 			r.Get("/list", s.UIH.HandleUIListProjects) 
 			r.Get("/onboarding", s.UIH.HandleUIOnboarding) 
@@ -122,7 +122,7 @@ func (s *Server) Start(ctx context.Context, id int) error {
 			r.Get("/{slug}/overview", s.UIH.HandleUIProjectOverview)
 			r.Get("/{slug}/database", s.UIH.HandleUIDatabaseExplorer)
 			r.Get("/{slug}/database/tables", s.UIH.HandleUIDatabaseTables)
-			r.Get("/{slug}/database/tables/search", s.UIH.HandleUIDatabaseTables) // Same for now
+			r.Get("/{slug}/database/tables/search", s.UIH.HandleUIDatabaseTables)
 			r.Get("/{slug}/database/tables/{table}/data", s.UIH.HandleUIDatabaseTableData)
 			r.Get("/{slug}/database/tables/{table}/context-menu", s.UIH.HandleUIDatabaseContextMenu)
 			r.Get("/{slug}/database/console", s.UIH.HandleUIDatabaseConsole)

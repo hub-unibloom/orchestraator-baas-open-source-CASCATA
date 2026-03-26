@@ -8,7 +8,7 @@ import (
 
 script openContextMenu(slug string, name string, schema string) {
     event.preventDefault();
-    htmx.ajax('GET', `/system/projects/${slug}/database/tables/${name}/context-menu?x=${event.clientX}&y=${event.clientY}&schema=${schema}`, '#database-context-menu-portal');
+    htmx.ajax('GET', `/projects/${slug}/database/tables/${name}/context-menu?x=${event.clientX}&y=${event.clientY}&schema=${schema}`, '#database-context-menu-portal');
 }
 
 templ Sidebar(slug string, loc *i18n.Localizer) {
@@ -30,7 +30,7 @@ templ Sidebar(slug string, loc *i18n.Localizer) {
                 
                 <!-- Manage Extensions Button (The Puzzle) -->
                 <button 
-                  hx-get={ fmt.Sprintf("/system/projects/%s/database/modals/extensions", slug) }
+                  hx-get={ fmt.Sprintf("/projects/%s/database/modals/extensions", slug) }
                   hx-target="#database-modal-root"
                   class="p-2.5 rounded-2xl text-content-muted hover:text-secondary hover:bg-secondary/5 transition-all active:scale-90" 
                   title="Manage Postgres Extensions">
@@ -41,7 +41,7 @@ templ Sidebar(slug string, loc *i18n.Localizer) {
             <!-- Enhanced Schema Selector -->
             <div class="relative">
                 <select 
-                  hx-get={ fmt.Sprintf("/system/projects/%s/database/tables", slug) }
+                  hx-get={ fmt.Sprintf("/projects/%s/database/tables", slug) }
                   hx-target="#table-list-container"
                   name="schema"
                   class="w-full bg-surface-raised border border-white/5 py-4 pl-6 pr-12 rounded-[22px] text-[10px] font-black uppercase tracking-[0.2em] text-white appearance-none cursor-pointer hover:border-accent-primary/40 focus:border-accent-primary/60 transition-all outline-none italic shadow-glow-sm">
@@ -62,7 +62,7 @@ templ Sidebar(slug string, loc *i18n.Localizer) {
                 <input 
                     type="text" 
                     name="q"
-                    hx-get={ fmt.Sprintf("/system/projects/%s/database/tables/search", slug) }
+                    hx-get={ fmt.Sprintf("/projects/%s/database/tables/search", slug) }
                     hx-trigger="keyup changed delay:300ms"
                     hx-target="#table-list-container"
                     placeholder={ internalI18n.T(loc, "search_tables") } 
@@ -80,13 +80,13 @@ templ Sidebar(slug string, loc *i18n.Localizer) {
                 <span class="text-[8px] font-black text-content-muted uppercase tracking-[0.3em] italic">{ internalI18n.T(loc, "table_registry") }</span>
                 <div class="flex items-center gap-1">
                     <button 
-                      hx-get={ fmt.Sprintf("/system/projects/%s/database/tables", slug) }
+                      hx-get={ fmt.Sprintf("/projects/%s/database/tables", slug) }
                       hx-target="#table-list-container"
                       class="p-2 rounded-xl text-content-muted hover:text-accent-primary hover:bg-accent-primary/5 transition-all active:scale-90" title="Refresh List">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path><path d="M22 4h-8v8"></path></svg>
                     </button>
                     <button 
-                      hx-get={ fmt.Sprintf("/system/projects/%s/database/modals/create-table", slug) }
+                      hx-get={ fmt.Sprintf("/projects/%s/database/modals/create-table", slug) }
                       hx-target="#database-modal-root"
                       class="p-2 rounded-xl text-content-muted hover:text-accent-primary hover:bg-accent-primary/5 transition-all active:scale-90" title="Genesis: New Table">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
@@ -105,7 +105,7 @@ templ Sidebar(slug string, loc *i18n.Localizer) {
             <!-- Recycle Bin Trigger (Only shown if items exist in backend) -->
             <div id="recycle-bin-trigger" class="p-3">
                  <button 
-                   hx-get={ fmt.Sprintf("/system/projects/%s/database/modals/recycle-bin", slug) }
+                   hx-get={ fmt.Sprintf("/projects/%s/database/modals/recycle-bin", slug) }
                    hx-target="#database-modal-root"
                    class="w-full flex items-center justify-between px-5 py-4 rounded-[22px] text-content-muted hover:text-rose-500 hover:bg-rose-500/5 hover:border-rose-500/20 border border-transparent transition-all group italic">
                     <div class="flex items-center gap-3">
@@ -120,7 +120,7 @@ templ Sidebar(slug string, loc *i18n.Localizer) {
         <!-- SQL Console Action (Sovereign Authority) -->
         <footer class="p-8 bg-surface-pit/40 border-t border-white/5 backdrop-blur-xl relative">
             <button 
-              hx-get={ fmt.Sprintf("/system/projects/%s/database/console", slug) }
+              hx-get={ fmt.Sprintf("/projects/%s/database/console", slug) }
               hx-target="#database-content-canvas"
               class="w-full h-16 bg-surface-raised border border-white/10 rounded-[28px] flex items-center justify-center gap-4 group hover:border-accent-primary/60 hover:shadow-glow transition-all active:scale-95 relative overflow-hidden italic">
                 <div class="absolute inset-0 bg-gradient-to-r from-accent-primary/10 via-transparent to-accent-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -141,7 +141,7 @@ templ TableItem(slug string, schema string, name string, isSelected bool, isCore
         class={ "w-full group flex items-center justify-between p-4 rounded-[22px] transition-all duration-300 relative overflow-hidden group/item htmx-entry-anim opacity-0 cursor-pointer italic shadow-glow-sm",
                 templ.KV("bg-accent-primary text-white shadow-glow", isSelected),
                 templ.KV("border border-white/5 hover:border-white/10 hover:bg-white/5 hover:shadow-glow-sm", !isSelected) }
-        hx-get={ fmt.Sprintf("/system/projects/%s/database/tables/%s/data?schema=%s", slug, name, schema) }
+        hx-get={ fmt.Sprintf("/projects/%s/database/tables/%s/data?schema=%s", slug, name, schema) }
         hx-target="#database-content-canvas"
         hx-on:contextmenu={ openContextMenu(slug, name, schema) }
     >

@@ -318,4 +318,34 @@ Segue a lista ddo que é proibido:
 
 ---
 
+---
+
+## 8. AI ASSISTANT ETIQUETTE & CODE HYGIENE (ANTI-CREATIVITY CHECK)
+
+> Para garantir a soberania do build e evitar falhas de compilação por "excesso de criatividade" ou esquecimento de contexto, o Assistente de IA deve seguir estes protocolos de auditoria obrigatórios:
+
+### 8.1 No Ghost Imports (Saneamento de Dependências)
+O Go e o Templ são implacáveis com imports não utilizados.
+- **Protocolo:** Sempre que houver uma refatoração (ex: mover lógica do template para o Handler), o Assistente **DEVE** reler o bloco de `import` do arquivo e remover pacotes que não são mais referenciados.
+- **Proibido:** Deixar `fmt` ou `layouts` em arquivos `.templ` que foram desacoplados.
+
+### 8.2 Pointer-Value Strictness (Consistência de Contratos)
+O sistema utiliza injeção de dependência via ponteiros para quase todos os serviços.
+- **Protocolo:** Antes de declarar um Handler ou Service como "concluído", o Assistente **DEVE** verificar a função `New...` correspondente no `main.go`. Se o serviço lá é um ponteiro (`*service.X`), a struct receptora e o construtor do Handler **DEVEM** usar o ponteiro.
+- **Proibido:** Tentar injetar um ponteiro em um campo que espera o valor da struct.
+
+### 8.3 Structural Brace Integrity
+Em arquivos `.templ`, o Assistente deve ser paranoico com o fechamento de blocos.
+- **Protocolo:** Realizar uma contagem visual de abertura `{` e fechamento `}` antes de cada salvamento. Um único `}` extra ou faltante colapsa o gerador de código.
+
+### 8.4 Post-Refactor Audit (Limpeza de Resquícios)
+Refatorações de frontend (de Páginas Integradas para Fragmentos HTMX) costumam deixar "lixo" sintático.
+- **Protocolo:** Após qualquer mudança estrutural, o Assistente deve realizar um **"Pre-Flight Scan"**:
+  1. Verificar o `package` e `import` do arquivo.
+  2. Verificar as assinaturas de funções/templ.
+  3. Garantir que as rotas no `server.go` e os links no `sidebar.templ` / `navigation.templ` ainda apontam para os destinos corretos.
+
+**Lembre-se: No Cascata, se não passou pelo builder, não é código — é problema.**
+
+
 **Diretiva permanente: cada linha de código é defensável em code review bancário.**

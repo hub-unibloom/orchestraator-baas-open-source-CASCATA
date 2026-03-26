@@ -19,7 +19,7 @@ type Project struct {
 
 templ ProjectCard(p Project, loc *i18n.Localizer) {
 	<div 
-		hx-get={ fmt.Sprintf("/system/projects/%s", p.Slug) }
+		hx-get={ fmt.Sprintf("/projects/%s", p.Slug) }
 		hx-target="#main-content"
 		hx-push-url="true"
 		class="glass-panel p-10 rounded-[48px] group relative overflow-hidden transition-all duration-500 hover:scale-[1.02] bg-surface-raised/30 cursor-pointer border border-white/5 hover:border-accent-primary/50"
@@ -48,7 +48,7 @@ templ ProjectCard(p Project, loc *i18n.Localizer) {
 			
 			<div class="flex gap-2 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
 				<button 
-					hx-delete={ fmt.Sprintf("/system/projects/%s", p.Slug) }
+					hx-delete={ fmt.Sprintf("/projects/%s", p.Slug) }
 					hx-confirm={ fmt.Sprintf("TEM CERTEZA QUE DESEJA ANIQUILAR O PROJETO '%s'? Esta operação é irreversível no Sistema e Postgres.", p.Name) }
 					hx-target="closest div"
 					hx-swap="outerHTML swap:400ms"

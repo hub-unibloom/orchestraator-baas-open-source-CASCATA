@@ -277,7 +277,7 @@ func (h *UIHandler) HandleUIDatabaseContextMenu(w http.ResponseWriter, r *http.R
 func (h *UIHandler) HandleUIProjectSettings(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
 	path := r.URL.Path
-	slug := strings.TrimPrefix(path, "/system/projects/")
+	slug := strings.TrimPrefix(path, "/projects/")
 	slug = strings.TrimSuffix(slug, "/settings")
 
 	templ.Handler(components.ProjectSettingsModal(slug, loc)).ServeHTTP(w, r)

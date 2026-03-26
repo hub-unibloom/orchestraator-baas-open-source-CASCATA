@@ -47,7 +47,7 @@ templ Base(title string, loc *i18n.Localizer, hideNav bool, ctxNav templ.Compone
 								tightest: '-0.05em',
 							},
 							fontFamily: {
-								sans: ['Outfit', 'sans-serif'],
+								sans: ['Inter', 'sans-serif'],
 								mono: ['"JetBrains Mono"', 'monospace'],
 							}
 						}
@@ -59,9 +59,9 @@ templ Base(title string, loc *i18n.Localizer, hideNav bool, ctxNav templ.Compone
 			
 			<link rel="preconnect" href="https://fonts.googleapis.com"/>
 			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-			<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet"/>
+			<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet"/>
 		</head>
-		<body class="bg-surface-base text-content-primary font-sans selection:bg-accent-primary/30 h-screen overflow-hidden flex flex-col uppercase italic font-bold">
+		<body class="bg-surface-base text-content-primary font-sans selection:bg-accent-primary/30 h-screen overflow-hidden flex flex-col selection:text-white antialiased transition-colors duration-500">
 			if !hideNav {
 				@components.Navigation(loc, ctxNav)
 			}

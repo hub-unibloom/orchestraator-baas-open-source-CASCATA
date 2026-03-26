@@ -38,7 +38,7 @@ templ SqlConsole(slug string, loc *i18n.Localizer) {
                 <div class="w-[1px] h-8 bg-white/5 mx-2"></div>
 
                 <button 
-                   hx-post={ fmt.Sprintf("/system/projects/%s/database/sql/execute", slug) }
+                   hx-post={ fmt.Sprintf("/projects/%s/database/sql/execute", slug) }
                    hx-include="#sql-editor-area"
                    hx-target="#sql-response-stream"
                    hx-indicator="#sql-indicator"

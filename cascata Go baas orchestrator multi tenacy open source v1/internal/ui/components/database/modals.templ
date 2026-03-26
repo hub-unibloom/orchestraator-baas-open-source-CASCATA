@@ -81,7 +81,7 @@ templ ExtensionCard(slug string, name string, installed bool) {
         
         <!-- Toggle Mechanism (HX-Sinergy) -->
         <button 
-          hx-post={ fmt.Sprintf("/system/projects/%s/database/extensions/%s/toggle", slug, name) }
+          hx-post={ fmt.Sprintf("/projects/%s/database/extensions/%s/toggle", slug, name) }
           hx-target="closest div"
           hx-swap="outerHTML"
           class={ "px-6 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all", 
