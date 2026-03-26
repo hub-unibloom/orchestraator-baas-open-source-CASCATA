@@ -29,7 +29,7 @@ func projectList(cfg CommandConfig, args []string) {
 	client := NewAPIClient(cfg)
 	var projects []interface{}
 	
-	err := client.Do("GET", "/system/projects", nil, &projects)
+	err := client.Do("GET", "/projects", nil, &projects)
 	if err != nil {
 		Fatal(cfg, "API_ERROR", "Failed to fetch projects", err.Error())
 	}
@@ -54,7 +54,7 @@ func projectCreate(cfg CommandConfig, args []string) {
 
 	client := NewAPIClient(cfg)
 	var result interface{}
-	err := client.Do("POST", "/system/projects", payload, &result)
+	err := client.Do("POST", "/projects", payload, &result)
 	if err != nil {
 		Fatal(cfg, "API_ERROR", "Failed to birth project", err.Error())
 	}
@@ -80,7 +80,7 @@ func projectExport(cfg CommandConfig, args []string) {
 	defer f.Close()
 
 	fmt.Printf("Exporting project %s to %s...\n", *slug, *output)
-	err = client.Download(fmt.Sprintf("/system/projects/export?slug=%s", *slug), f)
+	err = client.Download(fmt.Sprintf("/projects/export?slug=%s", *slug), f)
 	if err != nil {
 		Fatal(cfg, "API_ERROR", "Export failed", err.Error())
 	}

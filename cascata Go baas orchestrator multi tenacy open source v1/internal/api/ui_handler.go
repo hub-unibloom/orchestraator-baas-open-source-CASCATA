@@ -108,7 +108,7 @@ func (h *UIHandler) HandleUIOnboarding(w http.ResponseWriter, r *http.Request) {
 // HandleUIProjectDashboard renders the main cockpit page for a tenant.
 func (h *UIHandler) HandleUIProjectDashboard(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
-	slug := r.URL.Path[len("/system/projects/"):]
+	slug := r.URL.Path[len("/projects/"):]
 	if strings.Contains(slug, "/") {
 		slug = slug[:strings.Index(slug, "/")]
 	}
@@ -135,7 +135,7 @@ func (h *UIHandler) HandleUIProjectDashboard(w http.ResponseWriter, r *http.Requ
 func (h *UIHandler) HandleUIProjectOverview(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
 	path := r.URL.Path
-	slug := strings.TrimPrefix(path, "/system/projects/")
+	slug := strings.TrimPrefix(path, "/projects/")
 	slug = strings.TrimSuffix(slug, "/overview")
 
 	dbProjects, err := h.SystemH.ProjectRepo.List(r.Context())
@@ -174,7 +174,7 @@ func (h *UIHandler) HandleUIProjectOverview(w http.ResponseWriter, r *http.Reque
 func (h *UIHandler) HandleUIDatabaseExplorer(w http.ResponseWriter, r *http.Request) {
 	loc := i18n.GetLocalizer(r)
 	path := r.URL.Path
-	slug := strings.TrimPrefix(path, "/system/projects/")
+	slug := strings.TrimPrefix(path, "/projects/")
 	slug = strings.TrimSuffix(slug, "/database")
 
 	if r.Header.Get("HX-Request") == "true" {
