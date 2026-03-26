@@ -82,16 +82,17 @@ func (r *Repository) WithRLS(ctx context.Context, claims UserClaims, projectSlug
 				targetNamespace = "cascata_system"
 			}
 
-			// Atomic Security Logic: Inject Role and Search Path via string formatting for identifiers,
-			// and use pgx placeholders for data literals.
+			// Atomic Security Logic: Inject Role and Search Path via string formatting for identifiers.
+			// Custom GUCs (Global User Configurations) must be set via set_config() to support params ($1, $2..).
 			atomicSQL := fmt.Sprintf("SET LOCAL ROLE %q; ", role) +
-				"SET LOCAL statement_timeout = $1; " +
 				fmt.Sprintf("SET LOCAL search_path TO %q, public; ", targetNamespace) +
-				`SET LOCAL "cascata.project_slug" = $2; 
-				 SET LOCAL "cascata.isolation_scope" = 'tenant'; 
-				 SET LOCAL "request.jwt.claim.sub" = $3; 
-				 SET LOCAL "request.jwt.claim.email" = $4; 
-				 SET LOCAL "request.jwt.claim.role" = $5;`
+				`SELECT 
+					set_config('statement_timeout', $1, true),
+					set_config('cascata.project_slug', $2, true),
+					set_config('cascata.isolation_scope', 'tenant', true),
+					set_config('request.jwt.claim.sub', $3, true),
+					set_config('request.jwt.claim.email', $4, true),
+					set_config('request.jwt.claim.role', $5, true);`
 
 			if _, err := tx.Exec(ctx, atomicSQL, timeout, projectSlug, claims.Sub, claims.Email, claims.Role); err != nil {
 				slog.Error("security context injection failed", "slug", projectSlug, "err", err, "role", role, "namespace", targetNamespace)
