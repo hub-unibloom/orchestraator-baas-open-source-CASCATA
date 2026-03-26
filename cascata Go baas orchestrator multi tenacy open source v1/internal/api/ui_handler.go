@@ -20,9 +20,10 @@ import (
 )
 
 type CreateTableRequest struct {
-	TableName   string `json:"tableName"`
-	Description string `json:"description"`
-	EnableRLS   bool   `json:"enableRLS"`
+	TableName    string `json:"tableName"`
+	Description  string `json:"description"`
+	TargetSchema string `json:"targetSchema"`
+	EnableRLS    bool   `json:"enableRLS"`
 	McpEnabled  bool   `json:"mcpEnabled"`
 	McpPerms    struct {
 		R bool `json:"r"`
@@ -214,7 +215,7 @@ func (h *UIHandler) HandleUIDatabaseExplorer(w http.ResponseWriter, r *http.Requ
 	slug = strings.TrimSuffix(slug, "/database")
 
 	if r.Header.Get("HX-Request") == "true" {
-		schemas := h.fetchProjectSchemas(r.Context())
+		schemas := h.fetchProjectSchemas(r.Context(), slug)
 		w.Header().Set("Content-Type", "text/html")
 		if err := pages.DatabaseExplorer(slug, loc, schemas).Render(r.Context(), w); err != nil {
 			slog.Error("ui: failed to render database explorer fragment", "slug", slug, "err", err)
@@ -224,7 +225,7 @@ func (h *UIHandler) HandleUIDatabaseExplorer(w http.ResponseWriter, r *http.Requ
 
 	// Full Page Reload
 	title := "Database Explorer: " + slug
-	schemas := h.fetchProjectSchemas(r.Context())
+	schemas := h.fetchProjectSchemas(r.Context(), slug)
 	w.Header().Set("Content-Type", "text/html")
 	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug, "database"))
 	ctx := templ.WithChildren(r.Context(), pages.DatabaseExplorer(slug, loc, schemas))
@@ -292,7 +293,7 @@ func (h *UIHandler) HandleUIDatabaseModals(w http.ResponseWriter, r *http.Reques
 	loc := i18n.GetLocalizer(r)
 	switch modalType {
 	case "create-table":
-		schemas := h.fetchProjectSchemas(r.Context())
+		schemas := h.fetchProjectSchemas(r.Context(), slug)
 		_ = database.TableCreator(slug, loc, schemas, currentSchema).Render(r.Context(), w)
 	case "extensions":
 		installed := []string{"pgcrypto", "uuid-ossp"}
@@ -363,8 +364,11 @@ func (h *UIHandler) HandleUIDatabaseCreateTable(w http.ResponseWriter, r *http.R
 
 func (h *UIHandler) generateCreateTableSQL(req CreateTableRequest, slug string) string {
 	tableName := h.SanitizeName(req.TableName)
-	schema := slug 
-	if schema == "" { schema = "public" }
+	
+	// Inbound Translation: Visual Schema -> Physical Sovereign Namespace
+	visualSchema := req.TargetSchema
+	if visualSchema == "" { visualSchema = "public" }
+	schema := fmt.Sprintf("%s_%s", slug, visualSchema)
 
 	var colDefs []string
 	for _, c := range req.Columns {
@@ -472,27 +476,45 @@ func (h *UIHandler) HandleUIDatabasePreviewTable(w http.ResponseWriter, r *http.
 }
 
 // fetchProjectSchemas queries information_schema for real schemas, excluding system ones.
-func (h *UIHandler) fetchProjectSchemas(ctx context.Context) []string {
+// Implements SOVEREIGN DISCOVERY: filters by slug prefix and MASKS the prefix for the UI.
+func (h *UIHandler) fetchProjectSchemas(ctx context.Context, slug string) []string {
+	prefix := slug + "_"
+	if slug == "cascata" {
+		// System context should list system-related schemas
+		prefix = "cascata_"
+	}
+
+	var schemas []string
 	const sql = `
 		SELECT schema_name 
 		FROM information_schema.schemata 
-		WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast', 'pg_temp_1', 'pg_cache') 
+		WHERE schema_name LIKE $1 || '%'
+		  AND schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast') 
 		ORDER BY schema_name ASC
 	`
-	rows, err := h.SystemH.ProjectRepo.Pool().Query(ctx, sql)
-	if err != nil {
-		slog.Error("ui: failed to fetch schemas", "err", err)
-		return []string{"public"} // Fallback
-	}
-	defer rows.Close()
 
-	var schemas []string
-	for rows.Next() {
-		var s string
-		if err := rows.Scan(&s); err == nil {
-			schemas = append(schemas, s)
+	// Discovery within Sovereign Context
+	_ = h.SystemH.ProjectRepo.Repo().WithRLS(ctx, database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, sql, prefix)
+		if err != nil {
+			return err
 		}
-	}
+		defer rows.Close()
+
+		for rows.Next() {
+			var s string
+			if err := rows.Scan(&s); err == nil {
+				// Mask prefix: project1_public -> public
+				visualName := strings.TrimPrefix(s, prefix)
+				if visualName == s && slug != "cascata" {
+					continue // Safety: skip if it doesn't match prefix
+				}
+				schemas = append(schemas, visualName)
+			}
+		}
+		return nil
+	})
+
 	if len(schemas) == 0 {
 		return []string{"public"}
 	}

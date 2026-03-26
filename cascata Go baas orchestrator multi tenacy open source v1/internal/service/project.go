@@ -38,17 +38,37 @@ func (s *ProjectService) GetPool(ctx context.Context, p *domain.Project) (*datab
 // Resolve identifies a project by its unique slug or custom domain.
 // Used by the AuthMiddleware to establish project context before CRUD.
 func (s *ProjectService) Resolve(ctx context.Context, identifier string) (*domain.Project, error) {
-	// L1 Check (Future: In-memory cache for ultra-hot path)
-	// L2 Check (Future: Dragonfly cache for cluster-wide consistency)
+	// 1. Resolve within the Sovereign System Context (slug: cascata)
+	// This ensures the search_path is set to cascata_system.
+	var p *domain.Project
+	err := s.repo.Repo().WithRLS(ctx, database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
+		var err error
+		p, err = s.repo.GetByIdentifier(ctx, tx, identifier)
+		return err
+	})
 
-	// Primary Lookup on Metadata DB.
-	p, err := s.repo.GetByIdentifier(ctx, identifier)
 	if err != nil {
 		slog.Warn("project resolution failed", "identifier", identifier, "error", err)
 		return nil, fmt.Errorf("service.Project.Resolve: %w", err)
 	}
 
 	return p, nil
+}
+
+// ListProjects returns all projects registered in the Sovereign System Context.
+func (s *ProjectService) ListProjects(ctx context.Context) ([]*domain.Project, error) {
+	var projects []*domain.Project
+	err := s.repo.Repo().WithRLS(ctx, database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
+		var err error
+		projects, err = s.repo.List(ctx, tx)
+		return err
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("service.Project.List: %w", err)
+	}
+
+	return projects, nil
 }
 
 // UpdateHealth marks project status in the metadata DB.

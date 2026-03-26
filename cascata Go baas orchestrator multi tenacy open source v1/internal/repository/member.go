@@ -20,12 +20,14 @@ func NewMemberRepository(db *database.Repository) *MemberRepository {
 }
 
 // FindByEmail retrieves a member by their primary identifier.
-func (r *MemberRepository) FindByEmail(ctx context.Context, email string) (*domain.Member, error) {
+// Implements SOVEREIGN IDENTITY: Depends on search_path injection from service layer.
+func (r *MemberRepository) FindByEmail(ctx context.Context, q database.Queryer, email string) (*domain.Member, error) {
+	// Removed system. prefix to align with Sovereign Namespace Barrier
 	query := `SELECT id, email, password_hash, role, type, mfa_enabled, created_at, updated_at 
-	          FROM system.members WHERE email = $1`
+	          FROM members WHERE email = $1`
 
 	m := &domain.Member{}
-	err := r.db.Pool.QueryRow(ctx, query, email).Scan(
+	err := q.QueryRow(ctx, query, email).Scan(
 		&m.ID, &m.Email, &m.PasswordHash, &m.Role, &m.Type, &m.MFAEnabled, &m.CreatedAt, &m.UpdatedAt,
 	)
 
@@ -40,11 +42,12 @@ func (r *MemberRepository) FindByEmail(ctx context.Context, email string) (*doma
 }
 
 // Create inserts a new system operator.
-func (r *MemberRepository) Create(ctx context.Context, m *domain.Member) error {
-	query := `INSERT INTO system.members (email, password_hash, role, type, mfa_enabled)
+func (r *MemberRepository) Create(ctx context.Context, q database.Queryer, m *domain.Member) error {
+	// Removed system. prefix to align with Sovereign Namespace Barrier
+	query := `INSERT INTO members (email, password_hash, role, type, mfa_enabled)
 	          VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at, updated_at`
 
-	err := r.db.Pool.QueryRow(ctx, query, m.Email, m.PasswordHash, m.Role, m.Type, m.MFAEnabled).Scan(
+	err := q.QueryRow(ctx, query, m.Email, m.PasswordHash, m.Role, m.Type, m.MFAEnabled).Scan(
 		&m.ID, &m.CreatedAt, &m.UpdatedAt,
 	)
 

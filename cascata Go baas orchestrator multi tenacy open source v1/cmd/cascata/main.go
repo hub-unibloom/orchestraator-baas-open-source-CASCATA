@@ -159,7 +159,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 
 	residentAuthSvc := auth.NewResidentAuthService(projectService, resRepo, sessionSvc, otpMgr, postman, govSvc, auditService, secSvc)
 	externalAuthSvc := auth.NewExternalAuthService(projectService, resRepo, residentAuthSvc)
-	systemAuth := auth.NewSystemAuthService(memberRepo, auditService)
+	systemAuth := auth.NewSystemAuthService(repo, memberRepo, auditService)
 	
 	// --- 6. Orchestration Engines (Phase 11-15) ---
 	syncService := service.NewSyncService(projectService, auditService)
@@ -188,7 +188,7 @@ func runWorker(ctx context.Context, cfg *config.Config, id int) {
 	// --- 8. API Layer Dispatch (The Gateway) ---
 	interceptor := api.NewInterceptor(repo, projectRepo, phantomSvc, eventQueue, workflowEngine, auditService)
 	
-	systemH := api.NewSystemHandler(systemAuth, sessionSvc, rlEngine, genesisSvc, projectRepo, storage.NewBackupService(projectService, repo))
+	systemH := api.NewSystemHandler(systemAuth, sessionSvc, rlEngine, genesisSvc, projectService, projectRepo, storage.NewBackupService(projectService, repo))
 	uiH := api.NewUIHandler(systemH)
 	
 	srv := api.NewServer(

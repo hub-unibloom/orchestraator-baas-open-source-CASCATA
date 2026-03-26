@@ -15,6 +15,14 @@ import (
 // Pool is an alias for pgxpool.Pool to maintain compatibility across the orchestrator.
 type Pool = pgxpool.Pool
 
+// Queryer defines the interface for database operations (Pool, Conn, or Tx).
+// Essential for Phase 22 Sinergy and Transactional Consistency.
+type Queryer interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
 // Repository manages database interactions for metadata.
 type Repository struct {
 	Pool *Pool
@@ -71,21 +79,29 @@ func (r *Repository) WithRLS(ctx context.Context, claims UserClaims, projectSlug
 			role := claims.Role
 			if role == "" { role = "anon" }
 
+			// 2. Resolve Sovereign Namespace (Barreira por Pseudônimo)
+			// Por padrão, o inquilino cai no seu schema _public.
+			// O sistema de orquestração cai no seu schema _system.
+			targetNamespace := fmt.Sprintf("%s_public", projectSlug)
+			if projectSlug == "cascata" {
+				targetNamespace = "cascata_system"
+			}
+
 			// We use a single multiline statement for performance and atomic security.
 			// %%q in Sprintf double-quotes the identifier for safety.
 			atomicSQL := fmt.Sprintf(`
 				SET LOCAL ROLE %%q;
 				SET LOCAL statement_timeout = $1;
-				SET LOCAL search_path TO "%%s", public;
+				SET LOCAL search_path TO %%q, public;
 				SET LOCAL "cascata.project_slug" = $2;
 				SET LOCAL "cascata.isolation_scope" = 'tenant';
 				SET LOCAL "request.jwt.claim.sub" = $3;
 				SET LOCAL "request.jwt.claim.email" = $4;
 				SET LOCAL "request.jwt.claim.role" = $5;
-			`, role, projectSlug)
+			`, role, targetNamespace)
 
 			if _, err := tx.Exec(ctx, atomicSQL, timeout, projectSlug, claims.Sub, claims.Email, claims.Role); err != nil {
-				slog.Error("security context injection failed", "slug", projectSlug, "err", err, "role", role)
+				slog.Error("security context injection failed", "slug", projectSlug, "err", err, "role", role, "namespace", targetNamespace)
 				return fmt.Errorf("security_injection: %w", err)
 			}
 

@@ -26,17 +26,22 @@ func (r *ProjectRepository) Pool() *database.Pool {
 	return r.repo.Pool
 }
 
+// Repo returns the underlying database repository for RLS operations.
+func (r *ProjectRepository) Repo() *database.Repository {
+	return r.repo
+}
+
 // Create inserts a new project metadata record.
-func (r *ProjectRepository) Create(ctx context.Context, p *domain.Project) error {
+func (r *ProjectRepository) Create(ctx context.Context, q database.Queryer, p *domain.Project) error {
 	const sql = `
-		INSERT INTO system.projects (
+		INSERT INTO projects (
 			name, slug, db_name, jwt_secret, secondary_secret_hash, anon_key, service_key, 
 			region, timezone, max_users, max_conns, max_storage_mb, max_db_weight_mb,
 			metadata, log_retention_days, status
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		RETURNING id, created_at, updated_at
 	`
-	err := r.repo.Pool.QueryRow(ctx, sql,
+	err := q.QueryRow(ctx, sql,
 		p.Name, p.Slug, p.DBName, p.JWTSecret, p.SecondarySecretHash, p.AnonKey, p.ServiceKey,
 		p.Region, p.TimeZone, p.MaxUsers, p.MaxConns, p.MaxStorageMB, p.MaxDBWeightMB,
 		p.Metadata, p.LogRetentionDays, p.Status,
@@ -51,20 +56,19 @@ func (r *ProjectRepository) Create(ctx context.Context, p *domain.Project) error
 }
 
 // GetByIdentifier retrieves a project by its unique slug or its custom domain.
-// Critical for Multi-Tenancy resolution at Phase 2 and 17.
-func (r *ProjectRepository) GetByIdentifier(ctx context.Context, identifier string) (*domain.Project, error) {
+func (r *ProjectRepository) GetByIdentifier(ctx context.Context, q database.Queryer, identifier string) (*domain.Project, error) {
 	const sql = `
 		SELECT 
 			id, name, slug, db_name, status, custom_domain, default_domain, 
 			anon_key, service_key, jwt_secret, secondary_secret_hash,
 			region, timezone, max_users, max_conns, max_storage_mb, max_db_weight_mb,
 			metadata, log_retention_days, created_at, updated_at
-		FROM system.projects 
+		FROM projects 
 		WHERE slug = $1 OR custom_domain = $1 OR default_domain = $1
 		LIMIT 1
 	`
 	p := &domain.Project{}
-	err := r.repo.Pool.QueryRow(ctx, sql, identifier).Scan(
+	err := q.QueryRow(ctx, sql, identifier).Scan(
 		&p.ID, &p.Name, &p.Slug, &p.DBName, &p.Status, &p.CustomDomain, &p.DefaultDomain, 
 		&p.AnonKey, &p.ServiceKey, &p.JWTSecret, &p.SecondarySecretHash,
 		&p.Region, &p.TimeZone, &p.MaxUsers, &p.MaxConns, &p.MaxStorageMB, &p.MaxDBWeightMB,
@@ -79,14 +83,13 @@ func (r *ProjectRepository) GetByIdentifier(ctx context.Context, identifier stri
 }
 
 // List all registered projects.
-// Used exclusively by the Cascata Dashboard in Management Context.
-func (r *ProjectRepository) List(ctx context.Context) ([]*domain.Project, error) {
+func (r *ProjectRepository) List(ctx context.Context, q database.Queryer) ([]*domain.Project, error) {
 	const sql = `
 		SELECT id, name, slug, db_name, status, created_at, updated_at 
-		FROM system.projects 
+		FROM projects 
 		ORDER BY created_at DESC
 	`
-	rows, err := r.repo.Pool.Query(ctx, sql)
+	rows, err := q.Query(ctx, sql)
 	if err != nil {
 		return nil, fmt.Errorf("repository.Project.List: %w", err)
 	}
@@ -102,11 +105,12 @@ func (r *ProjectRepository) List(ctx context.Context) ([]*domain.Project, error)
 	}
 	return projects, nil
 }
-// GetWorkflows returns all automation graphs for a project from the metadata storage (Phase 10).
-func (r *ProjectRepository) GetWorkflows(ctx context.Context, slug string) ([]domain.Workflow, error) {
-	const sql = "SELECT metadata->'workflows' FROM system.projects WHERE slug = $1"
+
+// GetWorkflows returns all automation graphs for a project from the metadata storage.
+func (r *ProjectRepository) GetWorkflows(ctx context.Context, q database.Queryer, slug string) ([]domain.Workflow, error) {
+	const sql = "SELECT metadata->'workflows' FROM projects WHERE slug = $1"
 	var raw json.RawMessage
-	err := r.repo.Pool.QueryRow(ctx, sql, slug).Scan(&raw)
+	err := q.QueryRow(ctx, sql, slug).Scan(&raw)
 	if err != nil { return nil, err }
 
 	var wfs []domain.Workflow
@@ -115,10 +119,11 @@ func (r *ProjectRepository) GetWorkflows(ctx context.Context, slug string) ([]do
 	}
 	return wfs, nil
 }
+
 // Delete removes a project from the metadata storage.
-func (r *ProjectRepository) Delete(ctx context.Context, slug string) error {
-	const sql = "DELETE FROM system.projects WHERE slug = $1"
-	_, err := r.repo.Pool.Exec(ctx, sql, slug)
+func (r *ProjectRepository) Delete(ctx context.Context, q database.Queryer, slug string) error {
+	const sql = "DELETE FROM projects WHERE slug = $1"
+	_, err := q.Exec(ctx, sql, slug)
 	if err != nil {
 		return fmt.Errorf("repository.Project.Delete: %w", err)
 	}

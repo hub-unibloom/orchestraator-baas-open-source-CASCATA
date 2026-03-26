@@ -20,7 +20,7 @@ func NewTenantRepository(repo *database.Repository) *TenantRepository {
 	return &TenantRepository{repo: repo}
 }
 
-// ProvisionNewSchema creates a logical Postgres schema for a tenant instead of a physical DB.
+// ProvisionNewSchema creates a logical Postgres schema for a tenant as their "public" home.
 func (r *TenantRepository) ProvisionNewSchema(ctx context.Context, slug string) error {
 	// 1. Sanitize slug to prevent injection in CREATE SCHEMA command.
 	re := regexp.MustCompile(`^[a-z0-9_]+$`)
@@ -28,16 +28,17 @@ func (r *TenantRepository) ProvisionNewSchema(ctx context.Context, slug string) 
 		return errors.New("repository.Tenant.Provision: invalid schema name pattern")
 	}
 
-	// 2. Execute CREATE SCHEMA.
-	// This represents a ~99% memory save compared to CREATE DATABASE.
-	sql := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS \"%s\"", slug)
+	// 2. Execute CREATE SCHEMA with concatenative namespace (Sovereign Barrier).
+	// We start with {slug}_public as the default home for the tenant.
+	schemaHome := fmt.Sprintf("%s_public", slug)
+	sql := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS \"%s\"", schemaHome)
 
 	_, err := r.repo.Pool.Exec(ctx, sql)
 	if err != nil {
 		return fmt.Errorf("repository.Tenant.Provision: create schema: %w", err)
 	}
 
-	slog.Info("logical schema provisioned for tenant", "schema", slug)
+	slog.Info("sovereign schema home provisioned for tenant", "schema", schemaHome)
 	return nil
 }
 

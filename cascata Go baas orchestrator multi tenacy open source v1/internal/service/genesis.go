@@ -51,7 +51,9 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 			// 1. Purge DB Schema
 			_ = s.tenantRepo.DropSchema(context.Background(), p.Slug)
 			// 2. Clear Metadata in DB (Only if it was created)
-			_ = s.projectRepo.Delete(context.Background(), p.Slug)
+			_ = s.repo.WithRLS(context.Background(), database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
+				return s.projectRepo.Delete(context.Background(), tx, p.Slug)
+			})
 		}
 	}()
 
@@ -85,9 +87,17 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 	}
 
 	// 3. System Metadata Registration (Must exist for Migration Engine to resolve)
-	if err := s.projectRepo.Create(ctx, p); err != nil {
+	// Sovereign Registration: Metadata must be stored in cascata_system.
+	err = s.repo.WithRLS(ctx, database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
+		if err := s.projectRepo.Create(ctx, tx, p); err != nil {
+			return fmt.Errorf("genesis: metadata registration failed: %w", err)
+		}
+		return nil
+	})
+
+	if err != nil {
 		slog.Error("genesis: failed to register project metadata", "slug", p.Slug, "err", err)
-		return fmt.Errorf("genesis: metadata registration failed: %w", err)
+		return err
 	}
 
 	// 4. Apply Initial Schema & Hardening (Phase 15 Sinergy)
@@ -101,24 +111,30 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 }
 
 // DeleteProject performs the final "Death" process:
-// 1. Drop Physical PostgreSQL Database.
-// 2. Cleanup System Metadata.
-// 3. Historical Record via Audit Ledger.
 func (s *GenesisService) DeleteProject(ctx context.Context, slug string) error {
-	p, err := s.projectRepo.GetByIdentifier(ctx, slug)
+	var p *domain.Project
+	var err error
+
+	// 1. Resolve project within Sovereign Context
+	err = s.repo.WithRLS(ctx, database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
+		p, err = s.projectRepo.GetByIdentifier(ctx, tx, slug)
+		return err
+	})
 	if err != nil {
 		return fmt.Errorf("genesis: cannot resolve project for deletion: %w", err)
 	}
 
 	slog.Info("genesis: starting project deletion", "slug", slug)
 
-	// 1. Termination: Drop Logical Schema (Antifragile)
+	// 2. Termination: Drop Logical Schema (Antifragile)
 	if err := s.tenantRepo.DropSchema(ctx, p.Slug); err != nil {
 		slog.Warn("genesis: drop schema failed during deletion (might already be gone)", "schema", p.Slug, "err", err)
 	}
 
-	// 2. System Metadata Purge
-	err = s.projectRepo.Delete(ctx, slug)
+	// 3. System Metadata Purge within Sovereign Context
+	err = s.repo.WithRLS(ctx, database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
+		return s.projectRepo.Delete(ctx, tx, slug)
+	})
 	
 	slog.Info("genesis: project deleted successfully", "slug", slug)
 	return err

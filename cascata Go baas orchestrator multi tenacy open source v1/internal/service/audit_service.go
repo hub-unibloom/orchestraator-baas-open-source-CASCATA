@@ -30,7 +30,8 @@ func NewAuditService(repo *database.Repository) *AuditService {
 func (s *AuditService) refreshLastHash(ctx context.Context) {
 	// 1. Fetch the hash of the latest entry in the ledger
 	var h string
-	err := s.repo.Pool.QueryRow(ctx, "SELECT entry_hash FROM system.audit_ledger ORDER BY created_at DESC LIMIT 1").Scan(&h)
+	// Removed system. prefix to align with Sovereign Namespace Barrier
+	err := s.repo.Pool.QueryRow(ctx, "SELECT entry_hash FROM audit_ledger ORDER BY created_at DESC LIMIT 1").Scan(&h)
 	if err == nil {
 		s.lastHash = h
 	} else {
@@ -52,8 +53,9 @@ func (s *AuditService) WriteEntry(ctx context.Context, entry *domain.AuditEntry)
 	entry.EntryHash = hex.EncodeToString(h[:])
 
 	// 3. Persist (Blockchain-style immutable append)
+	// Removed system. prefix to align with Sovereign Namespace Barrier
 	_, err := s.repo.Pool.Exec(ctx, 
-		"INSERT INTO system.audit_ledger (project_slug, operation, identity_id, identity_type, table_name, payload, prev_hash, entry_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+		"INSERT INTO audit_ledger (project_slug, operation, identity_id, identity_type, table_name, payload, prev_hash, entry_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
 		entry.Project, entry.Operation, entry.IdentityID, entry.IdentityType, entry.Table, entry.Payload, entry.PrevHash, entry.EntryHash,
 	)
 	if err != nil {

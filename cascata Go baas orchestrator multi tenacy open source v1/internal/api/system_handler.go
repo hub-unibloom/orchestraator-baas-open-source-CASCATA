@@ -29,7 +29,8 @@ type SystemHandler struct {
 	sessionSvc  *auth.SessionManager
 	ratelimit   *ratelimit.AdaptiveEngine
 	genesisSvc  *service.GenesisService
-	ProjectRepo *repository.ProjectRepository
+	projectSvc  *service.ProjectService
+	ProjectRepo *repository.ProjectRepository // Keeping for low-level if needed, but projectSvc is preferred
 	backupSvc   *storage.BackupService
 }
 
@@ -37,7 +38,7 @@ func NewSystemHandler(
 	authSvc *auth.SystemAuthService, 
 	sessionSvc *auth.SessionManager, 
 	rl *ratelimit.AdaptiveEngine,
-	genesis *service.GenesisService,
+	projectSvc *service.ProjectService,
 	projectRepo *repository.ProjectRepository,
 	backupSvc *storage.BackupService,
 ) *SystemHandler {
@@ -46,6 +47,7 @@ func NewSystemHandler(
 		sessionSvc:  sessionSvc,
 		ratelimit:   rl,
 		genesisSvc:  genesis,
+		projectSvc:  projectSvc,
 		ProjectRepo: projectRepo,
 		backupSvc:   backupSvc,
 	}
@@ -246,7 +248,8 @@ func (h *SystemHandler) HandleCreateProject(w http.ResponseWriter, r *http.Reque
 
 // HandleListProjects returns all projects currently managed by the Orquestrador.
 func (h *SystemHandler) HandleListProjects(w http.ResponseWriter, r *http.Request) {
-	projects, err := h.ProjectRepo.List(r.Context())
+	// Sovereign Discovery: Use Service layer to ensure cascata_system context.
+	projects, err := h.projectSvc.ListProjects(r.Context())
 	if err != nil {
 		slog.Error("system: project listing failed", "err", err)
 		SendError(w, r, http.StatusInternalServerError, ErrInternalError, "LIST_FAILED", err.Error())
