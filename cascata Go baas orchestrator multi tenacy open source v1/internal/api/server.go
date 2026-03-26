@@ -86,6 +86,7 @@ func (s *Server) Start(ctx context.Context, id int) error {
 	// Global Middlewares (Sinergy & Observability)
 	router.Use(CORSMiddleware)
 	router.Use(chiMiddleware.RealIP)
+	router.Use(chiMiddleware.StripSlashes)
 	router.Use(HandlePanic)
 	router.Use(s.Interceptor.TelemetryMiddleware)
 	
@@ -114,23 +115,25 @@ func (s *Server) Start(ctx context.Context, id int) error {
 		r.Get("/", s.UIH.ServeIndex)
 		r.Get("/dashboard", s.UIH.ServeSystemDashboard)
 		
-		r.Get("/projects", s.SystemH.HandleListProjects)
-		r.Post("/projects", s.SystemH.HandleCreateProject)
-		r.Get("/projects/export", s.SystemH.HandleExportCAF)
-
 		r.Route("/projects", func(r chi.Router) {
+			r.Get("/", s.SystemH.HandleListProjects)
+			r.Post("/", s.SystemH.HandleCreateProject)
+			r.Get("/export", s.SystemH.HandleExportCAF)
 			r.Get("/list", s.UIH.HandleUIListProjects) 
 			r.Get("/onboarding", s.UIH.HandleUIOnboarding) 
-			r.Get("/{slug}", s.UIH.HandleUIProjectDashboard)
-			r.Get("/{slug}/overview", s.UIH.HandleUIProjectOverview)
-			r.Get("/{slug}/database", s.UIH.HandleUIDatabaseExplorer)
-			r.Get("/{slug}/database/tables", s.UIH.HandleUIDatabaseTables)
-			r.Get("/{slug}/database/tables/search", s.UIH.HandleUIDatabaseTables)
-			r.Get("/{slug}/database/tables/{table}/data", s.UIH.HandleUIDatabaseTableData)
-			r.Get("/{slug}/database/tables/{table}/context-menu", s.UIH.HandleUIDatabaseContextMenu)
-			r.Get("/{slug}/database/console", s.UIH.HandleUIDatabaseConsole)
-			r.Get("/{slug}/database/modals/{type}", s.UIH.HandleUIDatabaseModals)
-			r.Delete("/{slug}", s.SystemH.HandleDeleteProject)
+			
+			r.Route("/{slug}", func(r chi.Router) {
+				r.Get("/", s.UIH.HandleUIProjectDashboard)
+				r.Get("/overview", s.UIH.HandleUIProjectOverview)
+				r.Get("/database", s.UIH.HandleUIDatabaseExplorer)
+				r.Get("/database/tables", s.UIH.HandleUIDatabaseTables)
+				r.Get("/database/tables/search", s.UIH.HandleUIDatabaseTables)
+				r.Get("/database/tables/{table}/data", s.UIH.HandleUIDatabaseTableData)
+				r.Get("/database/tables/{table}/context-menu", s.UIH.HandleUIDatabaseContextMenu)
+				r.Get("/database/console", s.UIH.HandleUIDatabaseConsole)
+				r.Get("/database/modals/{type}", s.UIH.HandleUIDatabaseModals)
+				r.Delete("/", s.SystemH.HandleDeleteProject)
+			})
 		})
 	})
 
