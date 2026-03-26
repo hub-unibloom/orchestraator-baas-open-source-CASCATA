@@ -35,73 +35,59 @@ func NewGenesisService(repo *database.Repository, projectRepo *repository.Projec
 	}
 }
 
-// CreateProject performs the full multi-step "Birth" process with Rollback safety (Phase 2-4 Synergy).
+// CreateProject performs the full multi-step "Birth" process with Sovereign Atomicity.
 func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) error {
 	slog.Info("genesis: starting project creation", "slug", p.Slug, "db", p.DBName)
 
-	// 1. Logical Schema Creation (Sanitized via Repository)
-	if err := s.tenantRepo.ProvisionNewSchema(ctx, p.Slug); err != nil {
-		return fmt.Errorf("genesis: create schema failed: %w", err)
-	}
-
-	// Atomic Cleanup: If any step fails, we must purge all provisioned artifacts
-	success := false
-	defer func() {
-		if !success {
-			slog.Warn("genesis: rolling back project creation due to failure", "slug", p.Slug)
-			// 1. Purge DB Schema
-			_ = s.tenantRepo.DropSchema(context.Background(), p.Slug)
-			// 2. Clear Metadata in DB (Only if it was created)
-			_ = s.repo.WithRLS(context.Background(), database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
-				return s.projectRepo.Delete(context.Background(), tx, p.Slug)
-			})
-		}
-	}()
-
-	// 2. Initialize and Encrypt Secrets in Native Security Engine (AES-256-GCM)
-	if p.JWTSecret == "" {
-		p.JWTSecret = s.generateRandomKey(32)
-	}
-	if p.AnonKey == "" {
-		p.AnonKey = "ak_" + s.generateRandomKey(24)
-	}
-	if p.ServiceKey == "" {
-		p.ServiceKey = "sk_" + s.generateRandomKey(32)
-	}
+	// 1. Initialize and Encrypt Secrets in Native Security Engine (AES-256-GCM)
+	if p.JWTSecret == "" { p.JWTSecret = s.generateRandomKey(32) }
+	if p.AnonKey == "" { p.AnonKey = "ak_" + s.generateRandomKey(24) }
+	if p.ServiceKey == "" { p.ServiceKey = "sk_" + s.generateRandomKey(32) }
 
 	// Encrypt Core Credentials BEFORE registration
-	if encryptedJWT, err := s.security.Encrypt(ctx, p.JWTSecret); err == nil {
-		p.JWTSecret = encryptedJWT
-	}
-	if encryptedAnon, err := s.security.Encrypt(ctx, p.AnonKey); err == nil {
-		p.AnonKey = encryptedAnon
-	}
-	if encryptedService, err := s.security.Encrypt(ctx, p.ServiceKey); err == nil {
-		p.ServiceKey = encryptedService
-	}
+	if encryptedJWT, err := s.security.Encrypt(ctx, p.JWTSecret); err == nil { p.JWTSecret = encryptedJWT }
+	if encryptedAnon, err := s.security.Encrypt(ctx, p.AnonKey); err == nil { p.AnonKey = encryptedAnon }
+	if encryptedService, err := s.security.Encrypt(ctx, p.ServiceKey); err == nil { p.ServiceKey = encryptedService }
 
-	// Encrypt Secondary Secret (Agency Mode)
 	if p.SecondarySecretHash != "" {
 		if encryptedSec, err := s.security.Encrypt(ctx, p.SecondarySecretHash); err == nil {
 			p.SecondarySecretHash = encryptedSec
 		}
 	}
 
-	// 3. System Metadata Registration (Must exist for Migration Engine to resolve)
-	// Sovereign Registration: Metadata must be stored in cascata_system.
-	err := s.repo.WithRLS(ctx, database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
+	// 2. Atomic Physical Provisioning via Sovereign Namespace Barrier
+	claims := database.UserClaims{Role: "service_role"}
+	err := s.repo.WithRLS(ctx, claims, "cascata", false, func(tx pgx.Tx) error {
+		// a. Provision System Metadata
 		if err := s.projectRepo.Create(ctx, tx, p); err != nil {
-			return fmt.Errorf("genesis: metadata registration failed: %w", err)
+			return fmt.Errorf("genesis: metadata creation failed: %w", err)
+		}
+
+		// b. Provision Physical Schema (Isolated by RLS/search_path strategy)
+		if err := s.tenantRepo.ProvisionNewSchema(ctx, tx, p.Slug); err != nil {
+			return fmt.Errorf("genesis: physical provisioning failed: %w", err)
 		}
 		return nil
 	})
 
 	if err != nil {
-		slog.Error("genesis: failed to register project metadata", "slug", p.Slug, "err", err)
 		return err
 	}
 
-	// 4. Apply Initial Schema & Hardening (Phase 15 Sinergy)
+	// 3. Post-Provisioning Lifecycle (Schema Migrations & Hardening)
+	// Atomic Cleanup on failure
+	success := false
+	defer func() {
+		if !success {
+			slog.Warn("genesis: rolling back project lifecycle", "slug", p.Slug)
+			_ = s.repo.WithRLS(context.Background(), claims, "cascata", false, func(tx pgx.Tx) error {
+				_ = s.tenantRepo.DropSchema(context.Background(), tx, p.Slug)
+				return s.projectRepo.Delete(context.Background(), tx, p.Slug)
+			})
+		}
+	}()
+
+	// Apply Initial Schema (Phase 15 Sinergy)
 	if err := s.initializeSchema(ctx, p.Slug); err != nil {
 		return fmt.Errorf("genesis: schema initialization failed: %w", err)
 	}
@@ -111,33 +97,24 @@ func (s *GenesisService) CreateProject(ctx context.Context, p *domain.Project) e
 	return nil
 }
 
-// DeleteProject performs the final "Death" process:
+// DeleteProject removes a project's metadata and physical schema with Sovereign Isolation.
 func (s *GenesisService) DeleteProject(ctx context.Context, slug string) error {
-	var p *domain.Project
-	var err error
-
-	// 1. Resolve project within Sovereign Context
-	err = s.repo.WithRLS(ctx, database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
-		p, err = s.projectRepo.GetByIdentifier(ctx, tx, slug)
-		return err
-	})
-	if err != nil {
-		return fmt.Errorf("genesis: cannot resolve project for deletion: %w", err)
-	}
-
 	slog.Info("genesis: starting project deletion", "slug", slug)
 
-	// 2. Termination: Drop Logical Schema (Antifragile)
-	if err := s.tenantRepo.DropSchema(ctx, p.Slug); err != nil {
-		slog.Warn("genesis: drop schema failed during deletion (might already be gone)", "schema", p.Slug, "err", err)
-	}
+	claims := database.UserClaims{Role: "service_role"}
+	err := s.repo.WithRLS(ctx, claims, "cascata", false, func(tx pgx.Tx) error {
+		// 1. Drop Logical Schema (CASCADE ensures cleanup)
+		if err := s.tenantRepo.DropSchema(ctx, tx, slug); err != nil {
+			slog.Warn("genesis: drop schema failed during deletion (continuing metadata purge)", "err", err)
+		}
 
-	// 3. System Metadata Purge within Sovereign Context
-	err = s.repo.WithRLS(ctx, database.UserClaims{Role: "service_role"}, "cascata", false, func(tx pgx.Tx) error {
+		// 2. Purge System Metadata
 		return s.projectRepo.Delete(ctx, tx, slug)
 	})
-	
-	slog.Info("genesis: project deleted successfully", "slug", slug)
+
+	if err == nil {
+		slog.Info("genesis: project deleted successfully", "slug", slug)
+	}
 	return err
 }
 

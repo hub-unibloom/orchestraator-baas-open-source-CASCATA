@@ -38,7 +38,7 @@ type Result struct {
 }
 
 // ExecuteGo runs the provided Go source in the sandbox.
-func (r *Runtime) ExecuteGo(ctx context.Context, source string, projectSlug string, pool *database.TenantPool, payload interface{}) (*Result, error) {
+func (r *Runtime) ExecuteGo(ctx context.Context, source string, projectSlug string, pool *database.Repository, payload interface{}) (*Result, error) {
 	// 1. Create a timeout context
 	ctx, cancel := context.WithTimeout(ctx, r.Timeout)
 	defer cancel()

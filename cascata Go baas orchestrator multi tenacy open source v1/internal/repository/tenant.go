@@ -21,7 +21,7 @@ func NewTenantRepository(repo *database.Repository) *TenantRepository {
 }
 
 // ProvisionNewSchema creates a logical Postgres schema for a tenant as their "public" home.
-func (r *TenantRepository) ProvisionNewSchema(ctx context.Context, slug string) error {
+func (r *TenantRepository) ProvisionNewSchema(ctx context.Context, q database.Queryer, slug string) error {
 	// 1. Sanitize slug to prevent injection in CREATE SCHEMA command.
 	re := regexp.MustCompile(`^[a-z0-9_]+$`)
 	if !re.MatchString(slug) {
@@ -33,7 +33,7 @@ func (r *TenantRepository) ProvisionNewSchema(ctx context.Context, slug string) 
 	schemaHome := fmt.Sprintf("%s_public", slug)
 	sql := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS \"%s\"", schemaHome)
 
-	_, err := r.repo.Pool.Exec(ctx, sql)
+	_, err := q.Exec(ctx, sql)
 	if err != nil {
 		return fmt.Errorf("repository.Tenant.Provision: create schema: %w", err)
 	}
@@ -43,7 +43,7 @@ func (r *TenantRepository) ProvisionNewSchema(ctx context.Context, slug string) 
 }
 
 // DropSchema removes a logical tenant schema and all its objects. (Security-Gated)
-func (r *TenantRepository) DropSchema(ctx context.Context, slug string) error {
+func (r *TenantRepository) DropSchema(ctx context.Context, q database.Queryer, slug string) error {
 	re := regexp.MustCompile(`^[a-z0-9_]+$`)
 	if !re.MatchString(slug) {
 		return errors.New("repository.Tenant.Drop: invalid schema name")
@@ -51,7 +51,7 @@ func (r *TenantRepository) DropSchema(ctx context.Context, slug string) error {
 
 	// CASCADE ensures all tables, functions, and RLS policies within the schema die with it.
 	sql := fmt.Sprintf("DROP SCHEMA IF EXISTS \"%s\" CASCADE", slug)
-	_, err := r.repo.Pool.Exec(ctx, sql)
+	_, err := q.Exec(ctx, sql)
 	if err != nil {
 		return fmt.Errorf("repository.Tenant.Drop: failure: %w", err)
 	}

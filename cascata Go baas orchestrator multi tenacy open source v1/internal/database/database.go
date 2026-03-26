@@ -118,6 +118,40 @@ func (r *Repository) WithRLS(ctx context.Context, claims UserClaims, projectSlug
 	return err
 }
 
+// QueryWithRLS is a high-level helper for one-off RLS-gated queries (Phase 9 Bridge).
+// Used primarily by the sandboxed Runtime to execute client-provided SQL safely.
+func (r *Repository) QueryWithRLS(ctx context.Context, role, sql string, params []interface{}) (interface{}, error) {
+	var result []map[string]interface{}
+	
+	claims := UserClaims{Role: role}
+	projectSlug := "cascata" // Fallback or injected
+	if slug, ok := ctx.Value("cascata.project_slug").(string); ok {
+		projectSlug = slug
+	}
+
+	err := r.WithRLS(ctx, claims, projectSlug, false, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, sql, params...)
+		if err != nil { return err }
+		defer rows.Close()
+
+		// Dynamic result mapping to JSON-compatible maps
+		fieldDescriptions := rows.FieldDescriptions()
+		for rows.Next() {
+			values, err := rows.Values()
+			if err != nil { return err }
+			
+			row := make(map[string]interface{})
+			for i, fd := range fieldDescriptions {
+				row[string(fd.Name)] = values[i]
+			}
+			result = append(result, row)
+		}
+		return nil
+	})
+
+	return result, err
+}
+
 func isTransientError(err error) bool {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {

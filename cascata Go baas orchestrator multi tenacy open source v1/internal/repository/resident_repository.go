@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"cascata/internal/database"
 	"cascata/internal/domain"
-	"github.com/jackc/pgx/v5"
 )
 
 // ResidentRepository handles persistence for Tenant Residents (end-users).
@@ -20,7 +20,7 @@ func NewResidentRepository() *ResidentRepository {
 }
 
 // FindByIdentifier searches for a resident by Email, CPF or WhatsApp within a tenant context.
-func (r *ResidentRepository) FindByIdentifier(ctx context.Context, tx pgx.Tx, identifier string) (*domain.Resident, string, error) {
+func (r *ResidentRepository) FindByIdentifier(ctx context.Context, q database.Queryer, identifier string) (*domain.Resident, string, error) {
 	const sql = `
 		SELECT id, email, cpf, whatsapp, password_hash, role, metadata, created_at, updated_at 
 		FROM users 
@@ -29,7 +29,7 @@ func (r *ResidentRepository) FindByIdentifier(ctx context.Context, tx pgx.Tx, id
 	var u domain.Resident
 	var hashedPassword string
 
-	err := tx.QueryRow(ctx, sql, identifier).Scan(
+	err := q.QueryRow(ctx, sql, identifier).Scan(
 		&u.ID, &u.Email, &u.CPF, &u.WhatsApp, &hashedPassword, &u.Role, &u.Metadata, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
@@ -40,13 +40,13 @@ func (r *ResidentRepository) FindByIdentifier(ctx context.Context, tx pgx.Tx, id
 }
 
 // Create persists a new resident within the provided transaction context.
-func (r *ResidentRepository) Create(ctx context.Context, tx pgx.Tx, u *domain.Resident, hashedPassword string) error {
+func (r *ResidentRepository) Create(ctx context.Context, q database.Queryer, u *domain.Resident, hashedPassword string) error {
 	const sql = `
 		INSERT INTO users (email, cpf, whatsapp, password_hash, role, metadata) 
 		VALUES ($1, $2, $3, $4, $5, $6) 
 		RETURNING id, created_at, updated_at
 	`
-	err := tx.QueryRow(ctx, sql, 
+	err := q.QueryRow(ctx, sql, 
 		u.Email, u.CPF, u.WhatsApp, hashedPassword, u.Role, u.Metadata,
 	).Scan(&u.ID, &u.CreatedAt, &u.UpdatedAt)
 	
@@ -57,9 +57,9 @@ func (r *ResidentRepository) Create(ctx context.Context, tx pgx.Tx, u *domain.Re
 }
 
 // UpdateLastLogin updates the login timestamp for auditing.
-func (r *ResidentRepository) UpdateLastLogin(ctx context.Context, tx pgx.Tx, residentID string) error {
+func (r *ResidentRepository) UpdateLastLogin(ctx context.Context, q database.Queryer, residentID string) error {
 	const sql = `UPDATE users SET last_login = now() WHERE id = $1`
-	_, err := tx.Exec(ctx, sql, residentID)
+	_, err := q.Exec(ctx, sql, residentID)
 	if err != nil {
 		return fmt.Errorf("user.repository.UpdateLastLogin: %w", err)
 	}
