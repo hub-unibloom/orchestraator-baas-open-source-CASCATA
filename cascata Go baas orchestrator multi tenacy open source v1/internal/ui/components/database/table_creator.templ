@@ -7,8 +7,8 @@ import (
 )
 
 // TableCreatorDrawer: The Enterprise Schema Architect (v1.0.0.0 Sovereign Standard).
-templ TableCreator(slug string, loc *i18n.Localizer, schemas []string) {
-	@TableCreatorDrawer(slug, schemas, "public", loc)
+templ TableCreator(slug string, loc *i18n.Localizer, schemas []string, currentSchema string) {
+	@TableCreatorDrawer(slug, schemas, currentSchema, loc)
 }
 
 templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, loc *i18n.Localizer) {
@@ -21,10 +21,12 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
         @keydown.window.cmd.s.prevent="if(canSubmit) $refs.previewBtn.click()"
         @keydown.window.escape="document.getElementById('table-creator-drawer').remove()"
         @close-drawer.window="document.getElementById('table-creator-drawer').remove()"
-        x-data={ `{ 
+        x-data={ fmt.Sprintf(`{ 
             tableName: '', 
             tableDesc: '',
+            targetSchema: '%s',
             enableRLS: true,
+`, currentSchema) + `{
             mcpEnabled: true,
             mcpPerms: { r: true, c: true, u: true, d: false },
             columns: [
@@ -86,6 +88,17 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
                             placeholder="e.g. secure_audit_logs" 
                             class="w-full bg-surface-base border border-white/5 py-5 px-8 rounded-[28px] text-xs font-black uppercase tracking-widest text-white placeholder:text-content-muted focus:border-accent-primary/50 focus:bg-surface-raised transition-all outline-none italic shadow-glow-sm"
                         />
+					</div>
+                	<div class="space-y-3">
+						<label class="text-[9px] font-black text-content-muted uppercase tracking-widest ml-1 italic">Target_Namespace (Logical Schema)</label>
+						<select 
+                            x-model="targetSchema"
+                            class="w-full bg-surface-base border border-white/5 py-5 px-8 rounded-[28px] text-xs font-black uppercase tracking-widest text-white appearance-none cursor-pointer focus:border-accent-primary/50 focus:bg-surface-raised transition-all outline-none italic shadow-glow-sm"
+                        >
+                            for _, s := range schemas {
+                                <option value={ s } selected?={ s == currentSchema }>{ s }</option>
+                            }
+                        </select>
 					</div>
 					<div class="space-y-3">
 						<label class="text-[9px] font-black text-content-muted uppercase tracking-widest ml-1 italic">Semantic_Hint (Description for AI)</label>
@@ -364,6 +377,7 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
                 hx-vals={ `js:{
                     tableName: Alpine.find(document.getElementById('table-creator-drawer')).tableName,
                     description: Alpine.find(document.getElementById('table-creator-drawer')).tableDesc,
+                    targetSchema: Alpine.find(document.getElementById('table-creator-drawer')).targetSchema,
                     enableRLS: Alpine.find(document.getElementById('table-creator-drawer')).enableRLS,
                     mcpEnabled: Alpine.find(document.getElementById('table-creator-drawer')).mcpEnabled,
                     mcpPerms: Alpine.find(document.getElementById('table-creator-drawer')).mcpPerms,
@@ -381,6 +395,7 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
                 hx-vals={ `js:{
                     tableName: Alpine.find(document.getElementById('table-creator-drawer')).tableName,
                     description: Alpine.find(document.getElementById('table-creator-drawer')).tableDesc,
+                    targetSchema: Alpine.find(document.getElementById('table-creator-drawer')).targetSchema,
                     enableRLS: Alpine.find(document.getElementById('table-creator-drawer')).enableRLS,
                     mcpEnabled: Alpine.find(document.getElementById('table-creator-drawer')).mcpEnabled,
                     mcpPerms: Alpine.find(document.getElementById('table-creator-drawer')).mcpPerms,

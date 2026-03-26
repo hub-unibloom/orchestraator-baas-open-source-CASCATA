@@ -47,6 +47,7 @@ templ DatabaseExplorer(slug string, loc *i18n.Localizer, schemas []string) {
 						<button 
 						  hx-get={ fmt.Sprintf("/projects/%s/database/modals/create-table", slug) }
 						  hx-target="#database-modal-root"
+						  hx-include="[name='schema']"
 						  class="p-10 rounded-[48px] bg-surface-pit/40 border border-white/5 hover:border-accent-primary/50 hover:bg-accent-primary/5 transition-all group shadow-glow-sm flex flex-col items-center gap-6 italic">
 							<div class="w-16 h-16 rounded-[28px] bg-accent-primary/10 flex items-center justify-center text-accent-primary group-hover:scale-110 transition-transform shadow-glow-sm border border-accent-primary/10">
 								<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14"/><path d="M12 5v14"/></svg>

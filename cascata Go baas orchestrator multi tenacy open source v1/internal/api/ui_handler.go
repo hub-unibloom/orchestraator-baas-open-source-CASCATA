@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -282,13 +283,17 @@ func (h *UIHandler) HandleUIDatabaseConsole(w http.ResponseWriter, r *http.Reque
 func (h *UIHandler) HandleUIDatabaseModals(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
 	modalType := chi.URLParam(r, "type")
+	currentSchema := r.URL.Query().Get("schema")
+	if currentSchema == "" {
+		currentSchema = "public"
+	}
 
 	w.Header().Set("Content-Type", "text/html")
 	loc := i18n.GetLocalizer(r)
 	switch modalType {
 	case "create-table":
 		schemas := h.fetchProjectSchemas(r.Context())
-		_ = database.TableCreator(slug, loc, schemas).Render(r.Context(), w)
+		_ = database.TableCreator(slug, loc, schemas, currentSchema).Render(r.Context(), w)
 	case "extensions":
 		installed := []string{"pgcrypto", "uuid-ossp"}
 		available := []string{"pgcrypto", "uuid-ossp", "pg_vector", "postgis", "pg_cron", "pg_audit"}
