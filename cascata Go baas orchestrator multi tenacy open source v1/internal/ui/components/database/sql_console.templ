@@ -6,7 +6,7 @@ import (
 )
 
 // SqlConsole: Sovereign Terminal for Raw SQL Execution (v1.0.0.0 Alpha).
-templ SqlConsole(slug string, loc *i18n.Localizer) {
+templ SqlConsole(slug string, loc *i18n.Localizer, initialSQL string) {
     <div class="flex-1 flex flex-col bg-surface-pit htmx-entry-anim animate-in slide-in-from-bottom-10 duration-700 overflow-hidden italic shadow-2xl relative" id="database-sql-console">
         
         <!-- Console Header (The Command Deck) -->
@@ -72,7 +72,7 @@ templ SqlConsole(slug string, loc *i18n.Localizer) {
                         name="sql"
                         spellcheck="false"
                         class="w-full h-full bg-transparent border-none p-8 text-[11px] font-mono text-white placeholder:text-content-muted/20 outline-none resize-none selection:bg-accent-primary/30 leading-6 italic custom-scrollbar"
-                        placeholder="-- Enter Sovereign SQL Command...&#10;SELECT * FROM system.users WHERE identity_status = 'VERIFIED';"></textarea>
+                        placeholder="-- Enter Sovereign SQL Command...&#10;SELECT * FROM system.users WHERE identity_status = 'VERIFIED';">{ initialSQL }</textarea>
                     
                     <!-- Phantom AI Overlay (Ghost Logic) -->
                     <div class="absolute right-10 bottom-10 flex flex-col items-end gap-3 pointer-events-none group-focus-within:opacity-100 opacity-20 transition-all duration-1000">

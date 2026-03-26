@@ -38,7 +38,7 @@ Dragonfly Streams centralizando o `EventQueue`. Motor rodando scripts em backgro
 *Foco: Sanar lacunas de autenticação e infraestrutura antes da escala móvel. Sinergia mandatória.*
 
 **Fase 10.1: Resident Gateway - Estratégias de Acesso (CPF, WhatsApp, Magic Link)**
-Implementação real (não simulada) do fluxo de login para moradores (Residents). Suporte a Identificador (CPF/Email) + Password, OTP via WhatsApp e links efêmeros de login.
+Implementação real (não simulada) do fluxo de login para moradores (Residents). Suporte a Identificador (CPF/Email/nickName ou qualquer outro que o susurio quiser criar pelo painel) + Password, OTP via WhatsApp e links efêmeros de login.
 **Fase 10.2: Resident Data Table & RBAC Schema Injection**
 Atualização do Genesis para provisionar a tabela `auth.users` e esquemas de permissões (RBAC) em cada banco físico de inquilino no momento do nascimento.
 **Fase 10.3: The Trinity Postman - SMTP & SMS Integrator Hub**

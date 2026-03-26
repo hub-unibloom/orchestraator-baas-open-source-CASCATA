@@ -30,5 +30,8 @@
   "search_tables": "Pesquisar Tabelas...",
   "sql_console": "Console SQL",
   "select_table_to_explore": "Selecione uma tabela para explorar",
-  "sovereign_data_v1": "Orquestração de Dados Soberana v1.0.0.0"
+  "sovereign_data_v1": "Orquestração de Dados Soberana v1.0.0.0",
+  "create_table": "Criar Tabela",
+  "abort_blueprint": "Abortar Blueprint",
+  "preview_in_forge": "Prévia no Forge"
 }

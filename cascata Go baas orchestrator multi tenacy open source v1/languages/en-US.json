@@ -14,5 +14,8 @@
   "provision_tenant": "Provision Tenancy",
   "syncing": "Synchronizing...",
   "genesis_title": "Infrastructure Genesis",
-  "genesis_confirm": "Provision sovereign isolation for project %s?"
+  "genesis_confirm": "Confirm sovereign isolation for project %s?",
+  "create_table": "Create Table",
+  "abort_blueprint": "Abort Blueprint",
+  "preview_in_forge": "Preview in Forge"
 }

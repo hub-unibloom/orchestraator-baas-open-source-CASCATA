@@ -41,6 +41,12 @@ type CreateTableRequest struct {
 		Identity     *string     `json:"identity"`
 		Lock         *string     `json:"lock"`
 		Format       *string     `json:"format"`
+		Privacy      *string     `json:"privacy"`
+		FK           struct {
+			Schema string `json:"schema"`
+			Table  string `json:"table"`
+			Column string `json:"column"`
+		} `json:"fk"`
 	} `json:"columns"`
 }
 
@@ -267,7 +273,7 @@ func (h *UIHandler) HandleUIDatabaseConsole(w http.ResponseWriter, r *http.Reque
 	loc := i18n.GetLocalizer(r)
 	
 	w.Header().Set("Content-Type", "text/html")
-	_ = database.SqlConsole(slug, loc).Render(r.Context(), w)
+	_ = database.SqlConsole(slug, loc, "").Render(r.Context(), w)
 }
 
 // HandleUIDatabaseModals serves various management modals (Extensions, Delete, etc).
@@ -363,6 +369,12 @@ func (h *UIHandler) generateCreateTableSQL(req CreateTableRequest, slug string) 
 		if !c.Nullable && !c.PK { constraints = append(constraints, "NOT NULL") }
 		if c.Unique && !c.PK { constraints = append(constraints, "UNIQUE") }
 
+		if c.FK.Table != "" {
+			targetSchema := h.SanitizeName(c.FK.Schema)
+			if targetSchema == "" { targetSchema = "public" }
+			constraints = append(constraints, fmt.Sprintf("REFERENCES %s.%s(%s)", targetSchema, h.SanitizeName(c.FK.Table), h.SanitizeName(c.FK.Column)))
+		}
+
 		if c.Identity != nil && *c.Identity != "" {
 			gen := "ALWAYS"
 			if *c.Identity == "by_default" { gen = "BY DEFAULT" }
@@ -395,6 +407,9 @@ func (h *UIHandler) generateCreateTableSQL(req CreateTableRequest, slug string) 
 		if c.Lock != nil && *c.Lock != "" {
 			meta += "||LOCK:" + *c.Lock
 		}
+		if c.Privacy != nil && *c.Privacy != "" {
+			meta += "||PRIVACY:" + *c.Privacy
+		}
 		if meta != "" {
 			colName := h.SanitizeName(c.Name)
 			sql += fmt.Sprintf("\nCOMMENT ON COLUMN %s.%s.%s IS '%s';", schema, tableName, colName, meta)
@@ -425,4 +440,25 @@ func (h *UIHandler) SanitizeName(val string) string {
 		val = "_" + val
 	}
 	return val
+}
+
+// HandleUIDatabasePreviewTable generates SQL and opens it in the console.
+func (h *UIHandler) HandleUIDatabasePreviewTable(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	var req CreateTableRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Error("ui: failed to decode preview table request", "err", err)
+		http.Error(w, "Invalid blueprint body", http.StatusBadRequest)
+		return
+	}
+
+	sql := h.generateCreateTableSQL(req, slug)
+	loc := i18n.GetLocalizer(r)
+
+	// Trigger drawer removal on the client side
+	w.Header().Set("HX-Trigger", "close-drawer")
+	
+	// Render the console with the generated SQL
+	w.Header().Set("Content-Type", "text/html")
+	_ = database.SqlConsole(slug, loc, sql).Render(r.Context(), w)
 }

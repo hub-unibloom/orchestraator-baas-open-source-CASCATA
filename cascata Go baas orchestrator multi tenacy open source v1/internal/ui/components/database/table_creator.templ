@@ -14,6 +14,12 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
 	<div 
         class="fixed inset-y-0 right-0 w-[600px] bg-surface-base shadow-[0_0_100px_rgba(0,0,0,0.8)] z-[2500] border-l border-white/5 flex flex-col htmx-entry-anim animate-in slide-in-from-right duration-500 overflow-hidden italic select-none pointer-events-auto" 
         id="table-creator-drawer"
+        @keydown.window.ctrl.enter.prevent="if(canSubmit) $refs.submitBtn.click()"
+        @keydown.window.cmd.enter.prevent="if(canSubmit) $refs.submitBtn.click()"
+        @keydown.window.ctrl.s.prevent="if(canSubmit) $refs.previewBtn.click()"
+        @keydown.window.cmd.s.prevent="if(canSubmit) $refs.previewBtn.click()"
+        @keydown.window.escape="document.getElementById('table-creator-drawer').remove()"
+        @close-drawer.window="document.getElementById('table-creator-drawer').remove()"
         x-data="{ 
             tableName: '', 
             tableDesc: '',
@@ -21,14 +27,21 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
             mcpEnabled: true,
             mcpPerms: { r: true, c: true, u: true, d: false },
             columns: [
-                { id: Date.now(), name: 'id', type: 'uuid', defaultValue: 'gen_random_uuid()', nullable: false, pk: true, unique: true, array: false, identity: null, lock: 'immutable', format: null },
-                { id: Date.now() + 1, name: 'created_at', type: 'timestamptz', defaultValue: 'now()', nullable: false, pk: false, unique: false, array: false, identity: null, lock: 'insert_only', format: null }
+                { id: Date.now(), name: 'id', type: 'uuid', defaultValue: 'gen_random_uuid()', nullable: false, pk: true, unique: true, array: false, identity: null, lock: 'immutable', format: null, privacy: null, fk: { schema: '', table: '', column: '' }, showFk: false },
+                { id: Date.now() + 1, name: 'created_at', type: 'timestamptz', defaultValue: 'now()', nullable: false, pk: false, unique: false, array: false, identity: null, lock: 'insert_only', format: null, privacy: null, fk: { schema: '', table: '', column: '' }, showFk: false }
             ],
             addColumn() {
-                this.columns.push({ id: Date.now(), name: '', type: 'text', defaultValue: '', nullable: true, pk: false, unique: false, array: false, identity: null, lock: null, format: null });
+                const id = Date.now();
+                this.columns.push({ id, name: '', type: 'text', defaultValue: '', nullable: true, pk: false, unique: false, array: false, identity: null, lock: null, format: null, privacy: null, fk: { schema: '', table: '', column: '' }, showFk: false });
+                this.$nextTick(() => {
+                    const inputs = document.querySelectorAll('#column-definition-mesh input[placeholder=\"column_name\"]');
+                    if(inputs.length > 0) inputs[inputs.length - 1].focus();
+                });
             },
             removeColumn(id) {
-                this.columns = this.columns.filter(c => c.id !== id);
+                if(this.columns.length > 1) {
+                    this.columns = this.columns.filter(c => c.id !== id);
+                }
             },
             get canSubmit() {
                 return this.tableName.length > 0 && this.columns.every(c => c.name.length > 0);
@@ -105,19 +118,21 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
 
 				<div class="space-y-4" id="column-definition-mesh">
 					<template x-for="(col, index) in columns" :key="col.id">
-                        <div class="bg-surface-base p-8 rounded-[40px] border border-white/5 group/col hover:border-accent-primary/30 transition-all duration-500 shadow-glow-sm relative overflow-hidden">
+                        <div class="bg-surface-base p-8 rounded-[40px] border border-white/5 group/col hover:border-accent-primary/30 transition-all duration-500 shadow-glow-sm relative overflow-visible">
                             <div class="flex items-start gap-6 relative z-10">
                                 <div class="flex-1 space-y-5">
                                     <div class="flex gap-4">
                                         <input 
                                             type="text" 
                                             x-model="col.name"
+                                            @keydown.enter.prevent="addColumn()"
                                             :class="col.name.length === 0 ? 'border-amber-500/50' : 'border-white/5'"
                                             class="flex-[3] bg-surface-pit/60 border py-3.5 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white outline-none italic focus:border-accent-primary/50"
                                             placeholder="column_name"
                                         />
                                         <select 
                                             x-model="col.type"
+                                            @change="if(['serial', 'bigserial'].includes(col.type)) { col.array = false; col.identity = null; }"
                                             class="flex-[2] bg-surface-pit/60 border border-white/5 py-3.5 px-4 rounded-2xl text-[9px] font-black uppercase tracking-widest text-white outline-none cursor-pointer italic appearance-none"
                                         >
                                             <optgroup label="Core Numbers" class="bg-surface-elevated">
@@ -152,7 +167,7 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
                                     <!-- Toggles & Modifiers -->
                                     <div class="flex items-center gap-2 flex-wrap min-h-[32px]">
                                         <button 
-                                            @click="col.pk = !col.pk; if(col.pk) col.nullable = false"
+                                            @click="col.pk = !col.pk; if(col.pk) { col.nullable = false; col.array = false; }"
                                             :class="col.pk ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 'bg-white/5 text-content-muted border-white/5'"
                                             class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic"
                                         >PK</button>
@@ -164,17 +179,36 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
                                         >UNIQ</button>
                                         
                                         <button 
-                                            @click="col.nullable = !col.nullable"
+                                            @click="col.nullable = !col.nullable; if(col.nullable) col.pk = false"
+                                            :disabled="col.pk"
                                             :class="col.nullable ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'bg-white/5 text-content-muted border-white/5'"
-                                            class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic"
+                                            class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic disabled:opacity-30"
                                         >NULL</button>
 
                                         <button 
-                                            @click="col.identity = col.identity ? null : 'always'"
+                                            @click="col.array = !col.array; if(col.array) { col.identity = null; col.fk = { schema: '', table: '', column: '' }; col.showFk = false; }"
+                                            :disabled="['serial', 'bigserial'].includes(col.type) || col.identity || col.pk"
+                                            :class="col.array ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-white/5 text-content-muted border-white/5'"
+                                            class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic disabled:opacity-30"
+                                        >LIST</button>
+
+                                        <button 
+                                            @click="col.identity = col.identity ? null : 'always'; if(col.identity) col.array = false"
                                             x-show="['int2','int4','int8'].includes(col.type)"
+                                            :disabled="col.array"
                                             :class="col.identity ? 'bg-teal-500/20 text-teal-400 border-teal-500/30' : 'bg-white/5 text-content-muted border-white/5'"
-                                            class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic"
+                                            class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic disabled:opacity-30"
                                         >AUTO_ID</button>
+
+                                        <button 
+                                            @click="col.showFk = !col.showFk"
+                                            :disabled="col.array"
+                                            :class="col.fk.table ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-white/5 text-content-muted border-white/5'"
+                                            class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic flex items-center gap-2 disabled:opacity-30"
+                                        >
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                            LINK_TARGET
+                                        </button>
 
                                         <button 
                                             @click="col.lock = col.lock === 'immutable' ? null : 'immutable'"
@@ -182,7 +216,7 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
                                             class="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all italic flex items-center gap-2"
                                         >
                                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                                            LOCK
+                                            MODHERA_LOCK
                                         </button>
                                         
                                         <div class="flex-1"></div>
@@ -195,17 +229,59 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
                                         </button>
                                     </div>
 
-                                    <!-- Extended Settings (Conditional) -->
-                                    <div x-show="col.lock === 'immutable'" class="mt-4 p-4 bg-rose-500/5 rounded-2xl border border-rose-500/20">
-                                        <select x-model="col.lock" class="w-full bg-transparent text-[8px] font-black text-rose-500 uppercase tracking-widest outline-none italic">
-                                            <option value="immutable">IMMUTABLE (Blocks INSERT & UPDATE)</option>
-                                            <option value="insert_only">INSERT_ONLY (Blocks UPDATE)</option>
-                                            <option value="service_role_only">SERVICE_ROLE_ONLY</option>
-                                            <option value="otp_protected">OTP_STEP_UP_REQUIRED</option>
-                                        </select>
+                                    <!-- FK Architecture Editor -->
+                                    <div x-show="col.showFk" x-transition class="mt-4 p-6 bg-blue-500/5 rounded-[28px] border border-blue-500/20 space-y-4 animate-in slide-in-from-top-2">
+                                        <div class="flex items-center gap-3 mb-2">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="text-blue-400"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                            <span class="text-[9px] font-black text-blue-400 uppercase tracking-widest italic">FOREIGN_KEY_BLUEPRINT</span>
+                                        </div>
+                                        <div class="grid grid-cols-3 gap-4">
+                                            <div class="space-y-1">
+                                                <label class="text-[7px] font-black text-content-muted uppercase tracking-tighter">SCHEMA</label>
+                                                <select x-model="col.fk.schema" class="w-full bg-surface-base border border-white/5 rounded-xl py-2 px-3 text-[9px] font-bold text-white uppercase outline-none italic">
+                                                    for _, s := range schemas {
+                                                        <option value={ s }>{ s }</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <label class="text-[7px] font-black text-content-muted uppercase tracking-tighter">TARGET_TABLE</label>
+                                                <input x-model="col.fk.table" placeholder="e.g. users" class="w-full bg-surface-base border border-white/5 rounded-xl py-2 px-3 text-[9px] font-bold text-white uppercase outline-none italic"/>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <label class="text-[7px] font-black text-content-muted uppercase tracking-tighter">TARGET_COL</label>
+                                                <input x-model="col.fk.column" placeholder="e.g. id" class="w-full bg-surface-base border border-white/5 rounded-xl py-2 px-3 text-[9px] font-bold text-white uppercase outline-none italic"/>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Lock & Privacy Mesh -->
+                                    <div x-show="col.lock" class="mt-4 p-6 bg-rose-500/5 rounded-[28px] border border-rose-500/20 space-y-4">
+                                        <div class="grid grid-cols-1 gap-4">
+                                            <div class="space-y-2">
+                                                <label class="text-[8px] font-black text-rose-500 uppercase tracking-widest italic">SECURITY_PADLOCK_LEVEL</label>
+                                                <select x-model="col.lock" class="w-full bg-surface-base border border-white/5 rounded-xl py-2.5 px-4 text-[9px] font-black text-rose-400 uppercase tracking-widest outline-none italic">
+                                                    <option value="immutable">IMMUTABLE (STRICT_WRITE_BLOCK)</option>
+                                                    <option value="insert_only">INSERT_ONLY (IMMUTABLE_AFTER_BIRTH)</option>
+                                                    <option value="service_role_only">SERVICE_ROLE_ACCESS_ONLY</option>
+                                                    <option value="otp_protected">OTP_STEP_UP_VALIDATION</option>
+                                                </select>
+                                            </div>
+                                            <div class="space-y-2">
+                                                <label class="text-[8px] font-black text-emerald-500 uppercase tracking-widest italic">PRIVACY_MESH_LAYER (OBFUSCATION)</label>
+                                                <select x-model="col.privacy" class="w-full bg-surface-base border border-white/5 rounded-xl py-2.5 px-4 text-[9px] font-black text-emerald-400 uppercase tracking-widest outline-none italic">
+                                                    <option value="">NO_PRIVACY_FILTER (RAW_ACCESS)</option>
+                                                    <option value="hide">HIDE (API_OMIT)</option>
+                                                    <option value="blur">BLUR (CHAOTIC_OORT)</option>
+                                                    <option value="mask">MASK (PARTIAL_VISIBILITY)</option>
+                                                    <option value="encrypt">ENCRYPT (AES_256_GCM_NATIVE)</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
                                     
                                     <div x-show="['text','varchar'].includes(col.type)" class="mt-4 space-y-2">
+                                        <label class="text-[8px] font-black text-accent-primary uppercase tracking-widest italic ml-2">FORMAT_GOVERNANCE</label>
                                         <select x-model="col.format" class="w-full bg-surface-pit/40 border border-white/5 rounded-xl py-2 px-4 text-[8px] font-black text-white uppercase tracking-widest outline-none italic">
                                             <option value="">No Filter (Raw Text)</option>
                                             <option value="email">Validator: EMAIL</option>
@@ -278,9 +354,32 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
 
 		<!-- Footer Actions -->
 		<footer class="p-10 border-t border-white/5 bg-surface-base flex items-center gap-8 sticky bottom-0 z-30 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-			<button onclick="document.getElementById('table-creator-drawer').remove()" class="flex-1 py-5 text-[10px] font-black text-content-muted hover:text-white uppercase tracking-[0.3em] transition-all italic">ABORT_BLUEPRINT</button>
+			<button onclick="document.getElementById('table-creator-drawer').remove()" class="flex-1 py-5 text-[10px] font-black text-content-muted hover:text-white uppercase tracking-[0.3em] transition-all italic">{ internalI18n.T(loc, "abort_blueprint") }</button>
 			<button 
                 :disabled="!canSubmit"
+                x-ref="previewBtn"
+                hx-post={ fmt.Sprintf("/projects/%s/database/tables/preview", slug) }
+                hx-ext="json-enc"
+                hx-vals="js:{
+                    tableName: document.querySelector('[x-model=\"tableName\"]').value,
+                    description: document.querySelector('[x-model=\"tableDesc\"]').value,
+                    enableRLS: htmx.values(htmx.find('[x-model=\"enableRLS\"]'))['enableRLS'] === 'on',
+                    mcpEnabled: htmx.values(htmx.find('[x-model=\"mcpEnabled\"]'))['mcpEnabled'] === 'on',
+                    mcpPerms: {
+                        r: htmx.values(htmx.find('[x-model=\"mcpPerms.r\"]'))['mcpPerms.r'] === 'on',
+                        c: htmx.values(htmx.find('[x-model=\"mcpPerms.c\"]'))['mcpPerms.c'] === 'on',
+                        u: htmx.values(htmx.find('[x-model=\"mcpPerms.u\"]'))['mcpPerms.u'] === 'on',
+                        d: htmx.values(htmx.find('[x-model=\"mcpPerms.d\"]'))['mcpPerms.d'] === 'on'
+                    },
+                    columns: Alpine.find(document.getElementById('table-creator-drawer')).columns
+                }"
+                hx-target="#database-content-canvas"
+                class="flex-1 py-5 bg-white/5 text-[10px] font-black text-content-muted hover:text-white uppercase tracking-[0.3em] transition-all italic border-r border-white/5 disabled:opacity-20"
+            >{ internalI18n.T(loc, "preview_in_forge") }</button>
+
+			<button 
+                :disabled="!canSubmit"
+                x-ref="submitBtn"
                 hx-post={ fmt.Sprintf("/projects/%s/database/tables/create", slug) }
                 hx-ext="json-enc"
                 hx-vals="js:{
@@ -296,7 +395,7 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
             >
                 <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-12 transition-transform"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-				<span>COMMIT_BLUEPRINT_STRIKE</span>
+				<span>{ internalI18n.T(loc, "create_table") }</span>
 			</button>
 		</footer>
 	</div>

@@ -133,6 +133,7 @@ func (s *Server) Start(ctx context.Context, id int) error {
 				r.Get("/database/console", s.UIH.HandleUIDatabaseConsole)
 				r.Get("/database/modals/{type}", s.UIH.HandleUIDatabaseModals)
 				r.Post("/database/tables/create", s.UIH.HandleUIDatabaseCreateTable)
+				r.Post("/database/tables/preview", s.UIH.HandleUIDatabasePreviewTable)
 				r.Delete("/", s.SystemH.HandleDeleteProject)
 			})
 		})
