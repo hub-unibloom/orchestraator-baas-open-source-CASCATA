@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	pgx "github.com/jackc/pgx/v5"
 )
 
 // GenesisService orchestrates the physical creation and initialization of new Tenants.

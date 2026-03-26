@@ -6,8 +6,10 @@ import (
 	"log/slog"
 
 	"cascata/internal/crypto"
+	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/repository"
+	"github.com/jackc/pgx/v5"
 )
 
 // SystemAuthService handles management login for Cascata Members.

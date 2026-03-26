@@ -8,6 +8,7 @@ import (
 
 	"cascata/internal/database"
 	"cascata/internal/domain"
+	"github.com/jackc/pgx/v5"
 )
 
 // ProjectRepository handles CRUD for project metadata.

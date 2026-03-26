@@ -3,6 +3,7 @@ package dbexplorer
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"cascata/internal/database"
 	"github.com/jackc/pgx/v5"

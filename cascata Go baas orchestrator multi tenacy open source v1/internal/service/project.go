@@ -8,6 +8,7 @@ import (
 	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/repository"
+	"github.com/jackc/pgx/v5"
 )
 
 // ProjectService manages project lookup and metadata with caching.

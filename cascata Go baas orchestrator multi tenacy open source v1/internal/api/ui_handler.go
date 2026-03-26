@@ -2,21 +2,26 @@ package api
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
+	"regexp"
 	"strconv"
-	"cascata/internal/ui/layouts"
-	"cascata/internal/ui/pages"
+	"strings"
+
+	"cascata/internal/database"
+	"cascata/internal/domain"
 	"cascata/internal/i18n"
+	"cascata/internal/repository"
 	"cascata/internal/ui/components"
 	"cascata/internal/ui/components/database"
-	"cascata/internal/domain"
+	"cascata/internal/ui/layouts"
+	"cascata/internal/ui/pages"
+
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
-	"regexp"
-	"fmt"
-	"encoding/json"
+	"github.com/jackc/pgx/v5"
 )
 
 type CreateTableRequest struct {

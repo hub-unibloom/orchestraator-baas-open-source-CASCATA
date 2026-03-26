@@ -13,9 +13,9 @@ import (
 	"cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/privacy"
+	"github.com/jackc/pgx/v5"
 	"cascata/internal/service"
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
 )
 
 // DataHandler processes dynamic CRUD operations generated from PostgREST syntax API.

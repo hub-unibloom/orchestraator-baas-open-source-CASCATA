@@ -7,6 +7,7 @@ import (
 
 	"cascata/internal/database"
 	"cascata/internal/domain"
+	"github.com/jackc/pgx/v5"
 )
 
 // MemberRepository manages members in the `system` schema.
