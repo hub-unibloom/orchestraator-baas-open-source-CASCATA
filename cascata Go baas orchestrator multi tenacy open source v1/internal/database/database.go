@@ -16,7 +16,9 @@ import (
 // Pool is an alias for pgxpool.Pool to maintain compatibility across the orchestrator.
 type Pool = pgxpool.Pool
 
-// Queryer is handled by domain.Queryer now.
+// Queryer is now a type alias for the global domain contract.
+// This resolves the circular dependency between database (infra) and audit (service).
+type Queryer = domain.Queryer
 
 // Repository manages database interactions for metadata.
 type Repository struct {

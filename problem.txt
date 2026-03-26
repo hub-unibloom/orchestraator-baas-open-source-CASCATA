@@ -1,13 +1,16 @@
- => [builder  8/10] RUN templ generate                                     0.7s 
- => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o casca  70.8s 
+ => [builder  8/10] RUN templ generate                                     0.8s 
+ => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o casca  68.1s 
 ------                                                                          
  > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                                                         
-57.70 # cascata/internal/api                                                    
-57.70 internal/api/ui_handler.go:16:2: "cascata/internal/repository" imported and not used
-57.70 internal/api/ui_handler.go:302:16: undefined: database.TableCreator
+42.46 # cascata/internal/database                                               
+42.46 internal/database/migration_repo.go:21:73: undefined: Queryer             
+42.46 internal/database/migration_repo.go:27:75: undefined: Queryer             
+42.46 internal/database/migration_repo.go:46:65: undefined: Queryer
+42.46 internal/database/migration_repo.go:60:66: undefined: Queryer
+42.46 internal/database/database.go:10:2: "cascata/internal/domain" imported and not used
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-casc... Building 85.8s
+ ⠙ Image cascatagobaasorchestratormultitenacyopensourcev1-casc... Building 86.8s
 Dockerfile.backend:23
 
 --------------------
