@@ -7,8 +7,8 @@ import (
 )
 
 // TableCreatorDrawer: The Enterprise Schema Architect (v1.0.0.0 Sovereign Standard).
-templ TableCreator(slug string, loc *i18n.Localizer) {
-	@TableCreatorDrawer(slug, []string{"public", "auth", "storage"}, "public", loc)
+templ TableCreator(slug string, loc *i18n.Localizer, schemas []string) {
+	@TableCreatorDrawer(slug, schemas, "public", loc)
 }
 
 templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, loc *i18n.Localizer) {

@@ -213,8 +213,9 @@ func (h *UIHandler) HandleUIDatabaseExplorer(w http.ResponseWriter, r *http.Requ
 	slug = strings.TrimSuffix(slug, "/database")
 
 	if r.Header.Get("HX-Request") == "true" {
+		schemas := h.fetchProjectSchemas(r.Context())
 		w.Header().Set("Content-Type", "text/html")
-		if err := pages.DatabaseExplorer(slug, loc).Render(r.Context(), w); err != nil {
+		if err := pages.DatabaseExplorer(slug, loc, schemas).Render(r.Context(), w); err != nil {
 			slog.Error("ui: failed to render database explorer fragment", "slug", slug, "err", err)
 		}
 		return
@@ -222,9 +223,10 @@ func (h *UIHandler) HandleUIDatabaseExplorer(w http.ResponseWriter, r *http.Requ
 
 	// Full Page Reload
 	title := "Database Explorer: " + slug
+	schemas := h.fetchProjectSchemas(r.Context())
 	w.Header().Set("Content-Type", "text/html")
 	component := layouts.Base(title, loc, false, pages.ProjectSubNav(slug, "database"))
-	ctx := templ.WithChildren(r.Context(), pages.DatabaseExplorer(slug, loc))
+	ctx := templ.WithChildren(r.Context(), pages.DatabaseExplorer(slug, loc, schemas))
 	if err := component.Render(ctx, w); err != nil {
 		slog.Error("ui: failed to render database explorer page", "slug", slug, "err", err)
 	}
@@ -285,7 +287,8 @@ func (h *UIHandler) HandleUIDatabaseModals(w http.ResponseWriter, r *http.Reques
 	loc := i18n.GetLocalizer(r)
 	switch modalType {
 	case "create-table":
-		_ = database.TableCreator(slug, loc).Render(r.Context(), w)
+		schemas := h.fetchProjectSchemas(r.Context())
+		_ = database.TableCreator(slug, loc, schemas).Render(r.Context(), w)
 	case "extensions":
 		installed := []string{"pgcrypto", "uuid-ossp"}
 		available := []string{"pgcrypto", "uuid-ossp", "pg_vector", "postgis", "pg_cron", "pg_audit"}
@@ -461,4 +464,32 @@ func (h *UIHandler) HandleUIDatabasePreviewTable(w http.ResponseWriter, r *http.
 	// Render the console with the generated SQL
 	w.Header().Set("Content-Type", "text/html")
 	_ = database.SqlConsole(slug, loc, sql).Render(r.Context(), w)
+}
+
+// fetchProjectSchemas queries information_schema for real schemas, excluding system ones.
+func (h *UIHandler) fetchProjectSchemas(ctx context.Context) []string {
+	const sql = `
+		SELECT schema_name 
+		FROM information_schema.schemata 
+		WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast', 'pg_temp_1', 'pg_cache') 
+		ORDER BY schema_name ASC
+	`
+	rows, err := h.SystemH.ProjectRepo.Pool().Query(ctx, sql)
+	if err != nil {
+		slog.Error("ui: failed to fetch schemas", "err", err)
+		return []string{"public"} // Fallback
+	}
+	defer rows.Close()
+
+	var schemas []string
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err == nil {
+			schemas = append(schemas, s)
+		}
+	}
+	if len(schemas) == 0 {
+		return []string{"public"}
+	}
+	return schemas
 }
