@@ -13,7 +13,6 @@ import (
 	cDB "cascata/internal/database"
 	"cascata/internal/domain"
 	"cascata/internal/i18n"
-	"cascata/internal/repository"
 	"cascata/internal/ui/components"
 	"cascata/internal/ui/components/database"
 	"cascata/internal/ui/layouts"
@@ -299,7 +298,7 @@ func (h *UIHandler) HandleUIDatabaseModals(w http.ResponseWriter, r *http.Reques
 	switch modalType {
 	case "create-table":
 		schemas := h.fetchProjectSchemas(r.Context(), slug)
-		_ = database.TableCreator(slug, loc, schemas, currentSchema).Render(r.Context(), w)
+		_ = database.TableCreatorDrawer(slug, schemas, currentSchema, loc).Render(r.Context(), w)
 	case "extensions":
 		installed := []string{"pgcrypto", "uuid-ossp"}
 		available := []string{"pgcrypto", "uuid-ossp", "pg_vector", "postgis", "pg_cron", "pg_audit"}
