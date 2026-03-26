@@ -55,7 +55,7 @@ print_banner() {
   ██║     ██╔══██║╚════██║██║      ██╔══██║   ██║   ██╔══██║
   ╚██████╗██║  ██║███████║╚██████╗ ██║  ██║   ██║   ██║  ██║
    ╚═════╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝
-${C_RESET}${C_DIM}                              v1.0.0.0 | BAAS Orchestrator Studio${C_RESET}"
+${C_RESET}${C_DIM}                              v1.0.0.0 | BaaS Go Orchestrator Studio${C_RESET}"
     echo -e "${C_DIM}---------------------------------------------------------------${C_RESET}\n"
     log_info "Inicializando Orquestração Zero-Trust | Soberania Cascata v1..."
 }
@@ -272,8 +272,9 @@ PG_SHARED_BUFFERS=${PG_SHARED_BUFFERS}
 PG_EFFECTIVE_CACHE=${PG_EFFECTIVE_CACHE}
 PG_WORK_MEM=${PG_WORK_MEM}
 
-# Dragonfly DB Engine
-DRAGONFLY_PORT=6379
+# Shared Infrastructure URLs (Assembled for Sinergy)
+DB_URL=postgres://${DB_USER}:${DB_PASS}@cascata-db:5432/${DB_NAME}
+DFLY_URL=redis://cascata-cache:6379
 
 # Internal Logic Exchange
 SYSTEM_JWT_SECRET=${JWT_SEC}
@@ -351,9 +352,9 @@ provision_worner_execution() {
         MFA_SECRET=$(tr -dc 'A-Z2-7' < /dev/urandom | head -c 32)
     fi
 
+    # Injeção de Identidade usando a URL de conexão já presente no ambiente do container
     local PROVISION_OUT
-    PROVISION_OUT=$(docker exec -e DB_URL="postgres://${CURRENT_DB_USER}:${CURRENT_DB_PASS}@cascata-db:5432/cascata_meta" \
-        -e CASCATA_MASTER_KEY="$MASTER_KEY" \
+    PROVISION_OUT=$(docker exec -e CASCATA_MASTER_KEY="$MASTER_KEY" \
         "$ORCH_CONTAINER" ./worner-provision "$WORNER_EMAIL" "$WORNER_PASS" "$MFA_ENABLED" "$MFA_SECRET" 2>&1)
 
     if [[ ! "$PROVISION_OUT" =~ "SUCCESS_ID:" ]]; then

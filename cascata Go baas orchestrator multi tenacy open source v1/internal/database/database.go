@@ -79,14 +79,20 @@ func (r *Repository) WithRLS(ctx context.Context, claims UserClaims, projectSlug
 			// 2. Resolve Sovereign Namespace (Barreira por Pseudônimo)
 			targetNamespace := fmt.Sprintf("%s_public", projectSlug)
 			if projectSlug == "cascata" {
-				targetNamespace = "cascata_system"
+				targetNamespace = "system"
 			}
 
-			// Atomic Security Logic: Inject Role and Search Path via string formatting for identifiers.
-			// Custom GUCs (Global User Configurations) must be set via set_config() to support params ($1, $2..).
-			atomicSQL := fmt.Sprintf("SET LOCAL ROLE %q; ", role) +
-				fmt.Sprintf("SET LOCAL search_path TO %q, public; ", targetNamespace) +
-				`SELECT 
+			// 1. Set Role and Search Path (Literal Identifiers)
+			// These cannot be parameterized, so we use string formatting.
+			secSQL := fmt.Sprintf("SET LOCAL ROLE %q; SET LOCAL search_path TO %q, public;", role, targetNamespace)
+			if _, err := tx.Exec(ctx, secSQL); err != nil {
+				slog.Error("security context injection failed (literals)", "slug", projectSlug, "err", err)
+				return fmt.Errorf("security_injection_literals: %w", err)
+			}
+
+			// 2. Set GUCs (Parameters)
+			// Prepared statements allow parameters for function calls like set_config.
+			gucSQL := `SELECT 
 					set_config('statement_timeout', $1, true),
 					set_config('cascata.project_slug', $2, true),
 					set_config('cascata.isolation_scope', 'tenant', true),
@@ -94,9 +100,9 @@ func (r *Repository) WithRLS(ctx context.Context, claims UserClaims, projectSlug
 					set_config('request.jwt.claim.email', $4, true),
 					set_config('request.jwt.claim.role', $5, true);`
 
-			if _, err := tx.Exec(ctx, atomicSQL, timeout, projectSlug, claims.Sub, claims.Email, claims.Role); err != nil {
-				slog.Error("security context injection failed", "slug", projectSlug, "err", err, "role", role, "namespace", targetNamespace)
-				return fmt.Errorf("security_injection: %w", err)
+			if _, err := tx.Exec(ctx, gucSQL, timeout, projectSlug, claims.Sub, claims.Email, claims.Role); err != nil {
+				slog.Error("security context injection failed (params)", "slug", projectSlug, "err", err)
+				return fmt.Errorf("security_injection_params: %w", err)
 			}
 
 			return fn(tx)
