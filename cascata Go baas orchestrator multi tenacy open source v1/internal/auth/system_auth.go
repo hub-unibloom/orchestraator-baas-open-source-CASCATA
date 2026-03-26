@@ -42,7 +42,7 @@ func (s *SystemAuthService) AuthenticateMember(ctx context.Context, email, passw
 		}
 
 		// 1.2 Log the successful login attempt in Unified Audit Ledger
-		_ = s.auditSvc.Log(ctx, "cascata", "MEMBER_LOGIN", member.ID, string(member.Type), map[string]interface{}{"email": email})
+		_ = s.auditSvc.Log(ctx, tx, "cascata", "MEMBER_LOGIN", member.ID, string(member.Type), map[string]interface{}{"email": email})
 		
 		return nil
 	})

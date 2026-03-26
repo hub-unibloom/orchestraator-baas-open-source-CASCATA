@@ -59,8 +59,9 @@ func (s *SyncService) MergeBatch(ctx context.Context, payload *domain.SyncPayloa
 
 	results := make([]domain.SyncResult, 0, len(payload.Operations))
 
-	// Execute Batch in unique transaction for atomicity (Phase 11.1)
-	err = pgx.BeginFunc(ctx, pool.Pool, func(tx pgx.Tx) error {
+	// Execute Batch in unique transaction for atomicity (Sovereign Constraint)
+	claims := database.UserClaims{Role: "service_role"}
+	err = pool.WithRLS(ctx, claims, payload.ProjectSlug, false, func(tx pgx.Tx) error {
 		for _, op := range payload.Operations {
 			res, err := s.processRecord(ctx, tx, payload.Table, op)
 			if err != nil {
@@ -81,7 +82,7 @@ func (s *SyncService) MergeBatch(ctx context.Context, payload *domain.SyncPayloa
 			Payload:      fmt.Sprintf("Processed %d operations for table %s", len(payload.Operations), payload.Table),
 			Timestamp:    time.Now(),
 		}
-		s.audit.WriteEntry(ctx, entry)
+		s.audit.WriteEntry(ctx, tx, entry)
 
 		return nil
 	})

@@ -153,7 +153,7 @@ func (s *MigrationService) ApplyMigration(ctx context.Context, slug string, name
 			Payload:      fmt.Sprintf("Migration %s executed in %v", name, time.Since(start)),
 			Timestamp:    time.Now(),
 		}
-		s.audit.WriteEntry(ctx, entry)
+		s.audit.WriteEntry(ctx, tx, entry)
 		
 		return nil
 	})

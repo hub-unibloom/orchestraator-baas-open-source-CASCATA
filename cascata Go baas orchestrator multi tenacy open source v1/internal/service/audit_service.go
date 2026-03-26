@@ -40,7 +40,7 @@ func (s *AuditService) refreshLastHash(ctx context.Context) {
 }
 
 // WriteEntry signs and persists a new audit record into the ledger.
-func (s *AuditService) WriteEntry(ctx context.Context, entry *domain.AuditEntry) error {
+func (s *AuditService) WriteEntry(ctx context.Context, q database.Queryer, entry *domain.AuditEntry) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -53,8 +53,8 @@ func (s *AuditService) WriteEntry(ctx context.Context, entry *domain.AuditEntry)
 	entry.EntryHash = hex.EncodeToString(h[:])
 
 	// 3. Persist (Blockchain-style immutable append)
-	// Removed system. prefix to align with Sovereign Namespace Barrier
-	_, err := s.repo.Pool.Exec(ctx, 
+	// Sovereign Registration: Persisted within the provided transaction context.
+	_, err := q.Exec(ctx, 
 		"INSERT INTO audit_ledger (project_slug, operation, identity_id, identity_type, table_name, payload, prev_hash, entry_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
 		entry.Project, entry.Operation, entry.IdentityID, entry.IdentityType, entry.Table, entry.Payload, entry.PrevHash, entry.EntryHash,
 	)
@@ -70,7 +70,7 @@ func (s *AuditService) WriteEntry(ctx context.Context, entry *domain.AuditEntry)
 }
 
 // Log is a high-level helper for quick auditing of any system event.
-func (s *AuditService) Log(ctx context.Context, projectSlug, op, id, idType string, payload any) error {
+func (s *AuditService) Log(ctx context.Context, q database.Queryer, projectSlug, op, id, idType string, payload any) error {
 	pJson, _ := json.Marshal(payload)
 	entry := &domain.AuditEntry{
 		Project: projectSlug,
@@ -79,5 +79,5 @@ func (s *AuditService) Log(ctx context.Context, projectSlug, op, id, idType stri
 		IdentityType: domain.IdentityType(idType),
 		Payload: string(pJson),
 	}
-	return s.WriteEntry(ctx, entry)
+	return s.WriteEntry(ctx, q, entry)
 }

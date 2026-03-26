@@ -10,6 +10,7 @@ import (
 	"cascata/internal/domain"
 	"cascata/internal/repository"
 	"cascata/internal/service"
+	"github.com/jackc/pgx/v5"
 )
 
 // One-off CLI helper to hash passwords and provision the Worner
@@ -46,9 +47,8 @@ func main() {
 	}
 	defer db.Close()
 
-	// 3. Insert and Audit Genesis
+	// 3. Definitions and Provisioning logic (Sovereign Context)
 	repo := repository.NewMemberRepository(db)
-	
 	member := &domain.Member{
 		Email:        email,
 		PasswordHash: hash,
@@ -57,18 +57,24 @@ func main() {
 		MFAEnabled:   mfaEnabled,
 	}
 
-	err = repo.Create(context.Background(), member)
+	claims := database.UserClaims{Role: "service_role"}
+	err = db.WithRLS(context.Background(), claims, "cascata", false, func(tx pgx.Tx) error {
+		if err := repo.Create(context.Background(), tx, member); err != nil {
+			return err
+		}
+
+		// 4. Initial Audit Entry via Unified Ledger
+		audit := service.NewAuditService(db)
+		return audit.Log(context.Background(), "cascata", "GENESIS_PROVISION_WORNER", member.ID, string(domain.IdentityMember), map[string]interface{}{
+			"email":  email,
+			"source": "install.sh_go_helper",
+		})
+	})
+
 	if err != nil {
-		fmt.Printf("FAIL_DB_INSERT: %v\n", err)
+		fmt.Printf("FAIL_DB_GENESIS: %v\n", err)
 		os.Exit(1)
 	}
-
-	// 4. Initial Audit Entry via Unified Ledger
-	audit := service.NewAuditService(db)
-	_ = audit.Log(context.Background(), "", "GENESIS_PROVISION_WORNER", member.ID, string(domain.IdentityMember), map[string]interface{}{
-		"email": email,
-		"source": "install.sh_go_helper",
-	})
 
 	fmt.Printf("SUCCESS_ID:%s\n", member.ID)
 }
