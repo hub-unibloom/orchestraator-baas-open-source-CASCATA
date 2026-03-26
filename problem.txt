@@ -1,26 +1,29 @@
- => ERROR [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux   71.6s 
+ => ERROR [builder  8/10] RUN templ generate              0.7s 
 ------                                                         
- > [builder  9/10] RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go:                       
-58.64 # cascata/internal/api                                   
-58.64 internal/api/ui_handler.go:332:34: h.SystemH.ProjectRepo.Repo undefined (type *repository.ProjectRepository has no field or method Repo, but does have unexported field repo)
+ > [builder  8/10] RUN templ generate:                         
+0.530 (!) templ version check: generator v0.3.1001 is newer than templ version v0.3.833 found in go.mod file, consider running `go get -u github.com/a-h/templ` to upgrade                   
+0.614 (✗) Error [ error=failed to generate code for "/app/internal/ui/components/database/table_creator.templ": /app/internal/ui/components/database/table_creator.templ parsing error: boolConstantAttributeParser: expected attribute name to end with space, newline, '/>' or '>', but got "\\": line 37, col 117 ]
+0.636 (✓) Post-generation event received, processing... [ needsRestart=true needsBrowserReload=true ]
+0.658 (✗) Command failed: generation completed with 1 errors
 ------
 [+] up 0/1
- ⠙ Image cascatagobaasorchestratormultitenacy... Building 86.8s
-Dockerfile.backend:23
+ ⠙ Image cascatagobaasorchestratormultitenacy... Building 13.4s
+Dockerfile.backend:20
 
 --------------------
+
+  18 |     # Resolver dependências e gerar componentes HTML em Go
+
+  19 |     RUN go mod tidy
+
+  20 | >>> RUN templ generate
 
   21 |     
 
   22 |     # Fazer o build do orchestrator e do provisionador CLI
 
-  23 | >>> RUN CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go
-
-  24 |     RUN CGO_ENABLED=0 GOOS=linux go build -o worner-provision ./cmd/cli/worner-provision.go
-
-  25 |     
-
 --------------------
 
-failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build -o cascata-orchestrator ./cmd/cascata/main.go" did not complete successfully: exit code: 1
+failed to solve: process "/bin/sh -c templ generate" did not complete successfully: exit code: 1
 
+ubuntu@ip-172-26-7-197:~$ 

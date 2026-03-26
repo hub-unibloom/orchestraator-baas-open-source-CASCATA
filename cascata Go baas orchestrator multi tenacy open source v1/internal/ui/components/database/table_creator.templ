@@ -20,7 +20,7 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
         @keydown.window.cmd.s.prevent="if(canSubmit) $refs.previewBtn.click()"
         @keydown.window.escape="document.getElementById('table-creator-drawer').remove()"
         @close-drawer.window="document.getElementById('table-creator-drawer').remove()"
-        x-data="{ 
+        x-data={ `{ 
             tableName: '', 
             tableDesc: '',
             enableRLS: true,
@@ -34,7 +34,7 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
                 const id = Date.now();
                 this.columns.push({ id, name: '', type: 'text', defaultValue: '', nullable: true, pk: false, unique: false, array: false, identity: null, lock: null, format: null, privacy: null, fk: { schema: '', table: '', column: '' }, showFk: false });
                 this.$nextTick(() => {
-                    const inputs = document.querySelectorAll('#column-definition-mesh input[placeholder=\"column_name\"]');
+                    const inputs = document.querySelectorAll("#column-definition-mesh input[placeholder='column_name']");
                     if(inputs.length > 0) inputs[inputs.length - 1].focus();
                 });
             },
@@ -46,7 +46,7 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
             get canSubmit() {
                 return this.tableName.length > 0 && this.columns.every(c => c.name.length > 0);
             }
-        }"
+        }` }
     >
 		<!-- Header (Architectural Ambience) -->
 		<header class="p-10 border-b border-white/5 bg-surface-base/80 flex items-center justify-between sticky top-0 z-30 backdrop-blur-3xl">
@@ -360,19 +360,14 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
                 x-ref="previewBtn"
                 hx-post={ fmt.Sprintf("/projects/%s/database/tables/preview", slug) }
                 hx-ext="json-enc"
-                hx-vals="js:{
-                    tableName: document.querySelector('[x-model=\"tableName\"]').value,
-                    description: document.querySelector('[x-model=\"tableDesc\"]').value,
-                    enableRLS: htmx.values(htmx.find('[x-model=\"enableRLS\"]'))['enableRLS'] === 'on',
-                    mcpEnabled: htmx.values(htmx.find('[x-model=\"mcpEnabled\"]'))['mcpEnabled'] === 'on',
-                    mcpPerms: {
-                        r: htmx.values(htmx.find('[x-model=\"mcpPerms.r\"]'))['mcpPerms.r'] === 'on',
-                        c: htmx.values(htmx.find('[x-model=\"mcpPerms.c\"]'))['mcpPerms.c'] === 'on',
-                        u: htmx.values(htmx.find('[x-model=\"mcpPerms.u\"]'))['mcpPerms.u'] === 'on',
-                        d: htmx.values(htmx.find('[x-model=\"mcpPerms.d\"]'))['mcpPerms.d'] === 'on'
-                    },
+                hx-vals={ `js:{
+                    tableName: Alpine.find(document.getElementById('table-creator-drawer')).tableName,
+                    description: Alpine.find(document.getElementById('table-creator-drawer')).tableDesc,
+                    enableRLS: Alpine.find(document.getElementById('table-creator-drawer')).enableRLS,
+                    mcpEnabled: Alpine.find(document.getElementById('table-creator-drawer')).mcpEnabled,
+                    mcpPerms: Alpine.find(document.getElementById('table-creator-drawer')).mcpPerms,
                     columns: Alpine.find(document.getElementById('table-creator-drawer')).columns
-                }"
+                }` }
                 hx-target="#database-content-canvas"
                 class="flex-1 py-5 bg-white/5 text-[10px] font-black text-content-muted hover:text-white uppercase tracking-[0.3em] transition-all italic border-r border-white/5 disabled:opacity-20"
             >{ internalI18n.T(loc, "preview_in_forge") }</button>
@@ -382,14 +377,14 @@ templ TableCreatorDrawer(slug string, schemas []string, currentSchema string, lo
                 x-ref="submitBtn"
                 hx-post={ fmt.Sprintf("/projects/%s/database/tables/create", slug) }
                 hx-ext="json-enc"
-                hx-vals="js:{
-                    tableName: document.getElementById('table-creator-drawer').__x.$data.tableName,
-                    description: document.getElementById('table-creator-drawer').__x.$data.tableDesc,
-                    enableRLS: document.getElementById('table-creator-drawer').__x.$data.enableRLS,
-                    mcpEnabled: document.getElementById('table-creator-drawer').__x.$data.mcpEnabled,
-                    mcpPerms: document.getElementById('table-creator-drawer').__x.$data.mcpPerms,
-                    columns: document.getElementById('table-creator-drawer').__x.$data.columns
-                }"
+                hx-vals={ `js:{
+                    tableName: Alpine.find(document.getElementById('table-creator-drawer')).tableName,
+                    description: Alpine.find(document.getElementById('table-creator-drawer')).tableDesc,
+                    enableRLS: Alpine.find(document.getElementById('table-creator-drawer')).enableRLS,
+                    mcpEnabled: Alpine.find(document.getElementById('table-creator-drawer')).mcpEnabled,
+                    mcpPerms: Alpine.find(document.getElementById('table-creator-drawer')).mcpPerms,
+                    columns: Alpine.find(document.getElementById('table-creator-drawer')).columns
+                }` }
                 hx-target="#database-modal-root"
                 class="flex-[2] h-18 bg-accent-primary text-white rounded-[32px] text-[11px] font-black uppercase tracking-[0.4em] shadow-glow hover:scale-[1.03] active:scale-[0.97] disabled:opacity-30 disabled:grayscale transition-all flex items-center justify-center gap-5 group overflow-hidden relative italic"
             >
