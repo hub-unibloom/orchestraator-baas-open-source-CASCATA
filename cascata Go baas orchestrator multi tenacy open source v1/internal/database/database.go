@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"cascata/internal/domain"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -15,13 +16,7 @@ import (
 // Pool is an alias for pgxpool.Pool to maintain compatibility across the orchestrator.
 type Pool = pgxpool.Pool
 
-// Queryer defines the interface for database operations (Pool, Conn, or Tx).
-// Essential for Phase 22 Sinergy and Transactional Consistency.
-type Queryer interface {
-	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
-	Query(context.Context, string, ...any) (pgx.Rows, error)
-	QueryRow(context.Context, string, ...any) pgx.Row
-}
+// Queryer is handled by domain.Queryer now.
 
 // Repository manages database interactions for metadata.
 type Repository struct {

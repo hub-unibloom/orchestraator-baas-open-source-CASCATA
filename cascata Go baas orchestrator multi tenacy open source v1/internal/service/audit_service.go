@@ -40,7 +40,7 @@ func (s *AuditService) refreshLastHash(ctx context.Context) {
 }
 
 // WriteEntry signs and persists a new audit record into the ledger.
-func (s *AuditService) WriteEntry(ctx context.Context, q database.Queryer, entry *domain.AuditEntry) error {
+func (s *AuditService) WriteEntry(ctx context.Context, q domain.Queryer, entry *domain.AuditEntry) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -70,7 +70,7 @@ func (s *AuditService) WriteEntry(ctx context.Context, q database.Queryer, entry
 }
 
 // Log is a high-level helper for quick auditing of any system event.
-func (s *AuditService) Log(ctx context.Context, q database.Queryer, projectSlug, op, id, idType string, payload any) error {
+func (s *AuditService) Log(ctx context.Context, q domain.Queryer, projectSlug, op, id, idType string, payload any) error {
 	pJson, _ := json.Marshal(payload)
 	entry := &domain.AuditEntry{
 		Project: projectSlug,

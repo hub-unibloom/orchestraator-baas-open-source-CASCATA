@@ -102,7 +102,7 @@ func (s *Service) HandleInbound(ctx context.Context, projectSlug, pathSlug strin
 		}
 		
 		// Phase 24 Sinergy: Log to Audit Ledger
-		_ = s.auditSvc.Log(context.Background(), projectSlug, "webhook_inbound", "SYSTEM", "TRIGGER", map[string]interface{}{
+		_ = s.auditSvc.Log(context.Background(), s.repo.Pool, projectSlug, "webhook_inbound", "SYSTEM", "TRIGGER", map[string]interface{}{
 			"receiver_id": recv.ID,
 			"path":        pathSlug,
 		})

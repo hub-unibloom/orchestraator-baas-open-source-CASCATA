@@ -3,13 +3,24 @@ package domain
 import (
 	"context"
 	"fmt"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
+
+// Queryer defines the interface for database operations (Pool, Conn, or Tx).
+// Moved to domain to resolve circular dependencies in the Sovereign Namespace Barrier.
+type Queryer interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
 
 // Auditor defines the contract for immutable logging and system state tracking (Phase 19).
 // It decouples the Database layer from the Service layer.
 type Auditor interface {
-	WriteEntry(ctx context.Context, entry *AuditEntry) error
-	Log(ctx context.Context, projectSlug, op, actorID, actorType string, payload any) error
+	WriteEntry(ctx context.Context, q Queryer, entry *AuditEntry) error
+	Log(ctx context.Context, q Queryer, projectSlug, op, actorID, actorType string, payload any) error
 }
 
 // ProjectResolver handles tenant metadata lookup without requiring a circular link to the ProjectService (Phase 2).

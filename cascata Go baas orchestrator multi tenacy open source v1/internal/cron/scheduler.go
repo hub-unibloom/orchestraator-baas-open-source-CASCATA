@@ -155,7 +155,7 @@ func (s *Scheduler) HandleAutomationTask(ctx context.Context, t *asynq.Task) err
 	slog.Info("cron: executing automation task", "automation_id", id, "project", slug)
 	
 	// Phase 24 Sinergy: Log to Audit Ledger
-	_ = s.auditSvc.Log(ctx, slug, "cron_trigger", "SYSTEM", "TRIGGER", map[string]interface{}{
+	_ = s.auditSvc.Log(ctx, s.repo.Pool, slug, "cron_trigger", "SYSTEM", "TRIGGER", map[string]interface{}{
 		"automation_id": id,
 		"task_type":     TaskRunAutomation,
 	})

@@ -65,7 +65,7 @@ func main() {
 
 		// 4. Initial Audit Entry via Unified Ledger
 		audit := service.NewAuditService(db)
-		return audit.Log(context.Background(), "cascata", "GENESIS_PROVISION_WORNER", member.ID, string(domain.IdentityMember), map[string]interface{}{
+		return audit.Log(context.Background(), tx, "cascata", "GENESIS_PROVISION_WORNER", member.ID, string(domain.IdentityMember), map[string]interface{}{
 			"email":  email,
 			"source": "install.sh_go_helper",
 		})
